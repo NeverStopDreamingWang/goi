@@ -7,8 +7,7 @@ package main
 
 import (
 	"fmt"
-	"hgee"
-	"hgee/urls"
+	"github.com/NeverStopDreamingWang/hgee"
 	"net/http"
 )
 
@@ -18,7 +17,7 @@ func main() {
 	// hgee.RegisterConverter()
 
 	// 注册一个路由转换器
-	urls.RegisterConverter("string", `([A-Za-z]+)`)
+	hgee.RegisterConverter("string", `([A-Za-z]+)`)
 
 	// 注册一个路径
 	server.Router.UrlPatterns("/test1", hgee.AsView{GET: Test1})
