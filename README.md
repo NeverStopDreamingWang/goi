@@ -1,5 +1,5 @@
 # hgee
-hgee Web 框架
+基于 `net/http` 进行开发的 Web 框架
 
 示例：
 ```go
