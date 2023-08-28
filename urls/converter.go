@@ -1,4 +1,4 @@
-package hgee
+package urls
 
 var IntConverter = `([0-9]+)`
 var StringConverter = `([^/]+)`
