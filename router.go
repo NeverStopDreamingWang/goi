@@ -2,7 +2,6 @@ package hgee
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/hgee/urls"
 	"github.com/google/uuid"
 	"net/http"
 	"regexp"
@@ -171,7 +170,7 @@ func routerParse(pattern string, router *Router) {
 	result := re.FindAllStringSubmatch(pattern, -1)
 	for _, paramsSlice := range result {
 		if len(paramsSlice) == 3 {
-			converter, ok := urls.DEFAULT_CONVERTERS[paramsSlice[1]]
+			converter, ok := settingConverter[paramsSlice[1]]
 			if ok == false {
 				continue
 			}
