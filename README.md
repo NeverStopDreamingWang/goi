@@ -13,45 +13,45 @@ import (
 
 func main() {
 	server := hgee.NewHttpServer()
-
+	
 	// hgee.RegisterConverter()
-
+	
 	// 注册一个路由转换器
 	hgee.RegisterConverter("string", `([A-Za-z]+)`)
-
+	
 	// 注册一个路径
 	server.Router.UrlPatterns("/test1", hgee.AsView{GET: Test1})
-
+	
 	// 创建一个二级子路由
 	// var testRouter *hgee.Router = server.Router.Include("/test")
 	testRouter := server.Router.Include("/test")
 	testRouter.UrlPatterns("/test2", hgee.AsView{GET: Test2}) // 添加路由
-
+	
 	// 创建一个三级子路由
 	test3Router := testRouter.Include("/test3")
 	test3Router.UrlPatterns("/test3", hgee.AsView{GET: Test3}) // 嵌套子路由
-
+	
 	// 添加一个带参数的路由
 	server.Router.UrlPatterns("/params_int/<int:id>", hgee.AsView{GET: TestParamsInt})
 	// 字符串
-	server.Router.UrlPatterns("/params_str/<str:name>", hgee.AsView{GET: TestParamsStrs})
-
+	server.Router.UrlPatterns("/params_str/<str:name>", hgee.AsView{GET: TestParamsStr})
+	
 	// 两个同名参数时
 	server.Router.UrlPatterns("/params_strs/<str:name>/<str:name>", hgee.AsView{GET: TestParamsStrs})
-
+	
 	// 使用自定义路由转换器获取参数
 	server.Router.UrlPatterns("/converter_params/<string:name>", hgee.AsView{GET: TestConverterParamsStrs})
-
+	
 	// 从上下文中获取数据
 	server.Router.UrlPatterns("/test_context/<string:name>", hgee.AsView{GET: TestContext})
-
+	
 	// 注册请求中间件
 	server.MiddleWares.RegisterRequest(RequestMiddleWare)
 	// 注册视图中间件
 	// server.MiddleWares.RegisterView()
 	// 注册响应中间件
 	// server.MiddleWares.RegisterResponse()
-
+	
 	err := server.RunServer("0.0.0.0:8989")
 	fmt.Println(err)
 }
@@ -99,7 +99,7 @@ func TestParamsInt(request *hgee.Request) any {
 
 func TestParamsStr(request *hgee.Request) any {
 	name := request.PathParams.Get("name")
-
+	
 	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
 	fmt.Println(msg)
 	return hgee.Response{http.StatusOK, msg, ""}
@@ -111,7 +111,7 @@ func TestParamsStrs(request *hgee.Request) any {
 	fmt.Printf("%v,%T\n", nameSlice, nameSlice)
 	name1 := nameSlice[0]
 	name2 := nameSlice[1]
-
+	
 	msg1 := fmt.Sprintf("参数：%v 参数类型： %T\n", name1, name1)
 	msg2 := fmt.Sprintf("参数：%v 参数类型： %T\n", name2, name2)
 	fmt.Println(msg1)
@@ -121,14 +121,14 @@ func TestParamsStrs(request *hgee.Request) any {
 
 func TestConverterParamsStrs(request *hgee.Request) any {
 	name := request.PathParams.Get("name")
-
+	
 	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
 	fmt.Println(msg)
 	return hgee.Response{http.StatusOK, "ok", msg}
 }
 
 func TestContext(request *hgee.Request) any {
-
+	
 	// 请求上下文
 	// request.Object.Context() == request.Context
 	// fmt.Println(request.Object.Context())
@@ -136,11 +136,11 @@ func TestContext(request *hgee.Request) any {
 	// fmt.Println("requestID", request.Object.Context().Value("requestID"))
 	// fmt.Println("requestID", request.Context.Value("requestID"))
 	requestID := request.Object.Context().Value("requestID")
-
+	
 	// fmt.Println("PathParams", request.PathParams)
 	name := request.PathParams.Get("name")
 	msg := fmt.Sprintf("test %s %T", name, name)
-
+	
 	type Student struct {
 		Requestid any    `json:"requestid"`
 		Name      string `json:"name"`
@@ -159,5 +159,6 @@ func RequestMiddleWare(request *hgee.Request) any {
 	// fmt.Println("请求中间件", request.Object.URL)
 	return nil
 }
+
 
 ```
