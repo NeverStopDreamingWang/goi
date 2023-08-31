@@ -1,7 +1,9 @@
 # hgee
+
 基于 `net/http` 进行开发的 Web 框架
 
 示例：
+
 ```go
 package main
 
@@ -13,8 +15,6 @@ import (
 
 func main() {
 	server := hgee.NewHttpServer()
-	
-	// hgee.RegisterConverter()
 	
 	// 注册一个路由转换器
 	hgee.RegisterConverter("string", `([A-Za-z]+)`)
@@ -45,12 +45,17 @@ func main() {
 	// 从上下文中获取数据
 	server.Router.UrlPatterns("/test_context/<string:name>", hgee.AsView{GET: TestContext})
 	
+	// 中间件
 	// 注册请求中间件
 	server.MiddleWares.RegisterRequest(RequestMiddleWare)
 	// 注册视图中间件
 	// server.MiddleWares.RegisterView()
 	// 注册响应中间件
 	// server.MiddleWares.RegisterResponse()
+	
+	// 静态文件
+	server.Router.StaticUrlPatterns("/static_dir", "template")
+	// testRouter.StaticUrlPatterns("/static_dir", "./template")
 	
 	err := server.RunServer("0.0.0.0:8989")
 	fmt.Println(err)
@@ -75,18 +80,22 @@ func Test2(request *hgee.Request) any {
 }
 
 func Test3(request *hgee.Request) any {
-	resp := map[string]any{
-		"status": http.StatusOK,
-		"msg":    "test3 OK",
-		"data":   "OK",
-	}
-	return resp
+	return hgee.Data{http.StatusOK, "test3 OK", "OK"}
 }
 
 func TestParamsInt(request *hgee.Request) any {
 	// 路由传参 request.PathParams
 	// ids, _ := request.PathParams["id"] // []any
-	id := request.PathParams.Get("id").(string)
+	id := request.PathParams.Get("id").(int)
+	
+	if id == 0 {
+		// 返回 hgee.Response
+		return hgee.Response{
+			Status: http.StatusNotFound, // Status 指定响应状态码
+			Data:   nil,
+		}
+	}
+	
 	msg := fmt.Sprintf("参数：%v 参数类型： %T", id, id)
 	fmt.Println(msg)
 	resp := map[string]any{
@@ -102,7 +111,10 @@ func TestParamsStr(request *hgee.Request) any {
 	
 	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
 	fmt.Println(msg)
-	return hgee.Response{http.StatusOK, msg, ""}
+	return hgee.Response{
+		Status: http.StatusCreated,                // 返回指定响应状态码 404
+		Data:   hgee.Data{http.StatusOK, msg, ""}, // 响应数据 null
+	}
 }
 
 func TestParamsStrs(request *hgee.Request) any {
@@ -116,7 +128,7 @@ func TestParamsStrs(request *hgee.Request) any {
 	msg2 := fmt.Sprintf("参数：%v 参数类型： %T\n", name2, name2)
 	fmt.Println(msg1)
 	fmt.Println(msg2)
-	return hgee.Response{http.StatusOK, "ok", []string{msg1, msg2}}
+	return hgee.Data{http.StatusOK, "ok", []string{msg1, msg2}}
 }
 
 func TestConverterParamsStrs(request *hgee.Request) any {
@@ -124,7 +136,7 @@ func TestConverterParamsStrs(request *hgee.Request) any {
 	
 	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
 	fmt.Println(msg)
-	return hgee.Response{http.StatusOK, "ok", msg}
+	return hgee.Data{http.StatusOK, "ok", msg}
 }
 
 func TestContext(request *hgee.Request) any {
@@ -151,7 +163,7 @@ func TestContext(request *hgee.Request) any {
 		Name:      "asda",
 		Age:       12,
 	}
-	return hgee.Response{http.StatusOK, msg, student}
+	return hgee.Data{http.StatusOK, msg, student}
 }
 
 // 请求中间件
@@ -159,6 +171,7 @@ func RequestMiddleWare(request *hgee.Request) any {
 	// fmt.Println("请求中间件", request.Object.URL)
 	return nil
 }
+
 
 
 ```

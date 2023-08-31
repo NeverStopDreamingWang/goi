@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"reflect"
 	"time"
 )
@@ -30,7 +31,6 @@ func NewHttpServer() *Engine {
 
 // 启动 http 服务
 func (engine *Engine) RunServer(addr string) (err error) {
-	// engine.Router.CheckRouter()
 	server := http.Server{
 		// Addr:    fmt.Sprintf("%s:%d", SERVER_ADDRESS, SERVER_PORT),
 		Addr:    addr,
@@ -64,19 +64,88 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		BodyParams:  make(map[string]any),
 	}
 
-	// 路由处理
-	StatusCode, result := engine.Router.routerHandlers(requestContext, response, engine.MiddleWares)
+	// 处理 HTTP 请求
+	StatusCode := http.StatusOK
+	responseData := engine.HandlerHTTP(requestContext, response)
 
+	responseObject, isResponse := responseData.(Response)
+	if isResponse {
+		StatusCode = responseObject.Status
+		responseData = responseObject.Data
+	}
+
+	var ResponseData []byte
+	var err error
+
+	switch value := responseData.(type) {
+	case nil:
+		ResponseData, err = json.Marshal(value)
+	case bool:
+		ResponseData, err = json.Marshal(value)
+	case int:
+		ResponseData, err = json.Marshal(value)
+	case float64:
+		ResponseData, err = json.Marshal(value)
+	case func(int) float64:
+		ResponseData, err = json.Marshal(value)
+	case string:
+		ResponseData = []byte(value)
+	case []byte:
+		ResponseData = responseData.([]byte)
+	case *os.File:
+		// 返回文件内容
+		ResponseStatic(value, requestContext, response)
+		return
+	default:
+		ResponseData, err = json.Marshal(value)
+	}
 	// 返回响应
-	responseData, err := json.Marshal(result)
 	if err != nil {
-		fmt.Fprintf(response, "json err: %s", err)
+		fmt.Fprintf(response, "response err: %s", err)
 	}
 	// 返回响应
 	response.WriteHeader(StatusCode)
-	write, err := response.Write(responseData)
+	write, err := response.Write(ResponseData)
 	if err != nil {
 		StatusCode = http.StatusInternalServerError
 	}
-	fmt.Printf("%s %s - %s %d byte status %d\n", request.Host, request.Method, request.URL.Path, write, StatusCode)
+	fmt.Printf("[%v] - %v - %v %v %v byte status %v %v\n",
+		time.Now().Format("2006-01-02 15:04:05"),
+		request.Host,
+		request.Method,
+		request.URL.Path,
+		write,
+		request.Proto,
+		StatusCode,
+	)
+}
+
+// 处理 HTTP 请求
+func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter) (result any) {
+	// 处理请求前的中间件
+	result = engine.MiddleWares.processRequest(request)
+	if result != nil {
+		return result
+	}
+
+	// 路由处理
+	handlerFunc, err := engine.Router.routerHandlers(request)
+	if err != "" {
+		return Response{Status: http.StatusNotFound, Data: err}
+	}
+
+	// 视图前的中间件
+	result = engine.MiddleWares.processView(request, handlerFunc)
+	if result != nil {
+		return result
+	}
+	// 视图处理
+	viewResponse := handlerFunc(request)
+
+	// 返回响应前的中间件
+	result = engine.MiddleWares.processResponse(request, response)
+	if result != nil {
+		return result
+	}
+	return viewResponse
 }
