@@ -48,8 +48,15 @@ type Request struct {
 	BodyParams  map[string]any  // Body 传参
 }
 
-type Response struct {
+// 内置响应数据格式
+type Data struct {
 	Status int    `json:"status"`
 	Msg    string `json:"msg"`
 	Data   any    `json:"data"`
+}
+
+// 请求响应数据
+type Response struct {
+	Status int
+	Data   any
 }
