@@ -1,4 +1,4 @@
-module manage_database
+module example
 
 go 1.20
 

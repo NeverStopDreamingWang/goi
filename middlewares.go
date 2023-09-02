@@ -15,17 +15,17 @@ type MiddleWares struct {
 }
 
 // 注册请求中间件
-func (middlewares *MiddleWares) RegisterRequest(processRequest RequestMiddleware) {
+func (middlewares *MiddleWares) BeforeRequest(processRequest RequestMiddleware) {
 	middlewares.processRequest = processRequest
 }
 
 // 注册视图中间件
-func (middlewares *MiddleWares) RegisterView(processView ViewMiddleware) {
+func (middlewares *MiddleWares) BeforeView(processView ViewMiddleware) {
 	middlewares.processView = processView
 }
 
 // 注册响应中间件
-func (middlewares *MiddleWares) RegisterResponse(processResponse ResponseMiddleware) {
+func (middlewares *MiddleWares) BeforeResponse(processResponse ResponseMiddleware) {
 	middlewares.processResponse = processResponse
 }
 

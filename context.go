@@ -45,7 +45,7 @@ type Request struct {
 	Context     context.Context // 请求上下文
 	PathParams  Values          // 路由参数
 	QueryParams Values          // 查询字符串参数
-	BodyParams  map[string]any  // Body 传参
+	BodyParams  Values          // Body 传参
 }
 
 // 内置响应数据格式

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"reflect"
@@ -17,25 +18,30 @@ type HandlerFunc func(*Request) any
 
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
+	address     string
+	port        uint16
 	Router      *Router
 	MiddleWares *MiddleWares
 }
 
 // 创建一个 Http 服务
-func NewHttpServer() *Engine {
+func NewHttpServer(address string, port uint16) *Engine {
+	fmt.Printf("创建 Http 服务：%v:%v\n", address, port)
 	return &Engine{
+		address:     address,
+		port:        port,
 		Router:      NewRouter(),
 		MiddleWares: NewMiddleWares(),
 	}
 }
 
 // 启动 http 服务
-func (engine *Engine) RunServer(addr string) (err error) {
+func (engine *Engine) RunServer() (err error) {
 	server := http.Server{
-		// Addr:    fmt.Sprintf("%s:%d", SERVER_ADDRESS, SERVER_PORT),
-		Addr:    addr,
+		Addr:    fmt.Sprintf("%v:%v", engine.address, engine.port),
 		Handler: engine,
 	}
+	fmt.Printf("运行在 http://%v:%v\n", engine.address, engine.port)
 	return server.ListenAndServe()
 	// return http.ListenAndServe(addr, engine)
 }
@@ -46,22 +52,43 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	ctx := context.WithValue(request.Context(), "requestID", requestID)
 	request = request.WithContext(ctx)
 
-	queryParams := make(Values)
-
-	for s, values := range request.URL.Query() {
-		for _, value := range values {
-			paramType := reflect.TypeOf(value).String()
-			data := ParseValue(paramType, value)
-			queryParams[s] = append(queryParams[s], data)
-		}
-	}
-
+	var err error
+	// 初始化请求
 	requestContext := &Request{
 		Object:      request,
 		Context:     request.Context(),
 		PathParams:  make(Values),
-		QueryParams: queryParams,
-		BodyParams:  make(map[string]any),
+		QueryParams: make(Values),
+		BodyParams:  make(Values),
+	}
+
+	// 解析 Query 参数
+	for name, values := range request.URL.Query() {
+		for _, value := range values {
+			paramType := reflect.TypeOf(value).String()
+			data := ParseValue(paramType, value)
+			requestContext.QueryParams[name] = append(requestContext.QueryParams[name], data)
+		}
+	}
+
+	// 解析 Body 参数
+	request.ParseMultipartForm(32 << 20)
+	for name, values := range request.Form {
+		for _, value := range values {
+			paramType := reflect.TypeOf(value).String()
+			data := ParseValue(paramType, value)
+			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], data)
+		}
+	}
+
+	// 解析 json 数据
+	body, err := io.ReadAll(request.Body)
+	if err == nil {
+		jsonData := make(map[string]interface{})
+		json.Unmarshal(body, &jsonData)
+		for name, value := range jsonData {
+			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
+		}
 	}
 
 	// 处理 HTTP 请求
@@ -75,7 +102,6 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	}
 
 	var ResponseData []byte
-	var err error
 
 	switch value := responseData.(type) {
 	case nil:

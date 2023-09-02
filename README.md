@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	server := hgee.NewHttpServer()
+	server := hgee.NewHttpServer("0.0.0.0", 8989)
 	
 	// 注册一个路由转换器
 	hgee.RegisterConverter("string", `([A-Za-z]+)`)
@@ -55,7 +55,7 @@ func main() {
 	
 	// 中间件
 	// 注册请求中间件
-	server.MiddleWares.RegisterRequest(RequestMiddleWare)
+	server.MiddleWares.BeforeRequest(RequestMiddleWare)
 	// 注册视图中间件
 	// server.MiddleWares.RegisterView()
 	// 注册响应中间件
@@ -68,7 +68,7 @@ func main() {
 	// 返回文件
 	server.Router.UrlPatterns("/test_file", hgee.AsView{GET: TestFile})
 	
-	err := server.RunServer("0.0.0.0:8989")
+	err := server.RunServer()
 	fmt.Println(err)
 }
 
@@ -142,6 +142,7 @@ func TestPathParamsStrs(request *hgee.Request) any {
 	return hgee.Data{http.StatusOK, "ok", []string{msg1, msg2}}
 }
 
+// 获取 Query 传参
 func TestQueryParams(request *hgee.Request) any {
 	name := request.QueryParams.Get("name")
 	
@@ -153,6 +154,7 @@ func TestQueryParams(request *hgee.Request) any {
 	}
 }
 
+// 获取Body传参
 func TestBodyParams(request *hgee.Request) any {
 	name := request.BodyParams["name"]
 	
@@ -230,5 +232,6 @@ func RequestMiddleWare(request *hgee.Request) any {
 	// fmt.Println("请求中间件", request.Object.URL)
 	return nil
 }
+
 
 ```
