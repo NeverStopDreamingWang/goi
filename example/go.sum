@@ -1,2 +1,4 @@
+github.com/NeverStopDreamingWang/hgee v1.0.4 h1:Id5Fg1CqeZ4pICOLnVwsGJfaWWtHa+E4yeIVpeHhyO0=
 github.com/NeverStopDreamingWang/hgee v1.0.4/go.mod h1:xmDo3P80U4f4hfie6/eeaavxzJdc0Brq84zjpxM3qqQ=
+github.com/google/uuid v1.3.1 h1:KjJaJ9iWZ3jOFZIf1Lqf4laDRCasjl0BCmnEGxkdLb4=
 github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
