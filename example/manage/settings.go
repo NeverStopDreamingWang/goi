@@ -6,17 +6,26 @@ import (
 	"example/middleware"
 	"fmt"
 	"github.com/NeverStopDreamingWang/hgee"
+	"log"
 	"os"
+	"path"
 )
 
 var (
-	Server         *hgee.Engine
-	SERVER_ADDRESS string // 服务地址
-	SERVER_PORT    uint16 // 服务端口
-	BASE_DIR       string // 项目根路径
-	SECRET_KEY     string // 项目密钥
+	// Http 服务
+	Server *hgee.Engine
+	// 服务地址
+	SERVER_ADDRESS string
+	// 服务端口
+	SERVER_PORT uint16
+	// 项目根路径
+	BASE_DIR string
+	// 项目密钥
+	SECRET_KEY string
 	// 数据库配置
 	DATABASES map[string]map[string]interface{}
+	// 日志输出位置
+	LOG_OUTPATH string
 
 	// 自定义
 	REDIS_HOST     string
@@ -69,6 +78,18 @@ func init() {
 			"PORT":     "3306",
 		},
 	}
+	// 日志输出位置
+	LOG_OUTPATH = "/log/server.log"
+	log_path := path.Join(BASE_DIR, LOG_OUTPATH)
+	log_file, err := os.OpenFile(log_path, os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		panic(fmt.Sprintf("异常【日志创建】：%v\n", err))
+		return
+	}
+	log.SetOutput(log_file)
+	// 设置日志前缀为空
+	log.SetFlags(0)
+	// defer log_file.Close()
 
 	// 自定义配置
 	// redis配置

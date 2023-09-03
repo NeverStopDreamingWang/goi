@@ -42,10 +42,10 @@ func main() {
 	server.Router.UrlPatterns("/path_params_strs/<str:name>/<str:name>", hgee.AsView{GET: TestPathParamsStrs})
 	
 	// Query 传参
-	server.Router.UrlPatterns("/query_params_str", hgee.AsView{GET: TestQueryParams})
+	server.Router.UrlPatterns("/query_params", hgee.AsView{GET: TestQueryParams})
 	
 	// Body 传参
-	server.Router.UrlPatterns("/body_params_str", hgee.AsView{GET: TestBodyParams})
+	server.Router.UrlPatterns("/body_params", hgee.AsView{GET: TestBodyParams})
 	
 	// 使用自定义路由转换器获取参数
 	server.Router.UrlPatterns("/converter_params/<string:name>", hgee.AsView{GET: TestConverterParamsStrs})

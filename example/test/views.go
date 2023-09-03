@@ -162,3 +162,19 @@ func TestFile(request *hgee.Request) any {
 		Data:   file, // 返回文件对象
 	}
 }
+
+// 异常处理
+func TestPanic(request *hgee.Request) any {
+
+	name := request.BodyParams["name"]
+
+	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
+	fmt.Println(msg)
+
+	name_tmp := name[100]
+	fmt.Println(name_tmp)
+	return hgee.Response{
+		Status: http.StatusCreated,                // 返回指定响应状态码 404
+		Data:   hgee.Data{http.StatusOK, msg, ""}, // 响应数据 null
+	}
+}

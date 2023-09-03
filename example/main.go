@@ -2,8 +2,11 @@ package main
 
 import (
 	"example/manage"
-	_ "example/user" // 注册路由
 	"fmt"
+
+	// 注册路由
+	_ "example/test"
+	_ "example/user"
 )
 
 func main() {
