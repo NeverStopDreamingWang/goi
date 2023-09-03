@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"reflect"
@@ -26,7 +27,7 @@ type Engine struct {
 
 // 创建一个 Http 服务
 func NewHttpServer(address string, port uint16) *Engine {
-	fmt.Printf("创建 Http 服务：%v:%v\n", address, port)
+	log.Printf("创建 Http 服务：%v:%v\n", address, port)
 	return &Engine{
 		address:     address,
 		port:        port,
@@ -41,7 +42,6 @@ func (engine *Engine) RunServer() (err error) {
 		Addr:    fmt.Sprintf("%v:%v", engine.address, engine.port),
 		Handler: engine,
 	}
-	fmt.Printf("运行在 http://%v:%v\n", engine.address, engine.port)
 	return server.ListenAndServe()
 	// return http.ListenAndServe(addr, engine)
 }
@@ -61,6 +61,7 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		QueryParams: make(Values),
 		BodyParams:  make(Values),
 	}
+	defer Recovery(requestContext, response) // 异常处理
 
 	// 解析 Query 参数
 	for name, values := range request.URL.Query() {
@@ -135,7 +136,7 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	if err != nil {
 		StatusCode = http.StatusInternalServerError
 	}
-	fmt.Printf("[%v] - %v - %v %v %v byte status %v %v\n",
+	log.Printf("[%v] - %v - %v %v %v byte status %v %v\n",
 		time.Now().Format("2006-01-02 15:04:05"),
 		request.Host,
 		request.Method,
