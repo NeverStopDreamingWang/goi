@@ -1,46 +1,63 @@
 package manage
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"example/middleware"
-	"fmt"
 	"github.com/NeverStopDreamingWang/hgee"
-	"log"
 	"os"
-	"path"
 )
 
-var (
-	// Http 服务
-	Server *hgee.Engine
-	// 服务地址
-	SERVER_ADDRESS string
-	// 服务端口
-	SERVER_PORT uint16
-	// 项目根路径
-	BASE_DIR string
-	// 项目密钥
-	SECRET_KEY string
-	// 数据库配置
-	DATABASES map[string]map[string]interface{}
-	// 日志输出位置
-	LOG_OUTPATH string
-
-	// 自定义
-	REDIS_HOST     string
-	REDIS_PORT     uint16
-	REDIS_PASSWORD string
-	REDIS_DB       uint8
-)
+// Http 服务
+var Server *hgee.Engine
 
 func init() {
-	// 运行地址
-	SERVER_ADDRESS = "0.0.0.0"
-	// 端口
-	SERVER_PORT = 8989
 	// 创建 http 服务
-	Server = hgee.NewHttpServer(SERVER_ADDRESS, SERVER_PORT)
+	Server = hgee.NewHttpServer()
+
+	// 运行地址
+	Server.Settings.SERVER_ADDRESS = "0.0.0.0"
+	// 端口
+	Server.Settings.SERVER_PORT = 8989
+
+	// 项目路径
+	Server.Settings.BASE_DIR, _ = os.Getwd()
+
+	// 项目
+	Server.Settings.SECRET_KEY = "xxxxxxxxxxxxxxxxx"
+
+	// 数据库配置
+	Server.Settings.DATABASES["default"] = hgee.DataBase{
+		ENGINE:   "mysql",
+		NAME:     "test_hgee",
+		USER:     "root",
+		PASSWORD: "admin",
+		HOST:     "127.0.0.1",
+		PORT:     3306,
+	}
+
+	// 日志设置
+	Server.Log.DEBUG = false
+	Server.Log.INFO_OUT_PATH = "logs/server.log" // 输出所有日志到文件
+	// Server.Log.ACCESS_OUT_PATH = "" // 输出访问日志文件
+	// Server.Log.ERROR_OUT_PATH = ""  // 输出错误日志文件
+	// Server.Log.OUT_DATABASE = ""  // 输出到的数据库 例：default
+
+	// 日志打印
+	// Server.Log.Debug() = hgee.Debug()
+	// Server.Log.Info() = hgee.Info()
+	// Server.Log.Warning() = hgee.Warning()
+	// Server.Log.Error() = hgee.Error()
+
+	// Server.Settings.LOG_OUTPATH = "/log/server.log"
+	// log_path := path.Join(BASE_DIR, LOG_OUTPATH)
+	// log_file, err := os.OpenFile(log_path, os.O_CREATE|os.O_APPEND, 0777)
+	// if err != nil {
+	// 	panic(fmt.Sprintf("异常【日志创建】：%v\n", err))
+	// 	return
+	// }
+	// log.SetOutput(log_file)
+	// // 设置日志前缀为空
+	// log.SetFlags(0)
+	// // defer log_file.Close()
 
 	// 注册中间件
 	// 注册请求中间件
@@ -50,51 +67,10 @@ func init() {
 	// 注册响应中间件
 	// Server.MiddleWares.BeforeResponse()
 
-	var err error
-	// 获取项目根路径
-	BASE_DIR, err = os.Getwd()
-	if err != nil {
-		panic(fmt.Sprintf("异常【获取项目根路径】：%v\n", err))
-		return
-	}
-
-	b := make([]byte, 32)
-	_, err = rand.Read(b)
-	if err != nil {
-		panic(fmt.Sprintf("异常【密钥生成】：%v\n", err))
-		return
-	}
-	// 将随机字节串转换为十六进制字符串
-	SECRET_KEY = hex.EncodeToString(b)
-
-	// 数据库配置
-	DATABASES = map[string]map[string]interface{}{
-		"default": {
-			"ENGINE":   "mysql",
-			"NAME":     "h_wiki",
-			"USER":     "root",
-			"PASSWORD": "admin",
-			"HOST":     "127.0.0.1",
-			"PORT":     "3306",
-		},
-	}
-	// 日志输出位置
-	LOG_OUTPATH = "/log/server.log"
-	log_path := path.Join(BASE_DIR, LOG_OUTPATH)
-	log_file, err := os.OpenFile(log_path, os.O_CREATE|os.O_APPEND, 0777)
-	if err != nil {
-		panic(fmt.Sprintf("异常【日志创建】：%v\n", err))
-		return
-	}
-	log.SetOutput(log_file)
-	// 设置日志前缀为空
-	log.SetFlags(0)
-	// defer log_file.Close()
-
-	// 自定义配置
+	// 设置自定义配置
 	// redis配置
-	REDIS_HOST = "127.0.0.1"
-	REDIS_PORT = 6379
-	REDIS_PASSWORD = "123"
-	REDIS_DB = 0
+	Server.Settings.Set("REDIS_HOST", "127.0.0.1")
+	Server.Settings.Set("REDIS_PORT", 6379)
+	Server.Settings.Set("REDIS_PASSWORD", "123")
+	Server.Settings.Set("REDIS_DB", 0)
 }

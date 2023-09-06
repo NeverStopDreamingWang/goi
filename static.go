@@ -9,7 +9,7 @@ import (
 )
 
 // 静态文件处理函数
-func StaticHandler(request *Request) any {
+func metaStaticHandler(request *Request) any {
 	staticPattern := request.PathParams.Get("staticPattern").(string)
 	staticPath := request.PathParams.Get("staticPath").(string)
 
@@ -32,7 +32,7 @@ func StaticHandler(request *Request) any {
 }
 
 // 返回响应文件内容
-func ResponseStatic(file *os.File, request *Request, response http.ResponseWriter) {
+func metaResponseStatic(file *os.File, request *Request, response http.ResponseWriter) {
 	defer file.Close()
 
 	fileInfo, err := file.Stat()

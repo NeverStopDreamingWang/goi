@@ -9,9 +9,6 @@ func init() {
 	// 创建一个子路由
 	testRouter := manage.Server.Router.Include("/test")
 
-	// 注册一个路由转换器
-	hgee.RegisterConverter("string", `([A-Za-z]+)`)
-
 	// 注册一个路径
 	testRouter.UrlPatterns("/test1", hgee.AsView{GET: Test1})
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"reflect"
@@ -19,31 +18,41 @@ type HandlerFunc func(*Request) any
 
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
-	address     string
-	port        uint16
-	Router      *Router
-	MiddleWares *MiddleWares
+	Router      *metaRouter
+	MiddleWares *metaMiddleWares
+	Settings    *metaSettings
+	Log         *metaLogger
 }
 
+// Http 服务
+var engine *Engine
+
 // 创建一个 Http 服务
-func NewHttpServer(address string, port uint16) *Engine {
-	log.Printf("创建 Http 服务：%v:%v\n", address, port)
-	return &Engine{
-		address:     address,
-		port:        port,
-		Router:      NewRouter(),
-		MiddleWares: NewMiddleWares(),
+func NewHttpServer() *Engine {
+	engine = &Engine{
+		Router:      newRouter(),
+		MiddleWares: newMiddleWares(),
+		Settings:    newSettings(),
+		Log:         newLogger(),
 	}
+	return engine
 }
 
 // 启动 http 服务
 func (engine *Engine) RunServer() (err error) {
 	server := http.Server{
-		Addr:    fmt.Sprintf("%v:%v", engine.address, engine.port),
+		Addr:    fmt.Sprintf("%v:%v", engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT),
 		Handler: engine,
 	}
+	engine.init() // 初始化
 	return server.ListenAndServe()
 	// return http.ListenAndServe(addr, engine)
+}
+
+// 初始化
+func (engine *Engine) init() {
+	// 初始化日志
+	engine.initLogger()
 }
 
 // 实现 ServeHTTP 接口
@@ -52,22 +61,23 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	ctx := context.WithValue(request.Context(), "requestID", requestID)
 	request = request.WithContext(ctx)
 
+	var log string
 	var err error
 	// 初始化请求
 	requestContext := &Request{
 		Object:      request,
 		Context:     request.Context(),
-		PathParams:  make(Values),
-		QueryParams: make(Values),
-		BodyParams:  make(Values),
+		PathParams:  make(metaValues),
+		QueryParams: make(metaValues),
+		BodyParams:  make(metaValues),
 	}
-	defer Recovery(requestContext, response) // 异常处理
+	defer metaRecovery(requestContext, response) // 异常处理
 
 	// 解析 Query 参数
 	for name, values := range request.URL.Query() {
 		for _, value := range values {
 			paramType := reflect.TypeOf(value).String()
-			data := ParseValue(paramType, value)
+			data := parseValue(paramType, value)
 			requestContext.QueryParams[name] = append(requestContext.QueryParams[name], data)
 		}
 	}
@@ -77,16 +87,22 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	for name, values := range request.Form {
 		for _, value := range values {
 			paramType := reflect.TypeOf(value).String()
-			data := ParseValue(paramType, value)
+			data := parseValue(paramType, value)
 			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], data)
 		}
 	}
 
 	// 解析 json 数据
 	body, err := io.ReadAll(request.Body)
-	if err == nil {
-		jsonData := make(map[string]interface{})
-		json.Unmarshal(body, &jsonData)
+	if err != nil {
+		panic(fmt.Sprintf("读取 Body 错误：%v", err))
+	}
+	if len(body) != 0 {
+		jsonData := make(map[string]any)
+		err = json.Unmarshal(body, &jsonData)
+		if err != nil {
+			panic(fmt.Sprintf("解析 json 错误：%v", err))
+		}
 		for name, value := range jsonData {
 			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
 		}
@@ -121,23 +137,22 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		ResponseData = responseData.([]byte)
 	case *os.File:
 		// 返回文件内容
-		ResponseStatic(value, requestContext, response)
+		metaResponseStatic(value, requestContext, response)
 		return
 	default:
 		ResponseData, err = json.Marshal(value)
 	}
 	// 返回响应
 	if err != nil {
-		fmt.Fprintf(response, "response err: %s", err)
+		panic(fmt.Sprintf("响应 json 数据错误：%v", err))
 	}
 	// 返回响应
 	response.WriteHeader(StatusCode)
 	write, err := response.Write(ResponseData)
 	if err != nil {
-		StatusCode = http.StatusInternalServerError
+		panic(fmt.Sprintf("响应错误：%v", err))
 	}
-	log.Printf("[%v] - %v - %v %v %v byte status %v %v\n",
-		time.Now().Format("2006-01-02 15:04:05"),
+	log = fmt.Sprintf("- %v - %v %v %v byte status %v %v",
 		request.Host,
 		request.Method,
 		request.URL.Path,
@@ -145,6 +160,7 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		request.Proto,
 		StatusCode,
 	)
+	engine.Log.Info(log)
 }
 
 // 处理 HTTP 请求

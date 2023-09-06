@@ -5,10 +5,10 @@ import (
 	"net/http"
 )
 
-type Values map[string][]any
+type metaValues map[string][]any
 
 // 根据键获取一个值, 获取不到返回 nil
-func (values Values) Get(key string) any {
+func (values metaValues) Get(key string) any {
 	if values == nil {
 		return nil
 	}
@@ -20,22 +20,22 @@ func (values Values) Get(key string) any {
 }
 
 // 设置一个键值，会覆盖原来的值
-func (values Values) Set(key, value string) {
+func (values metaValues) Set(key, value string) {
 	values[key] = []any{value}
 }
 
 // 根据键添加一个值
-func (values Values) Add(key, value string) {
+func (values metaValues) Add(key, value string) {
 	values[key] = append(values[key], value)
 }
 
 // 删除一个值
-func (values Values) Del(key string) {
+func (values metaValues) Del(key string) {
 	delete(values, key)
 }
 
 // 查看值是否存在
-func (values Values) Has(key string) bool {
+func (values metaValues) Has(key string) bool {
 	_, ok := values[key]
 	return ok
 }
@@ -43,9 +43,9 @@ func (values Values) Has(key string) bool {
 type Request struct {
 	Object      *http.Request
 	Context     context.Context // 请求上下文
-	PathParams  Values          // 路由参数
-	QueryParams Values          // 查询字符串参数
-	BodyParams  Values          // Body 传参
+	PathParams  metaValues      // 路由参数
+	QueryParams metaValues      // 查询字符串参数
+	BodyParams  metaValues      // Body 传参
 }
 
 // 内置响应数据格式
