@@ -28,23 +28,23 @@ type routerParam struct {
 }
 
 // 路由表
-type Router struct {
-	includeRouter map[string]*Router // 子路由
-	viewSet       AsView             // 视图方法
-	staticPattern string             // 是否是静态路由
+type metaRouter struct {
+	includeRouter map[string]*metaRouter // 子路由
+	viewSet       AsView                 // 视图方法
+	staticPattern string                 // 是否是静态路由
 }
 
 // 创建路由
-func NewRouter() *Router {
-	return &Router{
-		includeRouter: make(map[string]*Router),
+func newRouter() *metaRouter {
+	return &metaRouter{
+		includeRouter: make(map[string]*metaRouter),
 		viewSet:       AsView{},
 		staticPattern: "",
 	}
 }
 
 // 添加父路由
-func (router *Router) Include(pattern string) *Router {
+func (router *metaRouter) Include(pattern string) *metaRouter {
 	if _, ok := router.includeRouter[pattern]; ok {
 		panic(fmt.Sprintf("路由已存在：%s\n", pattern))
 	}
@@ -59,8 +59,8 @@ func (router *Router) Include(pattern string) *Router {
 			panic(fmt.Sprintf("%s 中包含的子路由已被注册: %s\n", pattern, includePatternUri))
 		}
 	}
-	router.includeRouter[pattern] = &Router{
-		includeRouter: make(map[string]*Router),
+	router.includeRouter[pattern] = &metaRouter{
+		includeRouter: make(map[string]*metaRouter),
 		viewSet:       AsView{},
 		staticPattern: "",
 	}
@@ -68,7 +68,7 @@ func (router *Router) Include(pattern string) *Router {
 }
 
 // 添加路由
-func (router *Router) UrlPatterns(pattern string, view AsView) {
+func (router *metaRouter) UrlPatterns(pattern string, view AsView) {
 	if _, ok := router.includeRouter[pattern]; ok {
 		panic(fmt.Sprintf("路由已存在：%s\n", pattern))
 	}
@@ -84,15 +84,15 @@ func (router *Router) UrlPatterns(pattern string, view AsView) {
 		}
 	}
 
-	router.includeRouter[pattern] = &Router{
-		includeRouter: make(map[string]*Router),
+	router.includeRouter[pattern] = &metaRouter{
+		includeRouter: make(map[string]*metaRouter),
 		viewSet:       view,
 		staticPattern: "",
 	}
 }
 
 // 添加静态路由
-func (router *Router) StaticUrlPatterns(pattern string, StaticPattern string) {
+func (router *metaRouter) StaticUrlPatterns(pattern string, StaticPattern string) {
 	if _, ok := router.includeRouter[pattern]; ok {
 		panic(fmt.Sprintf("静态映射路由已存在：%s\n", pattern))
 	}
@@ -113,15 +113,15 @@ func (router *Router) StaticUrlPatterns(pattern string, StaticPattern string) {
 		panic(fmt.Sprintf("静态映射路径不存在：%s\n", StaticPattern))
 	}
 
-	router.includeRouter[pattern] = &Router{
-		includeRouter: make(map[string]*Router),
-		viewSet:       AsView{GET: StaticHandler},
+	router.includeRouter[pattern] = &metaRouter{
+		includeRouter: make(map[string]*metaRouter),
+		viewSet:       AsView{GET: metaStaticHandler},
 		staticPattern: absolutePath,
 	}
 }
 
 // 路由器处理程序
-func (router *Router) routerHandlers(request *Request) (handlerFunc HandlerFunc, err string) {
+func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerFunc, err string) {
 
 	view_methods, isPattern := routeResolution(request.Object.URL.Path, router.includeRouter, request.PathParams)
 	if isPattern == false {
@@ -160,13 +160,13 @@ func (router *Router) routerHandlers(request *Request) (handlerFunc HandlerFunc,
 }
 
 // 路由解析
-func routeResolution(requestPattern string, includeRouter map[string]*Router, PathParams Values) (AsView, bool) {
+func routeResolution(requestPattern string, includeRouter map[string]*metaRouter, PathParams metaValues) (AsView, bool) {
 	var re *regexp.Regexp
 	for includePatternUri, router := range includeRouter {
 		params, converterPattern := routerParse(includePatternUri)
 		if len(params) == 0 { // 无参数直接匹配
 			if len(router.includeRouter) == 0 {
-				re = regexp.MustCompile(includePatternUri)
+				re = regexp.MustCompile(includePatternUri + "$")
 			} else {
 				re = regexp.MustCompile(includePatternUri + "/")
 			}
@@ -185,7 +185,7 @@ func routeResolution(requestPattern string, includeRouter map[string]*Router, Pa
 		paramsSlice = paramsSlice[1:]
 		for i := 0; i < len(params); i++ {
 			param := params[i]
-			value := ParseValue(param.paramType, paramsSlice[i])
+			value := parseValue(param.paramType, paramsSlice[i])
 			PathParams[param.paramName] = append(PathParams[param.paramName], value) // 添加参数
 		}
 		if router.staticPattern != "" { // 静态路由映射
@@ -208,7 +208,7 @@ func routerParse(pattern string) (params []routerParam, converterPattern string)
 	result := re.FindAllStringSubmatch(pattern, -1)
 	for _, paramsSlice := range result {
 		if len(paramsSlice) == 3 {
-			converter, ok := settingConverter[paramsSlice[1]]
+			converter, ok := metaConverter[paramsSlice[1]]
 			if ok == false {
 				continue
 			}
@@ -227,7 +227,7 @@ func routerParse(pattern string) (params []routerParam, converterPattern string)
 }
 
 // 参数解析
-func ParseValue(paramType string, paramValue string) any {
+func parseValue(paramType string, paramValue string) any {
 	switch paramType {
 	case "int":
 		value, _ := strconv.Atoi(paramValue)

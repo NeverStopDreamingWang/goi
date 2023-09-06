@@ -2,11 +2,9 @@ package hgee
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"runtime"
 	"strings"
-	"time"
 )
 
 func trace(message string) string {
@@ -23,20 +21,20 @@ func trace(message string) string {
 	return str.String()
 }
 
-func Recovery(request *Request, response http.ResponseWriter) {
+func metaRecovery(request *Request, response http.ResponseWriter) {
 	if err := recover(); err != nil {
-		message := fmt.Sprintf("%s", err)
-		log.Printf("%s\n\n", trace(message))
+		message := fmt.Sprintf("%v", err)
 		response.WriteHeader(http.StatusInternalServerError)
 		write, _ := response.Write([]byte("Internal Server Error"))
-		log.Printf(" - %v - %v %v %v byte status %v %v\n",
-			time.Now().Format("2006-01-02 15:04:05"),
+		log := fmt.Sprintf("- %v - %v %v %v byte status %v %v \nerr: %v",
 			request.Object.Host,
 			request.Object.Method,
 			request.Object.URL.Path,
 			write,
 			request.Object.Proto,
 			http.StatusInternalServerError,
+			trace(message),
 		)
+		engine.Log.Error(log)
 	}
 }
