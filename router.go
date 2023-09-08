@@ -98,10 +98,10 @@ func (router *metaRouter) StaticUrlPatterns(pattern string, StaticPattern string
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) != 0 { // 拥有子路由
-			re = regexp.MustCompile(includePatternUri + "/")
+		if len(Irouter.includeRouter) == 0 {
+			re = regexp.MustCompile(includePatternUri + "%")
 		} else {
-			re = regexp.MustCompile(includePatternUri)
+			re = regexp.MustCompile(includePatternUri + "/")
 		}
 		if len(re.FindStringSubmatch(pattern)) != 0 {
 			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", pattern, includePatternUri))
@@ -165,16 +165,16 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 	for includePatternUri, router := range includeRouter {
 		params, converterPattern := routerParse(includePatternUri)
 		if len(params) == 0 { // 无参数直接匹配
-			if len(router.includeRouter) == 0 {
+			if len(router.includeRouter) == 0 && router.staticPattern == "" {
 				re = regexp.MustCompile(includePatternUri + "$")
 			} else {
 				re = regexp.MustCompile(includePatternUri + "/")
 			}
 		} else {
-			if len(router.includeRouter) == 0 { // 是否有子路径
+			if len(router.includeRouter) == 0 && router.staticPattern == "" {
 				re = regexp.MustCompile(converterPattern + "$")
 			} else {
-				re = regexp.MustCompile(converterPattern)
+				re = regexp.MustCompile(converterPattern + "/")
 			}
 		}
 

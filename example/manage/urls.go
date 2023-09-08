@@ -6,4 +6,5 @@ func init() {
 
 	// 注册静态路径
 	Server.Router.StaticUrlPatterns("/static", "template")
+	Server.Router.StaticUrlPatterns("/staticcc", "template")
 }

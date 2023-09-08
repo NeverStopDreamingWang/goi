@@ -32,28 +32,21 @@ func metaStaticHandler(request *Request) any {
 }
 
 // 返回响应文件内容
-func metaResponseStatic(file *os.File, request *Request, response http.ResponseWriter) {
+func metaResponseStatic(file *os.File, request *Request, response http.ResponseWriter) (int64, []byte) {
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
-	if err != nil {
+	if os.IsNotExist(err) {
 		response.WriteHeader(http.StatusNotFound)
-		return
+		return 0, []byte("文件不存在")
+	} else if err != nil {
+		response.WriteHeader(http.StatusNotFound)
+		return 0, []byte(fmt.Sprintf("获取文件状态失败：%v", err))
 	}
 	if fileInfo.IsDir() {
 		response.WriteHeader(http.StatusNotFound)
-		return
+		return 0, []byte("不是一个文件")
 	}
-	size := fileInfo.Size()
 	http.ServeContent(response, request.Object, fileInfo.Name(), time.Now(), file)
-
-	fmt.Printf("[%v] - %v - %v %v static %v byte status %v %v\n",
-		time.Now().Format("2006-01-02 15:04:05"),
-		request.Object.Host,
-		request.Object.Method,
-		request.Object.URL.Path,
-		size,
-		request.Object.Proto,
-		http.StatusOK,
-	)
+	return fileInfo.Size(), nil
 }

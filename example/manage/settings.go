@@ -36,11 +36,12 @@ func init() {
 
 	// 日志设置
 	Server.Log.DEBUG = false
-	Server.Log.INFO_OUT_PATH = "logs/server.log" // 输出所有日志到文件
-	// Server.Log.ACCESS_OUT_PATH = "" // 输出访问日志文件
-	// Server.Log.ERROR_OUT_PATH = ""  // 输出错误日志文件
+	Server.Log.INFO_OUT_PATH = "logs/info.log"      // 输出所有日志到文件
+	Server.Log.ACCESS_OUT_PATH = "logs/asccess.log" // 输出访问日志文件
+	Server.Log.ERROR_OUT_PATH = "logs/error.log"    // 输出错误日志文件
 	// Server.Log.OUT_DATABASE = ""  // 输出到的数据库 例：default
-
+	Server.Log.SplitSize = 1024 * 1024
+	Server.Log.SplitTime = "2006-01-02"
 	// 日志打印
 	// Server.Log.Debug() = hgee.Debug()
 	// Server.Log.Info() = hgee.Info()

@@ -157,10 +157,7 @@ func TestFile(request *hgee.Request) any {
 		}
 	}
 	// return file // 返回文件对象
-	return hgee.Response{
-		Status: http.StatusOK,
-		Data:   file, // 返回文件对象
-	}
+	return file // 返回文件对象
 }
 
 // 异常处理

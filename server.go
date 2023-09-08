@@ -52,7 +52,7 @@ func (engine *Engine) RunServer() (err error) {
 // 初始化
 func (engine *Engine) init() {
 	// 初始化日志
-	engine.initLogger()
+	engine.Log.initLogger()
 }
 
 // 实现 ServeHTTP 接口
@@ -110,15 +110,34 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 
 	// 处理 HTTP 请求
 	StatusCode := http.StatusOK
+	var ResponseData []byte
+	var write any
+
 	responseData := engine.HandlerHTTP(requestContext, response)
 
+	// 文件处理
+	fileObject, isFile := responseData.(*os.File)
+	if isFile {
+		// 返回文件内容
+		write, ResponseData = metaResponseStatic(fileObject, requestContext, response)
+		log = fmt.Sprintf("- %v - %v %v %v byte status %v %v",
+			request.Host,
+			request.Method,
+			request.URL.Path,
+			write,
+			request.Proto,
+			StatusCode,
+		)
+		engine.Log.Info(log)
+		return
+	}
+
+	// 响应处理
 	responseObject, isResponse := responseData.(Response)
 	if isResponse {
 		StatusCode = responseObject.Status
 		responseData = responseObject.Data
 	}
-
-	var ResponseData []byte
 
 	switch value := responseData.(type) {
 	case nil:
@@ -135,10 +154,6 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		ResponseData = []byte(value)
 	case []byte:
 		ResponseData = responseData.([]byte)
-	case *os.File:
-		// 返回文件内容
-		metaResponseStatic(value, requestContext, response)
-		return
 	default:
 		ResponseData, err = json.Marshal(value)
 	}
@@ -148,7 +163,7 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	}
 	// 返回响应
 	response.WriteHeader(StatusCode)
-	write, err := response.Write(ResponseData)
+	write, err = response.Write(ResponseData)
 	if err != nil {
 		panic(fmt.Sprintf("响应错误：%v", err))
 	}
@@ -160,7 +175,11 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		request.Proto,
 		StatusCode,
 	)
-	engine.Log.Info(log)
+	if StatusCode == http.StatusOK {
+		engine.Log.Info(log)
+	} else {
+		engine.Log.Error(log)
+	}
 }
 
 // 处理 HTTP 请求
