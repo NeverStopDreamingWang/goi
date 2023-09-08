@@ -98,7 +98,7 @@ func (router *metaRouter) StaticUrlPatterns(pattern string, StaticPattern string
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) == 0 {
+		if len(Irouter.includeRouter) == 0 && Irouter.staticPattern == "" {
 			re = regexp.MustCompile(includePatternUri + "%")
 		} else {
 			re = regexp.MustCompile(includePatternUri + "/")
