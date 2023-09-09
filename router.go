@@ -50,10 +50,10 @@ func (router *metaRouter) Include(pattern string) *metaRouter {
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) != 0 { // 拥有子路由
-			re = regexp.MustCompile(includePatternUri + "/")
+		if len(Irouter.includeRouter) == 0 && Irouter.staticPattern == "" {
+			re = regexp.MustCompile(includePatternUri + "%")
 		} else {
-			re = regexp.MustCompile(includePatternUri)
+			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
 		if len(re.FindStringSubmatch(pattern)) != 0 {
 			panic(fmt.Sprintf("%s 中包含的子路由已被注册: %s\n", pattern, includePatternUri))
@@ -74,10 +74,10 @@ func (router *metaRouter) UrlPatterns(pattern string, view AsView) {
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) != 0 { // 拥有子路由
-			re = regexp.MustCompile(includePatternUri + "/")
+		if len(Irouter.includeRouter) == 0 && Irouter.staticPattern == "" {
+			re = regexp.MustCompile(includePatternUri + "%")
 		} else {
-			re = regexp.MustCompile(includePatternUri)
+			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
 		if len(re.FindStringSubmatch(pattern)) != 0 {
 			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", pattern, includePatternUri))
@@ -101,7 +101,7 @@ func (router *metaRouter) StaticUrlPatterns(pattern string, StaticPattern string
 		if len(Irouter.includeRouter) == 0 && Irouter.staticPattern == "" {
 			re = regexp.MustCompile(includePatternUri + "%")
 		} else {
-			re = regexp.MustCompile(includePatternUri + "/")
+			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
 		if len(re.FindStringSubmatch(pattern)) != 0 {
 			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", pattern, includePatternUri))

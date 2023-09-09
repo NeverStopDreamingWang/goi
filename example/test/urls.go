@@ -1,4 +1,4 @@
-package user
+package test
 
 import (
 	"example/manage"
