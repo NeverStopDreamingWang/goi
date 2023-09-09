@@ -1,4 +1,4 @@
-package user
+package test
 
 type UserModel struct {
 	Id          int64  `json:"id,omitempty"`
