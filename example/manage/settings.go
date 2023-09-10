@@ -35,7 +35,7 @@ func init() {
 	}
 
 	// 日志设置
-	Server.Log.DEBUG = false
+	Server.Log.DEBUG = true
 	Server.Log.INFO_OUT_PATH = "logs/info.log"      // 输出所有日志到文件
 	Server.Log.ACCESS_OUT_PATH = "logs/asccess.log" // 输出访问日志文件
 	Server.Log.ERROR_OUT_PATH = "logs/error.log"    // 输出错误日志文件

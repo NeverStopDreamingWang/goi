@@ -11,4 +11,6 @@ func init() {
 
 	// 添加路由
 	userRouter.UrlPatterns("/test", hgee.AsView{GET: UserTest})
+	userRouter.UrlPatterns("/test_login", hgee.AsView{GET: Testlogin})
+	userRouter.UrlPatterns("/test_auth", hgee.AsView{GET: TestAuth})
 }

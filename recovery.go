@@ -12,7 +12,7 @@ func trace(message string) string {
 	n := runtime.Callers(3, pcs[:]) // skip first 3 caller
 
 	var str strings.Builder
-	str.WriteString(message + "\nTraceback:")
+	str.WriteString(message + "\nTraceback：")
 	for _, pc := range pcs[:n] {
 		fn := runtime.FuncForPC(pc)
 		file, line := fn.FileLine(pc)
@@ -26,7 +26,7 @@ func metaRecovery(request *Request, response http.ResponseWriter) {
 		message := fmt.Sprintf("%v", err)
 		response.WriteHeader(http.StatusInternalServerError)
 		write, _ := response.Write([]byte("Internal Server Error"))
-		log := fmt.Sprintf("- %v - %v %v %v byte status %v %v \nerr: %v",
+		log := fmt.Sprintf("- %v - %v %v %v byte status %v %v \nerr：%v",
 			request.Object.Host,
 			request.Object.Method,
 			request.Object.URL.Path,

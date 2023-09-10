@@ -14,7 +14,7 @@ func main() {
 	// 启动服务
 	err := manage.Server.RunServer()
 	if err != nil {
-		fmt.Printf("服务已停止！")
+		fmt.Printf("服务已停止！", err)
 		// panic(fmt.Sprintf("停止：%v\n", err))
 	}
 }

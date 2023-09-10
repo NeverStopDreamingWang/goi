@@ -12,6 +12,7 @@ type DataBase struct {
 
 // 项目设置
 type metaSettings struct {
+	version        string              // 当前版本
 	SERVER_ADDRESS string              // 服务地址
 	SERVER_PORT    uint16              // 服务端口
 	BASE_DIR       string              // 项目根路径
@@ -23,6 +24,7 @@ type metaSettings struct {
 
 func newSettings() *metaSettings {
 	return &metaSettings{
+		version:        "1.0.5",
 		SERVER_ADDRESS: "127.0.0.1",
 		SERVER_PORT:    8000,
 		BASE_DIR:       "",
