@@ -56,7 +56,7 @@ func (router *metaRouter) Include(pattern string) *metaRouter {
 			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
 		if len(re.FindStringSubmatch(pattern)) != 0 {
-			panic(fmt.Sprintf("%s 中包含的子路由已被注册: %s\n", pattern, includePatternUri))
+			panic(fmt.Sprintf("%s 中包含的子路由已被注册：%s\n", pattern, includePatternUri))
 		}
 	}
 	router.includeRouter[pattern] = &metaRouter{
@@ -80,7 +80,7 @@ func (router *metaRouter) UrlPatterns(pattern string, view AsView) {
 			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
 		if len(re.FindStringSubmatch(pattern)) != 0 {
-			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", pattern, includePatternUri))
+			panic(fmt.Sprintf("%s 中的父路由已被注册：%s\n", pattern, includePatternUri))
 		}
 	}
 
@@ -104,7 +104,7 @@ func (router *metaRouter) StaticUrlPatterns(pattern string, StaticPattern string
 			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
 		if len(re.FindStringSubmatch(pattern)) != 0 {
-			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", pattern, includePatternUri))
+			panic(fmt.Sprintf("%s 中的父路由已被注册：%s\n", pattern, includePatternUri))
 		}
 	}
 	dir, _ := os.Getwd()
@@ -125,7 +125,7 @@ func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerF
 
 	view_methods, isPattern := routeResolution(request.Object.URL.Path, router.includeRouter, request.PathParams)
 	if isPattern == false {
-		err = fmt.Sprintf("URL NOT FOUND: %s", request.Object.URL.Path)
+		err = fmt.Sprintf("URL NOT FOUND：%s", request.Object.URL.Path)
 		return nil, err
 	}
 	switch request.Object.Method {
@@ -148,12 +148,12 @@ func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerF
 	case "TRACE":
 		handlerFunc = view_methods.TRACE
 	default:
-		err = fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method)
+		err = fmt.Sprintf("Method NOT FOUND：%s", request.Object.Method)
 		return nil, err
 	}
 
 	if handlerFunc == nil {
-		err = fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method)
+		err = fmt.Sprintf("Method NOT FOUND：%s", request.Object.Method)
 		return nil, err
 	}
 	return handlerFunc, ""

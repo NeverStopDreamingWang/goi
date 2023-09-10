@@ -78,27 +78,32 @@ func newLogger() *metaLogger {
 
 // 日志初始化
 func (logger *metaLogger) initLogger() {
+	serverInfo := fmt.Sprintf("hgee version: %v\nserver run: %v:%v", engine.Settings.version, engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT)
 	// DEBUG
 	if logger.DEBUG == true {
 		// 初始化控制台日志
 		logger.loggerConsole = defaultLog.New(os.Stdout, "", 0)
 		logger.loggerConsole.SetFlags(0)
+		logger.loggerConsole.Println(serverInfo)
 	}
 
 	// INFO
 	if logger.INFO_OUT_PATH != "" {
 		logger.loggerInfoFileInit()  // 初始化
 		logger.loggerInfoFileSplit() // 日志切割
+		logger.loggerInfoFile.Println(serverInfo)
 	}
 	// ACCESS
 	if logger.ACCESS_OUT_PATH != "" {
 		logger.loggerAccessFileInit()
 		logger.loggerAccessFileSplit()
+		logger.loggerAccessFile.Println(serverInfo)
 	}
 	// ERROR
 	if logger.ERROR_OUT_PATH != "" {
 		logger.loggerErrorFileInit()
 		logger.loggerErrorFileSplit()
+		logger.loggerErrorFile.Println(serverInfo)
 	}
 }
 
@@ -108,7 +113,7 @@ func (logger *metaLogger) checkDir(dir string) {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0644)
 		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误:", err))
+			panic(fmt.Sprintf("创建日志目录错误：", err))
 		}
 	}
 }
@@ -123,7 +128,7 @@ func (logger *metaLogger) loggerInfoFileInit() {
 	var err error
 	logger.outInfoFile, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[INFO]日志错误:", err))
+		panic(fmt.Sprintln("初始化[INFO]日志错误：", err))
 	}
 	logger.loggerInfoFile = defaultLog.New(logger.outInfoFile, "", 0)
 	logger.loggerInfoFile.SetFlags(0)
@@ -177,11 +182,11 @@ func (logger *metaLogger) loggerInfoFileSplit() {
 	if isSplit == true {
 		err = logger.outInfoFile.Close()
 		if err != nil {
-			panic(fmt.Sprintln("关闭[INFO]日志错误:", err))
+			panic(fmt.Sprintln("关闭[INFO]日志错误：", err))
 		}
 		err = os.Rename(logger.INFO_OUT_PATH, oldInfoFile)
 		if err != nil {
-			panic(fmt.Sprintln("切割[INFO]日志错误:", err))
+			panic(fmt.Sprintln("切割[INFO]日志错误：", err))
 		}
 		logger.loggerInfoFileInit()
 	}
@@ -197,7 +202,7 @@ func (logger *metaLogger) loggerAccessFileInit() {
 	var err error
 	logger.outAccessFile, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[ACCESS]日志错误:", err))
+		panic(fmt.Sprintln("初始化[ACCESS]日志错误：", err))
 	}
 	logger.loggerAccessFile = defaultLog.New(logger.outAccessFile, "", 0)
 	logger.loggerAccessFile.SetFlags(0)
@@ -251,11 +256,11 @@ func (logger *metaLogger) loggerAccessFileSplit() {
 	if isSplit == true {
 		err = logger.outAccessFile.Close()
 		if err != nil {
-			panic(fmt.Sprintln("关闭[ACCESS]日志错误:", err))
+			panic(fmt.Sprintln("关闭[ACCESS]日志错误：", err))
 		}
 		err = os.Rename(logger.ACCESS_OUT_PATH, oldInfoFile)
 		if err != nil {
-			panic(fmt.Sprintln("切割[ACCESS]日志错误:", err))
+			panic(fmt.Sprintln("切割[ACCESS]日志错误：", err))
 		}
 		logger.loggerAccessFileInit()
 	}
@@ -271,7 +276,7 @@ func (logger *metaLogger) loggerErrorFileInit() {
 	var err error
 	logger.outErrorFile, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[ERROR]日志错误:", err))
+		panic(fmt.Sprintln("初始化[ERROR]日志错误：", err))
 	}
 	logger.loggerErrorFile = defaultLog.New(logger.outErrorFile, "", 0)
 	logger.loggerErrorFile.SetFlags(0)
@@ -325,11 +330,11 @@ func (logger *metaLogger) loggerErrorFileSplit() {
 	if isSplit == true {
 		err = logger.outErrorFile.Close()
 		if err != nil {
-			panic(fmt.Sprintln("关闭[ERROR]日志错误:", err))
+			panic(fmt.Sprintln("关闭[ERROR]日志错误：", err))
 		}
 		err = os.Rename(logger.ERROR_OUT_PATH, oldInfoFile)
 		if err != nil {
-			panic(fmt.Sprintln("切割[ERROR]日志错误:", err))
+			panic(fmt.Sprintln("切割[ERROR]日志错误：", err))
 		}
 		logger.loggerErrorFileInit()
 	}
