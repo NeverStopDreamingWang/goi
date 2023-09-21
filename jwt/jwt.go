@@ -1,4 +1,4 @@
-package hgee
+package jwt
 
 import (
 	"crypto/hmac"
@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/NeverStopDreamingWang/hgee"
 	"strings"
 	"time"
 )
@@ -99,16 +100,11 @@ func CkeckToken(token string, key string) (map[string]any, error) {
 	if expTimeValue, ok := payloads["exp"]; ok {
 		expTimeStr := expTimeValue.(string)
 		// 解析为time.Time类型
-		location, err := time.LoadLocation("Local") // 加载时区
+		expTime, err := time.ParseInLocation("2006-01-02 15:04:05", expTimeStr, hgee.Settings.LOCATION)
 		if err != nil {
 			return payloads, jwtErrorDecode
 		}
-		expTime, err := time.ParseInLocation("2006-01-02 15:04:05", expTimeStr, location)
-		// expTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", expTimeStr + " +0800 CST")
-		if err != nil {
-			return payloads, jwtErrorDecode
-		}
-		if expTime.Before(time.Now()) {
+		if expTime.Before(time.Now().In(hgee.Settings.LOCATION)) {
 			return payloads, jwtErrorExpiredSignature
 		}
 	}

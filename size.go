@@ -4,11 +4,7 @@ import (
 	"fmt"
 )
 
-type formatBytesSize interface {
-	int8 | int16 | int32 | int64 | int | uint8 | uint16 | uint32 | uint64 | uint | float32 | float64
-}
-
-func formatBytes[T formatBytesSize](ByteSize T) string {
+func formatBytes[T IntAll](ByteSize T) string {
 	byteSize := float64(ByteSize)
 	const unit = 1024.00
 	exts := [7]string{"B", "KB", "MB", "GB", "TB", "PB", "EB"}

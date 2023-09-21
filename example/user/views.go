@@ -3,6 +3,7 @@ package user
 import (
 	"fmt"
 	"github.com/NeverStopDreamingWang/hgee"
+	"github.com/NeverStopDreamingWang/hgee/jwt"
 	"net/http"
 	"time"
 )
@@ -45,7 +46,7 @@ func Testlogin(request *hgee.Request) any {
 		"username": "wjh123",
 		"exp":      expTime,
 	}
-	token, err := hgee.NewJWT(header, payloads, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")
+	token, err := jwt.NewJWT(header, payloads, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")
 	if err != nil {
 		return hgee.Response{
 			Status: http.StatusOK,
@@ -56,7 +57,7 @@ func Testlogin(request *hgee.Request) any {
 			},
 		}
 	}
-	hgee.Info(token)
+	hgee.Log.Info(token)
 
 	return hgee.Response{
 		Status: http.StatusOK,
@@ -71,8 +72,8 @@ func Testlogin(request *hgee.Request) any {
 func TestAuth(request *hgee.Request) any {
 	token := request.Object.Header.Get("Authorization")
 
-	payloads, err := hgee.CkeckToken(token, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")
-	if hgee.JwtDecodeError(err) { // token 解码错误！
+	payloads, err := jwt.CkeckToken(token, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")
+	if jwt.JwtDecodeError(err) { // token 解码错误！
 		return hgee.Response{
 			Status: http.StatusOK,
 			Data: hgee.Data{
@@ -81,7 +82,7 @@ func TestAuth(request *hgee.Request) any {
 				Data:   err,
 			},
 		}
-	} else if hgee.JwtExpiredSignatureError(err) { // token 已过期！
+	} else if jwt.JwtExpiredSignatureError(err) { // token 已过期！
 		return hgee.Response{
 			Status: http.StatusOK,
 			Data: hgee.Data{

@@ -11,6 +11,17 @@ import (
 	"time"
 )
 
+// Http 服务
+var engine *Engine
+var Settings *metaSettings
+var Log *MetaLogger
+var version string = "1.0.6"
+
+// 版本
+func Version() string {
+	return version
+}
+
 // HandlerFunc 定义 hgee 使用的请求处理程序
 type HandlerFunc func(*Request) any
 
@@ -21,19 +32,18 @@ type Engine struct {
 	Router      *metaRouter
 	MiddleWares *metaMiddleWares
 	Settings    *metaSettings
-	Log         *metaLogger
+	Log         *MetaLogger
 }
-
-// Http 服务
-var engine *Engine
 
 // 创建一个 Http 服务
 func NewHttpServer() *Engine {
+	Settings = newSettings()
+	Log = NewLogger()
 	engine = &Engine{
 		Router:      newRouter(),
 		MiddleWares: newMiddleWares(),
-		Settings:    newSettings(),
-		Log:         newLogger(),
+		Settings:    Settings,
+		Log:         Log,
 	}
 	return engine
 }
@@ -51,13 +61,21 @@ func (engine *Engine) RunServer() (err error) {
 
 // 初始化
 func (engine *Engine) init() {
+	// 初始化时区
+	location, err := time.LoadLocation(engine.Settings.TIME_ZONE)
+	if err != nil {
+		panic(fmt.Sprintf("初始化时区错误: %v\n", err))
+	}
+	engine.Settings.LOCATION = location
+
 	// 初始化日志
-	engine.Log.initLogger()
+	serverInfo := fmt.Sprintf("hgee version:%v \nserver run: %v:%v", version, engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT)
+	engine.Log.InitLogger(serverInfo)
 }
 
 // 实现 ServeHTTP 接口
 func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	requestID := time.Now()
+	requestID := time.Now().In(engine.Settings.LOCATION)
 	ctx := context.WithValue(request.Context(), "requestID", requestID)
 	request = request.WithContext(ctx)
 
@@ -95,13 +113,13 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	// 解析 json 数据
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
-		panic(fmt.Sprintf("读取 Body 错误：%v", err))
+		panic(fmt.Sprintf("读取 Body 错误: %v\n", err))
 	}
 	if len(body) != 0 {
 		jsonData := make(map[string]any)
 		err = json.Unmarshal(body, &jsonData)
 		if err != nil {
-			panic(fmt.Sprintf("解析 json 错误：%v", err))
+			panic(fmt.Sprintf("解析 json 错误: %v\n", err))
 		}
 		for name, value := range jsonData {
 			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
@@ -144,11 +162,9 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		ResponseData, err = json.Marshal(value)
 	case bool:
 		ResponseData, err = json.Marshal(value)
-	case int:
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		ResponseData, err = json.Marshal(value)
-	case float64:
-		ResponseData, err = json.Marshal(value)
-	case func(int) float64:
+	case float32, float64:
 		ResponseData, err = json.Marshal(value)
 	case string:
 		ResponseData = []byte(value)
@@ -159,13 +175,13 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	}
 	// 返回响应
 	if err != nil {
-		panic(fmt.Sprintf("响应 json 数据错误：%v", err))
+		panic(fmt.Sprintf("响应 json 数据错误: %v\n", err))
 	}
 	// 返回响应
 	response.WriteHeader(StatusCode)
 	write, err = response.Write(ResponseData)
 	if err != nil {
-		panic(fmt.Sprintf("响应错误：%v", err))
+		panic(fmt.Sprintf("响应错误: %v\n", err))
 	}
 	log = fmt.Sprintf("- %v - %v %v %v byte status %v %v",
 		request.Host,

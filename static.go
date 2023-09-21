@@ -41,12 +41,12 @@ func metaResponseStatic(file *os.File, request *Request, response http.ResponseW
 		return 0, []byte("文件不存在")
 	} else if err != nil {
 		response.WriteHeader(http.StatusNotFound)
-		return 0, []byte(fmt.Sprintf("获取文件状态失败：%v", err))
+		return 0, []byte(fmt.Sprintf("获取文件状态失败: %v", err))
 	}
 	if fileInfo.IsDir() {
 		response.WriteHeader(http.StatusNotFound)
 		return 0, []byte("不是一个文件")
 	}
-	http.ServeContent(response, request.Object, fileInfo.Name(), time.Now(), file)
+	http.ServeContent(response, request.Object, fileInfo.Name(), time.Now().In(engine.Settings.LOCATION), file)
 	return fileInfo.Size(), nil
 }
