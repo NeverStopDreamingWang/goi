@@ -43,7 +43,7 @@ func TestPathParamsInt(request *hgee.Request) any {
 		}
 	}
 
-	msg := fmt.Sprintf("参数：%v 参数类型： %T", id, id)
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", id, id)
 	fmt.Println(msg)
 	resp := map[string]any{
 		"status": http.StatusOK,
@@ -56,7 +56,7 @@ func TestPathParamsInt(request *hgee.Request) any {
 func TestPathParamsStr(request *hgee.Request) any {
 	name := request.PathParams.Get("name")
 
-	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return hgee.Response{
 		Status: http.StatusCreated,                // 返回指定响应状态码 404
@@ -71,8 +71,8 @@ func TestPathParamsStrs(request *hgee.Request) any {
 	name1 := nameSlice[0]
 	name2 := nameSlice[1]
 
-	msg1 := fmt.Sprintf("参数：%v 参数类型： %T\n", name1, name1)
-	msg2 := fmt.Sprintf("参数：%v 参数类型： %T\n", name2, name2)
+	msg1 := fmt.Sprintf("参数: %v 参数类型:  %T\n", name1, name1)
+	msg2 := fmt.Sprintf("参数: %v 参数类型:  %T\n", name2, name2)
 	fmt.Println(msg1)
 	fmt.Println(msg2)
 	return hgee.Data{http.StatusOK, "ok", []string{msg1, msg2}}
@@ -82,7 +82,7 @@ func TestPathParamsStrs(request *hgee.Request) any {
 func TestQueryParams(request *hgee.Request) any {
 	name := request.QueryParams.Get("name")
 
-	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return hgee.Response{
 		Status: http.StatusCreated,                // 返回指定响应状态码 404
@@ -94,7 +94,7 @@ func TestQueryParams(request *hgee.Request) any {
 func TestBodyParams(request *hgee.Request) any {
 	name := request.BodyParams["name"]
 
-	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return hgee.Response{
 		Status: http.StatusCreated,                // 返回指定响应状态码 404
@@ -105,7 +105,7 @@ func TestBodyParams(request *hgee.Request) any {
 func TestConverterParamsStrs(request *hgee.Request) any {
 	name := request.PathParams.Get("name")
 
-	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return hgee.Data{http.StatusOK, "ok", msg}
 }
@@ -165,7 +165,7 @@ func TestPanic(request *hgee.Request) any {
 
 	name := request.BodyParams["name"]
 
-	msg := fmt.Sprintf("参数：%v 参数类型： %T", name, name)
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 
 	name_tmp := name[100]

@@ -9,20 +9,6 @@ import (
 	"time"
 )
 
-// 公共方法
-func Debug(log ...any) {
-	engine.Log.Debug(log...)
-}
-func Info(log ...any) {
-	engine.Log.Info(log...)
-}
-func Warning(log ...any) {
-	engine.Log.Warning(log...)
-}
-func Error(log ...any) {
-	engine.Log.Error(log...)
-}
-
 type metaLevel uint8
 
 // 日志等级
@@ -33,7 +19,7 @@ const (
 	ERROR                    // 打印 Error 日志
 )
 
-type metaLogger struct {
+type MetaLogger struct {
 	DEBUG            bool               // 默认为 true
 	INFO_OUT_PATH    string             // 所有日志输出路径
 	ACCESS_OUT_PATH  string             // 访问日志输出路径
@@ -54,8 +40,8 @@ type metaLogger struct {
 }
 
 // NewLogger 创建一个logger
-func newLogger() *metaLogger {
-	return &metaLogger{
+func NewLogger() *MetaLogger {
+	return &MetaLogger{
 		DEBUG:            true,
 		INFO_OUT_PATH:    "",
 		ACCESS_OUT_PATH:  "",
@@ -77,66 +63,65 @@ func newLogger() *metaLogger {
 }
 
 // 日志初始化
-func (logger *metaLogger) initLogger() {
-	serverInfo := fmt.Sprintf("hgee version: %v\nserver run: %v:%v", engine.Settings.version, engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT)
+func (logger *MetaLogger) InitLogger(initInfo string) {
 	// DEBUG
 	if logger.DEBUG == true {
 		// 初始化控制台日志
 		logger.loggerConsole = defaultLog.New(os.Stdout, "", 0)
 		logger.loggerConsole.SetFlags(0)
-		logger.loggerConsole.Println(serverInfo)
+		logger.loggerConsole.Println(initInfo)
 	}
 
 	// INFO
 	if logger.INFO_OUT_PATH != "" {
 		logger.loggerInfoFileInit()  // 初始化
 		logger.loggerInfoFileSplit() // 日志切割
-		logger.loggerInfoFile.Println(serverInfo)
+		logger.loggerInfoFile.Println(initInfo)
 	}
 	// ACCESS
 	if logger.ACCESS_OUT_PATH != "" {
 		logger.loggerAccessFileInit()
 		logger.loggerAccessFileSplit()
-		logger.loggerAccessFile.Println(serverInfo)
+		logger.loggerAccessFile.Println(initInfo)
 	}
 	// ERROR
 	if logger.ERROR_OUT_PATH != "" {
 		logger.loggerErrorFileInit()
 		logger.loggerErrorFileSplit()
-		logger.loggerErrorFile.Println(serverInfo)
+		logger.loggerErrorFile.Println(initInfo)
 	}
 }
 
 // 检查目录
-func (logger *metaLogger) checkDir(dir string) {
+func (logger *MetaLogger) checkDir(dir string) {
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0644)
 		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误：", err))
+			panic(fmt.Sprintf("创建日志目录错误: ", err))
 		}
 	}
 }
 
 // INFO 日志初始化
-func (logger *metaLogger) loggerInfoFileInit() {
+func (logger *MetaLogger) loggerInfoFileInit() {
 	OutPath := logger.INFO_OUT_PATH
 	if string(logger.INFO_OUT_PATH[0]) != "/" {
-		OutPath = path.Join(engine.Settings.BASE_DIR, logger.INFO_OUT_PATH)
+		OutPath = path.Join(Settings.BASE_DIR, logger.INFO_OUT_PATH)
 	}
 	logger.checkDir(path.Dir(OutPath)) // 检查目录
 	var err error
 	logger.outInfoFile, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[INFO]日志错误：", err))
+		panic(fmt.Sprintln("初始化[INFO]日志错误: ", err))
 	}
 	logger.loggerInfoFile = defaultLog.New(logger.outInfoFile, "", 0)
 	logger.loggerInfoFile.SetFlags(0)
-	logger.createInfoTime = time.Now()
+	logger.createInfoTime = time.Now().In(Settings.LOCATION)
 }
 
 // INFO 日志切割
-func (logger *metaLogger) loggerInfoFileSplit() {
+func (logger *MetaLogger) loggerInfoFileSplit() {
 	var err error
 	if logger.INFO_OUT_PATH == "" {
 		return
@@ -148,7 +133,7 @@ func (logger *metaLogger) loggerInfoFileSplit() {
 		logger.loggerInfoFileInit()
 		return
 	} else if err != nil {
-		panic(fmt.Sprintf("日志切割-获取[INFO]日志文件信息错误：%v", err))
+		panic(fmt.Sprintf("日志切割-获取[INFO]日志文件信息错误: %v", err))
 		return
 	}
 	fileSize := fileInfo.Size()
@@ -160,7 +145,7 @@ func (logger *metaLogger) loggerInfoFileSplit() {
 			ext = fileName[i:]
 		}
 	}
-	nowTime := time.Now()
+	nowTime := time.Now().In(Settings.LOCATION)
 	// 自动加 _n
 	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v_1%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
 	_, err = os.Stat(oldInfoFile)
@@ -182,35 +167,35 @@ func (logger *metaLogger) loggerInfoFileSplit() {
 	if isSplit == true {
 		err = logger.outInfoFile.Close()
 		if err != nil {
-			panic(fmt.Sprintln("关闭[INFO]日志错误：", err))
+			panic(fmt.Sprintln("关闭[INFO]日志错误: ", err))
 		}
 		err = os.Rename(logger.INFO_OUT_PATH, oldInfoFile)
 		if err != nil {
-			panic(fmt.Sprintln("切割[INFO]日志错误：", err))
+			panic(fmt.Sprintln("切割[INFO]日志错误: ", err))
 		}
 		logger.loggerInfoFileInit()
 	}
 }
 
 // ACCESS 日志初始化
-func (logger *metaLogger) loggerAccessFileInit() {
+func (logger *MetaLogger) loggerAccessFileInit() {
 	OutPath := logger.ACCESS_OUT_PATH
 	if string(logger.ACCESS_OUT_PATH[0]) != "/" {
-		OutPath = path.Join(engine.Settings.BASE_DIR, logger.ACCESS_OUT_PATH)
+		OutPath = path.Join(Settings.BASE_DIR, logger.ACCESS_OUT_PATH)
 	}
 	logger.checkDir(path.Dir(OutPath)) // 检查目录
 	var err error
 	logger.outAccessFile, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[ACCESS]日志错误：", err))
+		panic(fmt.Sprintln("初始化[ACCESS]日志错误: ", err))
 	}
 	logger.loggerAccessFile = defaultLog.New(logger.outAccessFile, "", 0)
 	logger.loggerAccessFile.SetFlags(0)
-	logger.createAccessTime = time.Now()
+	logger.createAccessTime = time.Now().In(Settings.LOCATION)
 }
 
 // ACCESS 日志切割
-func (logger *metaLogger) loggerAccessFileSplit() {
+func (logger *MetaLogger) loggerAccessFileSplit() {
 	var err error
 	if logger.ACCESS_OUT_PATH == "" {
 		return
@@ -222,7 +207,7 @@ func (logger *metaLogger) loggerAccessFileSplit() {
 		logger.loggerAccessFileInit()
 		return
 	} else if err != nil {
-		panic(fmt.Sprintf("日志切割-获取[ACCESS]日志文件信息错误：%v", err))
+		panic(fmt.Sprintf("日志切割-获取[ACCESS]日志文件信息错误: %v", err))
 		return
 	}
 	fileSize := fileInfo.Size()
@@ -234,7 +219,7 @@ func (logger *metaLogger) loggerAccessFileSplit() {
 			ext = fileName[i:]
 		}
 	}
-	nowTime := time.Now()
+	nowTime := time.Now().In(Settings.LOCATION)
 	// 自动加 _n
 	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v_1%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
 	_, err = os.Stat(oldInfoFile)
@@ -256,35 +241,35 @@ func (logger *metaLogger) loggerAccessFileSplit() {
 	if isSplit == true {
 		err = logger.outAccessFile.Close()
 		if err != nil {
-			panic(fmt.Sprintln("关闭[ACCESS]日志错误：", err))
+			panic(fmt.Sprintln("关闭[ACCESS]日志错误: ", err))
 		}
 		err = os.Rename(logger.ACCESS_OUT_PATH, oldInfoFile)
 		if err != nil {
-			panic(fmt.Sprintln("切割[ACCESS]日志错误：", err))
+			panic(fmt.Sprintln("切割[ACCESS]日志错误: ", err))
 		}
 		logger.loggerAccessFileInit()
 	}
 }
 
 // ERROR 错误日志
-func (logger *metaLogger) loggerErrorFileInit() {
+func (logger *MetaLogger) loggerErrorFileInit() {
 	OutPath := logger.ERROR_OUT_PATH
 	if string(logger.ERROR_OUT_PATH[0]) != "/" {
-		OutPath = path.Join(engine.Settings.BASE_DIR, logger.ERROR_OUT_PATH)
+		OutPath = path.Join(Settings.BASE_DIR, logger.ERROR_OUT_PATH)
 	}
 	logger.checkDir(path.Dir(OutPath)) // 检查目录
 	var err error
 	logger.outErrorFile, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[ERROR]日志错误：", err))
+		panic(fmt.Sprintln("初始化[ERROR]日志错误: ", err))
 	}
 	logger.loggerErrorFile = defaultLog.New(logger.outErrorFile, "", 0)
 	logger.loggerErrorFile.SetFlags(0)
-	logger.createErrorTime = time.Now()
+	logger.createErrorTime = time.Now().In(Settings.LOCATION)
 }
 
 // ERROR 日志切割
-func (logger *metaLogger) loggerErrorFileSplit() {
+func (logger *MetaLogger) loggerErrorFileSplit() {
 	var err error
 	if logger.ERROR_OUT_PATH == "" {
 		return
@@ -296,7 +281,7 @@ func (logger *metaLogger) loggerErrorFileSplit() {
 		logger.loggerErrorFileInit()
 		return
 	} else if err != nil {
-		panic(fmt.Sprintf("日志切割-获取[ERROR]日志文件信息错误：%v", err))
+		panic(fmt.Sprintf("日志切割-获取[ERROR]日志文件信息错误: %v", err))
 		return
 	}
 	fileSize := fileInfo.Size()
@@ -308,7 +293,7 @@ func (logger *metaLogger) loggerErrorFileSplit() {
 			ext = fileName[i:]
 		}
 	}
-	nowTime := time.Now()
+	nowTime := time.Now().In(Settings.LOCATION)
 	// 自动加 _n
 	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v_1%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
 	_, err = os.Stat(oldInfoFile)
@@ -330,11 +315,11 @@ func (logger *metaLogger) loggerErrorFileSplit() {
 	if isSplit == true {
 		err = logger.outErrorFile.Close()
 		if err != nil {
-			panic(fmt.Sprintln("关闭[ERROR]日志错误：", err))
+			panic(fmt.Sprintln("关闭[ERROR]日志错误: ", err))
 		}
 		err = os.Rename(logger.ERROR_OUT_PATH, oldInfoFile)
 		if err != nil {
-			panic(fmt.Sprintln("切割[ERROR]日志错误：", err))
+			panic(fmt.Sprintln("切割[ERROR]日志错误: ", err))
 		}
 		logger.loggerErrorFileInit()
 	}
@@ -342,27 +327,27 @@ func (logger *metaLogger) loggerErrorFileSplit() {
 
 // 日志方法
 // Debug 通用 Debug 日志
-func (logger *metaLogger) Debug(log ...any) {
+func (logger *MetaLogger) Debug(log ...any) {
 	logger.Log(DEBUG, log...)
 }
 
 // Info 通用 Info 日志
-func (logger *metaLogger) Info(log ...any) {
+func (logger *MetaLogger) Info(log ...any) {
 	logger.Log(INFO, log...)
 }
 
 // WARNING 通用 WARNING 日志
-func (logger *metaLogger) Warning(log ...any) {
+func (logger *MetaLogger) Warning(log ...any) {
 	logger.Log(WARNING, log...)
 }
 
 // ERROR 通用 ERROR 日志
-func (logger *metaLogger) Error(log ...any) {
+func (logger *MetaLogger) Error(log ...any) {
 	logger.Log(ERROR, log...)
 }
 
 // Log 打印日志
-func (logger *metaLogger) Log(level metaLevel, log ...any) {
+func (logger *MetaLogger) Log(level metaLevel, log ...any) {
 	// 日志切割
 	logger.loggerInfoFileSplit()
 	logger.loggerAccessFileSplit()
@@ -371,7 +356,7 @@ func (logger *metaLogger) Log(level metaLevel, log ...any) {
 	logData := make([]any, 1, len(log)+1)
 	switch level {
 	case INFO:
-		logData[0] = fmt.Sprintf("[%s] - [INFO]", time.Now().Format("2006-01-02 15:04:05"))
+		logData[0] = fmt.Sprintf("[%s] - [INFO]", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05"))
 		logData = append(logData, log...)
 		// 控制台 日志
 		if logger.loggerConsole != nil {
@@ -386,7 +371,7 @@ func (logger *metaLogger) Log(level metaLevel, log ...any) {
 			logger.loggerAccessFile.Println(logData...)
 		}
 	case WARNING:
-		logData[0] = fmt.Sprintf("[%s] - [WARNING]", time.Now().Format("2006-01-02 15:04:05"))
+		logData[0] = fmt.Sprintf("[%s] - [WARNING]", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05"))
 		logData = append(logData, log...)
 		// 控制台 日志
 		if logger.loggerConsole != nil {
@@ -401,7 +386,7 @@ func (logger *metaLogger) Log(level metaLevel, log ...any) {
 			logger.loggerAccessFile.Println(logData...)
 		}
 	case ERROR:
-		logData[0] = fmt.Sprintf("[%s] - [ERROR]", time.Now().Format("2006-01-02 15:04:05"))
+		logData[0] = fmt.Sprintf("[%s] - [ERROR]", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05"))
 		logData = append(logData, log...)
 		// 控制台 日志
 		if logger.loggerConsole != nil {
@@ -416,7 +401,7 @@ func (logger *metaLogger) Log(level metaLevel, log ...any) {
 			logger.loggerErrorFile.Println(logData...)
 		}
 	default:
-		logData[0] = fmt.Sprintf("[%s] - [DEBUG]", time.Now().Format("2006-01-02 15:04:05"))
+		logData[0] = fmt.Sprintf("[%s] - [DEBUG]", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05"))
 		logData = append(logData, log...)
 		// 控制台 日志
 		if logger.loggerConsole != nil {
