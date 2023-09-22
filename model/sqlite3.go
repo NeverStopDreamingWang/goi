@@ -37,11 +37,12 @@ type Sqlite3MakeMigrations struct {
 
 // Sqlite3 迁移
 func MetaSqlite3Migrate(model Sqlite3Model) string {
+	modelSetting := model.ModelSet()
+
 	modelType := reflect.TypeOf(model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
 	}
-	modelSetting := model.ModelSet()
 
 	field_slice := make([]string, modelType.NumField(), modelType.NumField())
 	for i := 0; i < modelType.NumField(); i++ {
