@@ -51,11 +51,12 @@ type MysqlMakeMigrations struct {
 
 // Mysql 迁移
 func MetaMysqlMigrate(model MysqlModel) string {
+	modelSetting := model.ModelSet()
+
 	modelType := reflect.TypeOf(model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
 	}
-	modelSetting := model.ModelSet()
 
 	field_slice := make([]string, modelType.NumField(), modelType.NumField())
 	for i := 0; i < modelType.NumField(); i++ {

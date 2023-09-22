@@ -7,6 +7,16 @@ import (
 	"strings"
 )
 
+// 判断表是否存在
+func TableIsExists(TableName string, TabelSlice []string) bool {
+	for _, str := range TabelSlice {
+		if str == TableName {
+			return true
+		}
+	}
+	return false
+}
+
 // Mysql 迁移
 func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 	if len(Migrations.DATABASES) == 0 {
@@ -22,7 +32,25 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 			if err != nil {
 				panic(fmt.Sprintf("连接 Mysql [%v] 数据库 错误: %v", DBName, err))
 			}
+
+			// 获取所有表
+			TabelSclie := make([]string, 0)
+			rows, err := mysqlDB.Query("SHOW TABLES;")
+			for rows.Next() {
+				var tableData string
+				err = rows.Scan(&tableData)
+				if err != nil {
+					panic(fmt.Sprintf("连接 Mysql [%v] 数据库 错误: %v", DBName, err))
+				}
+				TabelSclie = append(TabelSclie, tableData)
+			}
+			_ = rows.Close()
+
 			for _, Model := range Migrations.MODELS {
+				TableName := Model.ModelSet().TableName
+				if TableIsExists(TableName, TabelSclie) { // 判断是否存在
+					continue
+				}
 				createSql := model.MetaMysqlMigrate(Model)
 				err = mysqlDB.Execute(createSql)
 				if err != nil {
@@ -30,7 +58,7 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 				}
 				fmt.Printf("Migrate Mysql: %v DataBase: %v Table: %v ...ok!\n", DBName, Database.NAME, Model.ModelSet().TableName)
 			}
-			defer mysqlDB.Close()
+			_ = mysqlDB.Close()
 		}
 		return
 	}
@@ -46,9 +74,27 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 		}
 		mysqlDB, err := MysqlConnect(DBName)
 		if err != nil {
-			fmt.Println("连接数据库失败！")
+			panic(fmt.Sprintf("连接 Mysql [%v] 数据库 错误: %v", DBName, err))
 		}
+
+		// 获取所有表
+		TabelSclie := make([]string, 0)
+		rows, err := mysqlDB.Query("SHOW TABLES;")
+		for rows.Next() {
+			var tableData string
+			err = rows.Scan(&tableData)
+			if err != nil {
+				panic(fmt.Sprintf("连接 Mysql [%v] 数据库 错误: %v", DBName, err))
+			}
+			TabelSclie = append(TabelSclie, tableData)
+		}
+		_ = rows.Close()
+
 		for _, Model := range Migrations.MODELS {
+			TableName := Model.ModelSet().TableName
+			if TableIsExists(TableName, TabelSclie) { // 判断是否存在
+				continue
+			}
 			createSql := model.MetaMysqlMigrate(Model)
 			err = mysqlDB.Execute(createSql)
 			if err != nil {
@@ -56,7 +102,7 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 			}
 			fmt.Printf("Migrate Mysql: %v DataBase: %v Table: %v ...ok!\n", DBName, Database.NAME, Model.ModelSet().TableName)
 		}
-		defer mysqlDB.Close()
+		_ = mysqlDB.Close()
 	}
 }
 
@@ -72,11 +118,28 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 				continue
 			}
 			sqlite3DB, err := Sqlite3Connect(DBName)
-			defer sqlite3DB.Close()
 			if err != nil {
 				panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
 			}
+
+			// 获取所有表
+			TabelSclie := make([]string, 0)
+			rows, err := sqlite3DB.Query("SELECT name FROM sqlite_master WHERE type='table';")
+			for rows.Next() {
+				var tableData string
+				err = rows.Scan(&tableData)
+				if err != nil {
+					panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
+				}
+				TabelSclie = append(TabelSclie, tableData)
+			}
+			_ = rows.Close()
+
 			for _, Model := range Migrations.MODELS {
+				TableName := Model.ModelSet().TableName
+				if TableIsExists(TableName, TabelSclie) { // 判断是否存在
+					continue
+				}
 				createSql := model.MetaSqlite3Migrate(Model)
 				err = sqlite3DB.Execute(createSql)
 				if err != nil {
@@ -84,6 +147,7 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 				}
 				fmt.Printf("Migrate Sqlite3: %v DataBase: %v Table: %v ...ok!\n", DBName, Database.NAME, Model.ModelSet().TableName)
 			}
+			_ = sqlite3DB.Close()
 		}
 		return
 	}
@@ -99,9 +163,27 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 		}
 		sqlite3DB, err := Sqlite3Connect(DBName)
 		if err != nil {
-			fmt.Println("连接数据库失败！")
+			panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
 		}
+
+		// 获取所有表
+		TabelSclie := make([]string, 0)
+		rows, err := sqlite3DB.Query("SELECT name FROM sqlite_master WHERE type='table';")
+		for rows.Next() {
+			var tableData string
+			err = rows.Scan(&tableData)
+			if err != nil {
+				panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
+			}
+			TabelSclie = append(TabelSclie, tableData)
+		}
+		_ = rows.Close()
+
 		for _, Model := range Migrations.MODELS {
+			TableName := Model.ModelSet().TableName
+			if TableIsExists(TableName, TabelSclie) { // 判断是否存在
+				continue
+			}
 			createSql := model.MetaSqlite3Migrate(Model)
 			err = sqlite3DB.Execute(createSql)
 			if err != nil {
@@ -109,6 +191,6 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 			}
 			fmt.Printf("Migrate Sqlite3: %v DataBase: %v Table: %v ...ok!\n", DBName, Database.NAME, Model.ModelSet().TableName)
 		}
-		defer sqlite3DB.Close()
+		_ = sqlite3DB.Close()
 	}
 }
