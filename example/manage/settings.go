@@ -2,7 +2,6 @@ package manage
 
 import (
 	"example/middleware"
-	"fmt"
 	"github.com/NeverStopDreamingWang/hgee"
 	"os"
 )
@@ -14,8 +13,8 @@ func init() {
 	// 创建 http 服务
 	Server = hgee.NewHttpServer()
 
-	version := hgee.Version() // 获取版本信息
-	fmt.Println("hgee 版本", version)
+	// version := hgee.Version() // 获取版本信息
+	// fmt.Println("hgee 版本", version)
 
 	// 运行地址
 	Server.Settings.SERVER_ADDRESS = "0.0.0.0"
