@@ -15,7 +15,7 @@ import (
 var engine *Engine
 var Settings *metaSettings
 var Log *MetaLogger
-var version string = "1.0.6"
+var version string = "1.0.7"
 
 // 版本
 func Version() string {
