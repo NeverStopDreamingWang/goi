@@ -4,6 +4,7 @@ import (
 	"example/middleware"
 	"github.com/NeverStopDreamingWang/hgee"
 	"os"
+	"path"
 )
 
 // Http 服务
@@ -38,7 +39,7 @@ func init() {
 	}
 	Server.Settings.DATABASES["sqlite_1"] = hgee.MetaDataBase{
 		ENGINE:   "sqlite3",
-		NAME:     "./data/test_hgee.db",
+		NAME:     path.Join(Server.Settings.BASE_DIR, "data/test_hgee.db"),
 		USER:     "",
 		PASSWORD: "",
 		HOST:     "",
