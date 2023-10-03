@@ -36,6 +36,9 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 			// 获取所有表
 			TabelSclie := make([]string, 0)
 			rows, err := mysqlDB.Query("SHOW TABLES;")
+			if err != nil {
+				panic(fmt.Sprintf("连接 Mysql [%v] 数据库 错误: %v", DBName, err))
+			}
 			for rows.Next() {
 				var tableData string
 				err = rows.Scan(&tableData)
@@ -80,6 +83,9 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 		// 获取所有表
 		TabelSclie := make([]string, 0)
 		rows, err := mysqlDB.Query("SHOW TABLES;")
+		if err != nil {
+			panic(fmt.Sprintf("连接 Mysql [%v] 数据库 错误: %v", DBName, err))
+		}
 		for rows.Next() {
 			var tableData string
 			err = rows.Scan(&tableData)
@@ -125,6 +131,9 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 			// 获取所有表
 			TabelSclie := make([]string, 0)
 			rows, err := sqlite3DB.Query("SELECT name FROM sqlite_master WHERE type='table';")
+			if err != nil {
+				panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
+			}
 			for rows.Next() {
 				var tableData string
 				err = rows.Scan(&tableData)
@@ -169,6 +178,9 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 		// 获取所有表
 		TabelSclie := make([]string, 0)
 		rows, err := sqlite3DB.Query("SELECT name FROM sqlite_master WHERE type='table';")
+		if err != nil {
+			panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
+		}
 		for rows.Next() {
 			var tableData string
 			err = rows.Scan(&tableData)
