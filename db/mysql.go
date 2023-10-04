@@ -41,27 +41,30 @@ func (mysqlDB *MysqlDB) Close() error {
 }
 
 // 执行语句
-func (mysqlDB *MysqlDB) Execute(query string, args ...any) error {
+func (mysqlDB *MysqlDB) Execute(query string, args ...any) (sql.Result, error) {
 	// 开启事务
 	transaction, err := mysqlDB.DB.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 执行SQL语句
-	_, err = transaction.Exec(query, args...)
+	result, err := transaction.Exec(query, args...)
 	if err != nil {
-		transaction.Rollback() // 回滚事务
-		return err
+		err = transaction.Rollback() // 回滚事务
+		if err != nil {
+			return nil, err
+		}
+		return result, err
 	}
 
 	// 提交事务
 	err = transaction.Commit()
 	if err != nil {
-		return err
+		return result, err
 	}
 
-	return err
+	return result, err
 }
 
 // 查询语句
@@ -125,7 +128,8 @@ func (mysqlDB *MysqlDB) Insert(ModelData model.MysqlModel) (sql.Result, error) {
 	valuesSQL := strings.Join(tempValues, ",")
 
 	insertSQL := fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
-	return mysqlDB.DB.Exec(insertSQL, insertValues...)
+
+	return mysqlDB.Execute(insertSQL, insertValues...)
 }
 
 // 查询语句
@@ -293,7 +297,7 @@ func (mysqlDB *MysqlDB) Update(ModelData model.MysqlModel) (sql.Result, error) {
 	mysqlDB.sql = fmt.Sprintf("UPDATE `%v` SET %v WHERE %v", TableName, fieldsSQl, mysqlDB.sql)
 
 	updateValues = append(updateValues, mysqlDB.args...)
-	return mysqlDB.DB.Exec(mysqlDB.sql, updateValues...)
+	return mysqlDB.Execute(mysqlDB.sql, updateValues...)
 }
 
 // 删除数据，返回操作条数
@@ -308,5 +312,5 @@ func (mysqlDB *MysqlDB) Delete() (sql.Result, error) {
 
 	mysqlDB.sql = fmt.Sprintf("DELETE FROM `%v` WHERE %v", TableName, mysqlDB.sql)
 
-	return mysqlDB.DB.Exec(mysqlDB.sql, mysqlDB.args...)
+	return mysqlDB.Execute(mysqlDB.sql, mysqlDB.args...)
 }
