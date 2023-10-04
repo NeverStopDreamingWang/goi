@@ -25,7 +25,8 @@ type metaSettings struct {
 	TIME_ZONE      string                  // 时区
 	LOCATION       *time.Location          // 地区时区
 
-	mySettings map[string]any // 自定义设置
+	// 自定义设置
+	mySettings map[string]any
 }
 
 func newSettings() *metaSettings {

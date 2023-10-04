@@ -56,6 +56,10 @@ func init() {
 	Server.Settings.Set("REDIS_PASSWORD", "123")
 	Server.Settings.Set("REDIS_DB", 0)
 
+	// 设置最大缓存大小
+	Server.Cache.POLICY = hgee.ALLKEYS_LRU // 内存淘汰机制
+	Server.Cache.MAX_SIZE = 0              // 单位为字节，0 为不限制使用
+
 	// 日志设置
 	Server.Log.DEBUG = true
 	Server.Log.INFO_OUT_PATH = "logs/info.log"      // 输出所有日志到文件
@@ -65,7 +69,7 @@ func init() {
 	Server.Log.SplitSize = 1024 * 1024
 	Server.Log.SplitTime = "2006-01-02"
 	// 日志打印
-	// Server.Log.Debug() = hgee.Log.Debug() = hgee.Log.Log(log.DEBUG, "")
+	// Server.Log.Debug() = hgee.Log.Debug() = hgee.Log.Log(hgee.DEBUG, "")
 	// Server.Log.Info() = hgee.Log.Info()
 	// Server.Log.Warning() = hgee.Log.Warning()
 	// Server.Log.Error() = hgee.Log.Error()

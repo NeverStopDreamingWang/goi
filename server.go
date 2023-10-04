@@ -14,6 +14,7 @@ import (
 // Http 服务
 var engine *Engine
 var Settings *metaSettings
+var Cache *MetaCache
 var Log *MetaLogger
 var version string = "1.0.8"
 
@@ -32,17 +33,20 @@ type Engine struct {
 	Router      *metaRouter
 	MiddleWares *metaMiddleWares
 	Settings    *metaSettings
+	Cache       *MetaCache
 	Log         *MetaLogger
 }
 
 // 创建一个 Http 服务
 func NewHttpServer() *Engine {
 	Settings = newSettings()
+	Cache = newCache()
 	Log = NewLogger()
 	engine = &Engine{
 		Router:      newRouter(),
 		MiddleWares: newMiddleWares(),
 		Settings:    Settings,
+		Cache:       Cache,
 		Log:         Log,
 	}
 	return engine
