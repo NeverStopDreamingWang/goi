@@ -40,27 +40,30 @@ func (sqlite3DB *Sqlite3DB) Close() error {
 }
 
 // 执行语句
-func (sqlite3DB *Sqlite3DB) Execute(query string, args ...any) error {
+func (sqlite3DB *Sqlite3DB) Execute(query string, args ...any) (sql.Result, error) {
 	// 开启事务
 	transaction, err := sqlite3DB.DB.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 执行SQL语句
-	_, err = transaction.Exec(query, args...)
+	result, err := transaction.Exec(query, args...)
 	if err != nil {
-		transaction.Rollback() // 回滚事务
-		return err
+		err = transaction.Rollback() // 回滚事务
+		if err != nil {
+			return nil, err
+		}
+		return nil, err
 	}
 
 	// 提交事务
 	err = transaction.Commit()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return err
+	return result, err
 }
 
 // 查询语句
@@ -124,7 +127,7 @@ func (sqlite3DB *Sqlite3DB) Insert(ModelData model.MysqlModel) (sql.Result, erro
 	valuesSQL := strings.Join(tempValues, ",")
 
 	insertSQL := fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
-	return sqlite3DB.DB.Exec(insertSQL, insertValues...)
+	return sqlite3DB.Execute(insertSQL, insertValues...)
 }
 
 // 查询语句
@@ -292,7 +295,7 @@ func (sqlite3DB *Sqlite3DB) Update(ModelData model.MysqlModel) (sql.Result, erro
 	sqlite3DB.sql = fmt.Sprintf("UPDATE `%v` SET %v WHERE %v", TableName, fieldsSQl, sqlite3DB.sql)
 
 	updateValues = append(updateValues, sqlite3DB.args...)
-	return sqlite3DB.DB.Exec(sqlite3DB.sql, updateValues...)
+	return sqlite3DB.Execute(sqlite3DB.sql, updateValues...)
 }
 
 // 删除数据，返回操作条数
@@ -307,5 +310,5 @@ func (sqlite3DB *Sqlite3DB) Delete() (sql.Result, error) {
 
 	sqlite3DB.sql = fmt.Sprintf("DELETE FROM `%v` WHERE %v", TableName, sqlite3DB.sql)
 
-	return sqlite3DB.DB.Exec(sqlite3DB.sql, sqlite3DB.args...)
+	return sqlite3DB.Execute(sqlite3DB.sql, sqlite3DB.args...)
 }
