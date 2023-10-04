@@ -55,7 +55,7 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 					continue
 				}
 				createSql := model.MetaMysqlMigrate(Model)
-				err = mysqlDB.Execute(createSql)
+				_, err = mysqlDB.Execute(createSql)
 				if err != nil {
 					panic(fmt.Sprintf("迁移错误: %v", err))
 				}
@@ -102,7 +102,7 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 				continue
 			}
 			createSql := model.MetaMysqlMigrate(Model)
-			err = mysqlDB.Execute(createSql)
+			_, err = mysqlDB.Execute(createSql)
 			if err != nil {
 				panic(fmt.Sprintf("迁移错误: %v", err))
 			}
@@ -150,7 +150,7 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 					continue
 				}
 				createSql := model.MetaSqlite3Migrate(Model)
-				err = sqlite3DB.Execute(createSql)
+				_, err = sqlite3DB.Execute(createSql)
 				if err != nil {
 					panic(fmt.Sprintf("迁移错误: %v", err))
 				}
@@ -197,7 +197,7 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 				continue
 			}
 			createSql := model.MetaSqlite3Migrate(Model)
-			err = sqlite3DB.Execute(createSql)
+			_, err = sqlite3DB.Execute(createSql)
 			if err != nil {
 				panic(fmt.Sprintf("迁移错误: %v", err))
 			}
