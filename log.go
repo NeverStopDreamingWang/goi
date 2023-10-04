@@ -9,14 +9,14 @@ import (
 	"time"
 )
 
-type metaLevel uint8
+type logLevel uint8
 
 // 日志等级
 const (
-	DEBUG   metaLevel = iota // 打印所有日志
-	INFO    metaLevel = iota // 打印所有日志
-	WARNING                  // 打印 Warning、Error 日志
-	ERROR                    // 打印 Error 日志
+	DEBUG   logLevel = iota // 打印所有日志
+	INFO                    // 打印所有日志
+	WARNING                 // 打印 Warning、Error 日志
+	ERROR                   // 打印 Error 日志
 )
 
 type MetaLogger struct {
@@ -347,7 +347,7 @@ func (logger *MetaLogger) Error(log ...any) {
 }
 
 // Log 打印日志
-func (logger *MetaLogger) Log(level metaLevel, log ...any) {
+func (logger *MetaLogger) Log(level logLevel, log ...any) {
 	// 日志切割
 	logger.loggerInfoFileSplit()
 	logger.loggerAccessFileSplit()
