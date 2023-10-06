@@ -4,15 +4,44 @@ import (
 	"fmt"
 	"github.com/NeverStopDreamingWang/hgee"
 	"net/http"
+	"strconv"
 )
 
 // 设置一条数据到缓存
 func TestCacheSet(request *hgee.Request) any {
-	key := request.BodyParams.Get("key").(string)
-	Value := request.BodyParams.Get("value").(string)
+	Key := request.BodyParams.Get("key")
+	Value := request.BodyParams.Get("value")
+	Exp := request.BodyParams.Get("exp")
+	if Key == nil {
+		return hgee.Response{
+			Status: http.StatusBadRequest,
+			Data:   "缺少参数 key",
+		}
+	}
+	if Value == nil {
+		return hgee.Response{
+			Status: http.StatusBadRequest,
+			Data:   "缺少参数 value",
+		}
+	}
+
+	exp := "0"
+	if Exp != nil {
+		exp = Exp.(string)
+	}
+	expTime, err := strconv.Atoi(exp)
+	if err != nil {
+		return hgee.Response{
+			Status: http.StatusBadRequest,
+			Data:   "exp 参数错误！",
+		}
+	}
+	key := Key.(string)
+	value := Value.(string)
 	fmt.Printf("key: %v\n", key)
-	fmt.Printf("Value: %v\n", Value)
-	hgee.Cache.Set(key, Value)
+	fmt.Printf("Value: %v\n", value)
+	fmt.Printf("exp: %v\n", expTime)
+	hgee.Cache.Set(key, value, expTime)
 
 	return hgee.Response{
 		Status: http.StatusOK,
