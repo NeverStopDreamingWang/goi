@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"reflect"
 	"sync"
+	"time"
 )
 
 type cachePolicy uint8
@@ -25,25 +26,28 @@ type MetaCache struct {
 	MAX_SIZE  int64
 	used_size int64
 	mutex     sync.Mutex
-	data      *list.List
+	list      *list.List
 	cache     map[string]*list.Element
 }
 
-type CacheData struct {
+type CacheItems struct {
 	key       string
 	valueType reflect.Type
 	byteValue []byte
+	exp       time.Time
 }
 
 // 初始化缓存
 func newCache() *MetaCache {
-	return &MetaCache{
+	cache := &MetaCache{
 		POLICY:    NOEVICTION,
 		MAX_SIZE:  0,
 		used_size: 0,
-		data:      list.New(),
+		list:      list.New(),
 		cache:     make(map[string]*list.Element),
 	}
+	go cache.crontabDeleteExpired()
+	return cache
 }
 
 // Get 查找键的值
@@ -52,27 +56,33 @@ func (cache *MetaCache) Get(key string) (any, bool) {
 	defer cache.mutex.Unlock()
 
 	if element, ok := cache.cache[key]; ok {
-		cache.data.MoveToBack(element)
-		cacheData := element.Value.(*CacheData)
+		cache.list.MoveToBack(element)
+		cacheItem := element.Value.(*CacheItems)
 
-		// Create a new instance of the stored type
-		value := reflect.New(cacheData.valueType).Interface()
+		nowTime := time.Now().In(Settings.LOCATION)                 // 获取当前时间
+		if cacheItem.exp.IsZero() || cacheItem.exp.After(nowTime) { // 判断是否过期
+			// 创建存储类型的新实例
+			value := reflect.New(cacheItem.valueType).Interface()
 
-		reader := bytes.NewReader(cacheData.byteValue)
-		decoder := gob.NewDecoder(reader)
+			reader := bytes.NewReader(cacheItem.byteValue)
+			decoder := gob.NewDecoder(reader)
 
-		// Decode the bytes back to the original value type
-		err := decoder.Decode(value)
-		if err != nil {
+			// 将字节解码回原始值类型
+			err := decoder.Decode(value)
+			if err != nil {
+				return nil, false
+			}
+			return value, true
+		} else { // 缓存过期删除
+			cache.DelExp(key)
 			return nil, false
 		}
-		return value, true
 	}
 	return nil, false
 }
 
 // Set 设置键值
-func (cache *MetaCache) Set(key string, value any) {
+func (cache *MetaCache) Set(key string, value any, exp int) {
 	cache.mutex.Lock()
 
 	var buffer bytes.Buffer
@@ -81,20 +91,28 @@ func (cache *MetaCache) Set(key string, value any) {
 	if err != nil {
 		return
 	}
-
+	var expTime time.Time
+	if exp > 0 {
+		expTime = time.Now().In(Settings.LOCATION).Add(time.Second * time.Duration(exp)) // 获取过期时间
+		time.AfterFunc(time.Duration(exp), func() {
+			cache.DelExp(key)
+		})
+	}
 	if element, ok := cache.cache[key]; ok {
-		cache.data.MoveToBack(element)
-		cacheData := element.Value.(*CacheData)
-		cache.used_size += int64(buffer.Len() - len(cacheData.byteValue))
-		cacheData.valueType = reflect.TypeOf(value)
-		cacheData.byteValue = buffer.Bytes()
+		cache.list.MoveToBack(element)
+		cacheItem := element.Value.(*CacheItems)
+		cache.used_size += int64(buffer.Len() - len(cacheItem.byteValue))
+		cacheItem.valueType = reflect.TypeOf(value)
+		cacheItem.byteValue = buffer.Bytes()
+		cacheItem.exp = expTime
 	} else {
-		cacheData := &CacheData{
+		cacheItem := &CacheItems{
 			key:       key,
 			valueType: reflect.TypeOf(value),
 			byteValue: buffer.Bytes(),
+			exp:       expTime,
 		}
-		element = cache.data.PushBack(cacheData)
+		element = cache.list.PushBack(cacheItem)
 		cache.used_size += int64(len(key) + buffer.Len())
 		cache.cache[key] = element
 	}
@@ -111,11 +129,29 @@ func (cache *MetaCache) Del(key string) {
 	defer cache.mutex.Unlock()
 
 	if element, ok := cache.cache[key]; ok {
-		cache.data.Remove(element)
-		cacheData := element.Value.(*CacheData)
+		cache.list.Remove(element)
+		cacheItem := element.Value.(*CacheItems)
 		delete(cache.cache, key)
-		cache.used_size -= int64(len(cacheData.key) + len(cacheData.byteValue))
+		cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
 	}
+}
+
+// DelExp 删除过期的 key， 如果 key 已过期则删除返回 true，未过期则不会删除返回 false
+func (cache *MetaCache) DelExp(key string) bool {
+	cache.mutex.Lock()
+	defer cache.mutex.Unlock()
+
+	if element, ok := cache.cache[key]; ok {
+		cache.list.Remove(element)
+		cacheItem := element.Value.(*CacheItems)
+		nowTime := time.Now().In(Settings.LOCATION) // 获取当前时间
+		if !cacheItem.exp.IsZero() && cacheItem.exp.Before(nowTime) {
+			delete(cache.cache, key)
+			cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+			return true
+		}
+	}
+	return false
 }
 
 // 内存淘汰
@@ -127,12 +163,36 @@ func (cache *MetaCache) Elimination() {
 	case NOEVICTION:
 		panic("超出设置最大缓存！")
 	case ALLKEYS_LRU:
-		element := cache.data.Front()
+		element := cache.list.Front()
 		if element != nil {
-			cache.data.Remove(element)
-			cacheData := element.Value.(*CacheData)
-			delete(cache.cache, cacheData.key)
-			cache.used_size -= int64(len(cacheData.key) + len(cacheData.byteValue))
+			cache.list.Remove(element)
+			cacheItem := element.Value.(*CacheItems)
+			delete(cache.cache, cacheItem.key)
+			cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+		}
+	}
+}
+
+// 定期删除
+func (cache *MetaCache) crontabDeleteExpired() {
+	for true {
+		if cache.list == nil || cache.used_size == 0 {
+			time.Sleep(10 * time.Second)
+			continue
+		}
+		count := 20
+		expired := 0
+		for key, _ := range cache.cache {
+			if count <= 0 {
+				break
+			}
+			if ok := cache.DelExp(key); ok {
+				expired++
+			}
+			count--
+		}
+		if expired < 5 {
+			time.Sleep(10 * time.Second)
 		}
 	}
 }
