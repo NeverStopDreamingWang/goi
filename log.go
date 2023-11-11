@@ -147,10 +147,10 @@ func (logger *MetaLogger) loggerInfoFileSplit() {
 	}
 	nowTime := time.Now().In(Settings.LOCATION)
 	// 自动加 _n
-	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v_1%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
+	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
 	_, err = os.Stat(oldInfoFile)
-	for idx := 2; err == nil; idx++ {
-		oldInfoFile = path.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", name, logger.createInfoTime.Format(logger.SplitTime), idx, ext))
+	for idx := 1; err == nil; idx++ {
+		oldInfoFile = path.Join(fileDir, fmt.Sprintf("%v_%v(%v)%v", name, logger.createInfoTime.Format(logger.SplitTime), idx, ext))
 		_, err = os.Stat(oldInfoFile)
 	}
 	isSplit := false
@@ -221,10 +221,10 @@ func (logger *MetaLogger) loggerAccessFileSplit() {
 	}
 	nowTime := time.Now().In(Settings.LOCATION)
 	// 自动加 _n
-	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v_1%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
+	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
 	_, err = os.Stat(oldInfoFile)
-	for idx := 2; err == nil; idx++ {
-		oldInfoFile = path.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", name, logger.createInfoTime.Format(logger.SplitTime), idx, ext))
+	for idx := 1; err == nil; idx++ {
+		oldInfoFile = path.Join(fileDir, fmt.Sprintf("%v_%v(%v)%v", name, logger.createInfoTime.Format(logger.SplitTime), idx, ext))
 		_, err = os.Stat(oldInfoFile)
 	}
 	isSplit := false
@@ -295,10 +295,10 @@ func (logger *MetaLogger) loggerErrorFileSplit() {
 	}
 	nowTime := time.Now().In(Settings.LOCATION)
 	// 自动加 _n
-	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v_1%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
+	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v%v", name, logger.createInfoTime.Format(logger.SplitTime), ext))
 	_, err = os.Stat(oldInfoFile)
-	for idx := 2; err == nil; idx++ {
-		oldInfoFile = path.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", name, logger.createInfoTime.Format(logger.SplitTime), idx, ext))
+	for idx := 1; err == nil; idx++ {
+		oldInfoFile = path.Join(fileDir, fmt.Sprintf("%v_%v(%v)%v", name, logger.createInfoTime.Format(logger.SplitTime), idx, ext))
 		_, err = os.Stat(oldInfoFile)
 	}
 	isSplit := false

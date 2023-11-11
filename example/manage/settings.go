@@ -20,7 +20,7 @@ func init() {
 	// 运行地址
 	Server.Settings.SERVER_ADDRESS = "0.0.0.0"
 	// 端口
-	Server.Settings.SERVER_PORT = 8989
+	Server.Settings.SERVER_PORT = 8080
 
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
