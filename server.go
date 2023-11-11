@@ -72,6 +72,9 @@ func (engine *Engine) init() {
 	}
 	engine.Settings.LOCATION = location
 
+	// 初始化缓存
+	engine.Cache.initCache()
+
 	// 初始化日志
 	serverInfo := fmt.Sprintf("hgee version:%v \nserver run: %v:%v", version, engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT)
 	engine.Log.InitLogger(serverInfo)

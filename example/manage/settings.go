@@ -57,8 +57,9 @@ func init() {
 	Server.Settings.Set("REDIS_DB", 0)
 
 	// 设置最大缓存大小
-	Server.Cache.POLICY = hgee.ALLKEYS_LRU // 内存淘汰机制
-	Server.Cache.MAX_SIZE = 0              // 单位为字节，0 为不限制使用
+	Server.Cache.EVICT_POLICY = hgee.ALLKEYS_LRU   // 缓存淘汰策略
+	Server.Cache.EXPIRATION_POLICY = hgee.PERIODIC // 过期策略
+	Server.Cache.MAX_SIZE = 100                    // 单位为字节，0 为不限制使用
 
 	// 日志设置
 	Server.Log.DEBUG = true
