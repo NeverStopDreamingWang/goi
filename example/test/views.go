@@ -2,13 +2,13 @@ package test
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/hgee"
+	"github.com/NeverStopDreamingWang/goi"
 	"net/http"
 	"os"
 	"path"
 )
 
-func Test1(request *hgee.Request) any {
+func Test1(request *goi.Request) any {
 	resp := map[string]any{
 		"status": http.StatusOK,
 		"msg":    "test1 OK",
@@ -17,7 +17,7 @@ func Test1(request *hgee.Request) any {
 	return resp
 }
 
-func Test2(request *hgee.Request) any {
+func Test2(request *goi.Request) any {
 	resp := map[string]any{
 		"status": http.StatusOK,
 		"msg":    "test2 OK",
@@ -26,18 +26,18 @@ func Test2(request *hgee.Request) any {
 	return resp
 }
 
-func Test3(request *hgee.Request) any {
-	return hgee.Data{http.StatusOK, "test3 OK", "OK"}
+func Test3(request *goi.Request) any {
+	return goi.Data{http.StatusOK, "test3 OK", "OK"}
 }
 
-func TestPathParamsInt(request *hgee.Request) any {
+func TestPathParamsInt(request *goi.Request) any {
 	// 路由传参 request.PathParams
 	// ids, _ := request.PathParams["id"] // []any
 	id := request.PathParams.Get("id").(int)
 
 	if id == 0 {
-		// 返回 hgee.Response
-		return hgee.Response{
+		// 返回 goi.Response
+		return goi.Response{
 			Status: http.StatusNotFound, // Status 指定响应状态码
 			Data:   nil,
 		}
@@ -53,18 +53,18 @@ func TestPathParamsInt(request *hgee.Request) any {
 	return resp
 }
 
-func TestPathParamsStr(request *hgee.Request) any {
+func TestPathParamsStr(request *goi.Request) any {
 	name := request.PathParams.Get("name")
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
-	return hgee.Response{
-		Status: http.StatusCreated,                // 返回指定响应状态码 404
-		Data:   hgee.Data{http.StatusOK, msg, ""}, // 响应数据 null
+	return goi.Response{
+		Status: http.StatusCreated,               // 返回指定响应状态码 404
+		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
 	}
 }
 
-func TestPathParamsStrs(request *hgee.Request) any {
+func TestPathParamsStrs(request *goi.Request) any {
 	// 多个值
 	nameSlice := request.PathParams["name"] // 返回一个 []any
 	fmt.Printf("%v,%T\n", nameSlice, nameSlice)
@@ -75,43 +75,43 @@ func TestPathParamsStrs(request *hgee.Request) any {
 	msg2 := fmt.Sprintf("参数: %v 参数类型:  %T\n", name2, name2)
 	fmt.Println(msg1)
 	fmt.Println(msg2)
-	return hgee.Data{http.StatusOK, "ok", []string{msg1, msg2}}
+	return goi.Data{http.StatusOK, "ok", []string{msg1, msg2}}
 }
 
 // 获取 Query 传参
-func TestQueryParams(request *hgee.Request) any {
+func TestQueryParams(request *goi.Request) any {
 	name := request.QueryParams.Get("name")
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
-	return hgee.Response{
-		Status: http.StatusCreated,                // 返回指定响应状态码 404
-		Data:   hgee.Data{http.StatusOK, msg, ""}, // 响应数据 null
+	return goi.Response{
+		Status: http.StatusCreated,               // 返回指定响应状态码 404
+		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
 	}
 }
 
 // 获取Body传参
-func TestBodyParams(request *hgee.Request) any {
+func TestBodyParams(request *goi.Request) any {
 	name := request.BodyParams["name"]
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
-	return hgee.Response{
-		Status: http.StatusCreated,                // 返回指定响应状态码 404
-		Data:   hgee.Data{http.StatusOK, msg, ""}, // 响应数据 null
+	return goi.Response{
+		Status: http.StatusCreated,               // 返回指定响应状态码 404
+		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
 	}
 }
 
-func TestConverterParamsStrs(request *hgee.Request) any {
+func TestConverterParamsStrs(request *goi.Request) any {
 	name := request.PathParams.Get("name")
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
-	return hgee.Data{http.StatusOK, "ok", msg}
+	return goi.Data{http.StatusOK, "ok", msg}
 }
 
 // 上下文
-func TestContext(request *hgee.Request) any {
+func TestContext(request *goi.Request) any {
 
 	// 请求上下文
 	// request.Object.Context() == request.Context
@@ -135,14 +135,14 @@ func TestContext(request *hgee.Request) any {
 		Name:      "asda",
 		Age:       12,
 	}
-	return hgee.Data{http.StatusOK, msg, student}
+	return goi.Data{http.StatusOK, msg, student}
 }
 
 // 返回文件
-func TestFile(request *hgee.Request) any {
+func TestFile(request *goi.Request) any {
 	baseDir, err := os.Getwd()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   "获取目录失败！",
 		}
@@ -151,7 +151,7 @@ func TestFile(request *hgee.Request) any {
 	file, err := os.Open(absolutePath)
 	if err != nil {
 		file.Close()
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   "读取文件失败！",
 		}
@@ -161,7 +161,7 @@ func TestFile(request *hgee.Request) any {
 }
 
 // 异常处理
-func TestPanic(request *hgee.Request) any {
+func TestPanic(request *goi.Request) any {
 
 	name := request.BodyParams["name"]
 
@@ -170,8 +170,8 @@ func TestPanic(request *hgee.Request) any {
 
 	name_tmp := name[100]
 	fmt.Println(name_tmp)
-	return hgee.Response{
-		Status: http.StatusCreated,                // 返回指定响应状态码 404
-		Data:   hgee.Data{http.StatusOK, msg, ""}, // 响应数据 null
+	return goi.Response{
+		Status: http.StatusCreated,               // 返回指定响应状态码 404
+		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
 	}
 }

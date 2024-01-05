@@ -2,7 +2,7 @@ package db
 
 import (
 	"errors"
-	"github.com/NeverStopDreamingWang/hgee"
+	"github.com/NeverStopDreamingWang/goi"
 	"strings"
 )
 
@@ -13,7 +13,7 @@ func MysqlConnect(UseDataBases ...string) (*MysqlDB, error) {
 	}
 
 	for _, Name := range UseDataBases {
-		database, ok := hgee.Settings.DATABASES[Name]
+		database, ok := goi.Settings.DATABASES[Name]
 		if ok == true && strings.ToLower(database.ENGINE) == "mysql" {
 			databaseObject, err := MetaMysqlConnect(database)
 			if err != nil {
@@ -33,7 +33,7 @@ func Sqlite3Connect(UseDataBases ...string) (*Sqlite3DB, error) {
 	}
 
 	for _, Name := range UseDataBases {
-		Database, ok := hgee.Settings.DATABASES[Name]
+		Database, ok := goi.Settings.DATABASES[Name]
 		if ok == true && strings.ToLower(Database.ENGINE) == "sqlite3" {
 			databaseObject, err := MetaSqlite3Connect(Database)
 			if err != nil {

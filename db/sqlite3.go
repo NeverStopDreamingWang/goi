@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/NeverStopDreamingWang/hgee"
-	"github.com/NeverStopDreamingWang/hgee/model"
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/model"
 	_ "github.com/mattn/go-sqlite3"
 	"reflect"
 	"strings"
@@ -21,7 +21,7 @@ type Sqlite3DB struct {
 }
 
 // 连接 Sqlite3
-func MetaSqlite3Connect(Database hgee.MetaDataBase) (*Sqlite3DB, error) {
+func MetaSqlite3Connect(Database goi.MetaDataBase) (*Sqlite3DB, error) {
 	sqlite3DB, err := sql.Open(Database.ENGINE, Database.NAME)
 	return &Sqlite3DB{
 		Name:   "",

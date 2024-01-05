@@ -1,4 +1,4 @@
-package hgee
+package goi
 
 var intConverter = `([0-9]+)`
 var stringConverter = `([^/]+)`
