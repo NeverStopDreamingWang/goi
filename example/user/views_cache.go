@@ -45,7 +45,11 @@ func TestCacheSet(request *hgee.Request) any {
 
 	return hgee.Response{
 		Status: http.StatusOK,
-		Data:   "设置成功！",
+		Data: hgee.Data{
+			Status: http.StatusOK,
+			Msg:    "设置成功！",
+			Data:   nil,
+		},
 	}
 }
 
@@ -58,7 +62,11 @@ func TestCacheGet(request *hgee.Request) any {
 	if !ok {
 		return hgee.Response{
 			Status: http.StatusOK,
-			Data:   "key 值不存在！",
+			Data: hgee.Data{
+				Status: http.StatusOK,
+				Msg:    "key 值不存在！",
+				Data:   nil,
+			},
 		}
 	}
 
@@ -71,7 +79,11 @@ func TestCacheGet(request *hgee.Request) any {
 	// }
 	return hgee.Response{
 		Status: http.StatusOK,
-		Data:   value,
+		Data: hgee.Data{
+			Status: http.StatusOK,
+			Msg:    "ok",
+			Data:   value,
+		},
 	}
 }
 
@@ -86,12 +98,20 @@ func TestCacheDel(request *hgee.Request) any {
 	if !ok {
 		return hgee.Response{
 			Status: http.StatusOK,
-			Data:   "删除成功！",
+			Data: hgee.Data{
+				Status: http.StatusOK,
+				Msg:    "删除成功！",
+				Data:   nil,
+			},
 		}
 	}
 	fmt.Printf("删除失败 value: %v\n", *value.(*string))
 	return hgee.Response{
 		Status: http.StatusOK,
-		Data:   "删除失败！",
+		Data: hgee.Data{
+			Status: http.StatusOK,
+			Msg:    "删除失败！",
+			Data:   nil,
+		},
 	}
 }
