@@ -16,7 +16,7 @@ var engine *Engine
 var Settings *metaSettings
 var Cache *MetaCache
 var Log *MetaLogger
-var version string = "1.0.8"
+var version string = "1.0.10"
 
 // 版本
 func Version() string {
