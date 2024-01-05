@@ -7,6 +7,8 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/model"
 	_ "github.com/mattn/go-sqlite3"
+	"os"
+	"path"
 	"reflect"
 	"strings"
 )
@@ -22,6 +24,14 @@ type Sqlite3DB struct {
 
 // 连接 Sqlite3
 func MetaSqlite3Connect(Database goi.MetaDataBase) (*Sqlite3DB, error) {
+	dir := path.Dir(Database.NAME)
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0644)
+		if err != nil {
+			panic(fmt.Sprintf("创建数据库目录错误: ", err))
+		}
+	}
 	sqlite3DB, err := sql.Open(Database.ENGINE, Database.NAME)
 	return &Sqlite3DB{
 		Name:   "",

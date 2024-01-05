@@ -1,4 +1,4 @@
-# hgee
+# goi
 
 基于 `net/http` 进行开发的 Web 框架
 
