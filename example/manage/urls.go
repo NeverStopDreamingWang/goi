@@ -1,7 +1,7 @@
 package manage
 
 import (
-	"github.com/NeverStopDreamingWang/hgee"
+	"github.com/NeverStopDreamingWang/goi"
 	"net/http"
 	"os"
 	"path"
@@ -9,19 +9,19 @@ import (
 
 func init() {
 	// 注册路由
-	// Server.Router.UrlPatterns("/test", hgee.AsView{GET: TestFunc})
+	// Server.Router.UrlPatterns("/test", goi.AsView{GET: TestFunc})
 
 	// 注册静态路径
 	Server.Router.StaticUrlPatterns("/static", "template")
 	Server.Router.StaticUrlPatterns("/static_2", "template")
-	Server.Router.UrlPatterns("/static_file", hgee.AsView{GET: TestFile})
+	Server.Router.UrlPatterns("/static_file", goi.AsView{GET: TestFile})
 }
 
 // 返回文件
-func TestFile(request *hgee.Request) any {
+func TestFile(request *goi.Request) any {
 	baseDir, err := os.Getwd()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   "获取目录失败！",
 		}
@@ -30,7 +30,7 @@ func TestFile(request *hgee.Request) any {
 	file, err := os.Open(absolutePath)
 	if err != nil {
 		file.Close()
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   "读取文件失败！",
 		}

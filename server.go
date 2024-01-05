@@ -1,4 +1,4 @@
-package hgee
+package goi
 
 import (
 	"context"
@@ -23,7 +23,7 @@ func Version() string {
 	return version
 }
 
-// HandlerFunc 定义 hgee 使用的请求处理程序
+// HandlerFunc 定义 goi 使用的请求处理程序
 type HandlerFunc func(*Request) any
 
 // type HandlerFunc func(*http.Request)
@@ -76,7 +76,7 @@ func (engine *Engine) init() {
 	engine.Cache.initCache()
 
 	// 初始化日志
-	serverInfo := fmt.Sprintf("hgee version:%v \nserver run: %v:%v", version, engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT)
+	serverInfo := fmt.Sprintf("goi version:%v \nserver run: %v:%v", version, engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT)
 	engine.Log.InitLogger(serverInfo)
 }
 

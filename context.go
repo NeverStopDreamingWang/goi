@@ -1,4 +1,4 @@
-package hgee
+package goi
 
 import (
 	"context"

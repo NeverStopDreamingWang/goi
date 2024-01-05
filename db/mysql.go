@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/NeverStopDreamingWang/hgee"
-	"github.com/NeverStopDreamingWang/hgee/model"
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/model"
 	_ "github.com/go-sql-driver/mysql"
 	"reflect"
 	"strings"
@@ -21,7 +21,7 @@ type MysqlDB struct {
 }
 
 // 连接 Mysql
-func MetaMysqlConnect(Database hgee.MetaDataBase) (*MysqlDB, error) {
+func MetaMysqlConnect(Database goi.MetaDataBase) (*MysqlDB, error) {
 	connectStr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", Database.USER, Database.PASSWORD, Database.HOST, Database.PORT, Database.NAME)
 	mysqlDB, err := sql.Open(Database.ENGINE, connectStr)
 	return &MysqlDB{

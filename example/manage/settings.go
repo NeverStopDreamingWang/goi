@@ -2,20 +2,20 @@ package manage
 
 import (
 	"example/middleware"
-	"github.com/NeverStopDreamingWang/hgee"
+	"github.com/NeverStopDreamingWang/goi"
 	"os"
 	"path"
 )
 
 // Http 服务
-var Server *hgee.Engine
+var Server *goi.Engine
 
 func init() {
 	// 创建 http 服务
-	Server = hgee.NewHttpServer()
+	Server = goi.NewHttpServer()
 
-	// version := hgee.Version() // 获取版本信息
-	// fmt.Println("hgee 版本", version)
+	// version := goi.Version() // 获取版本信息
+	// fmt.Println("goi 版本", version)
 
 	// 运行地址
 	Server.Settings.SERVER_ADDRESS = "0.0.0.0"
@@ -29,17 +29,17 @@ func init() {
 	Server.Settings.SECRET_KEY = "xxxxxxxxxxxxxxxxx"
 
 	// 数据库配置
-	Server.Settings.DATABASES["default"] = hgee.MetaDataBase{
+	Server.Settings.DATABASES["default"] = goi.MetaDataBase{
 		ENGINE:   "mysql",
-		NAME:     "test_hgee",
+		NAME:     "test_goi",
 		USER:     "root",
 		PASSWORD: "123",
 		HOST:     "127.0.0.1",
 		PORT:     3306,
 	}
-	Server.Settings.DATABASES["sqlite_1"] = hgee.MetaDataBase{
+	Server.Settings.DATABASES["sqlite_1"] = goi.MetaDataBase{
 		ENGINE:   "sqlite3",
-		NAME:     path.Join(Server.Settings.BASE_DIR, "data/test_hgee.db"),
+		NAME:     path.Join(Server.Settings.BASE_DIR, "data/test_goi.db"),
 		USER:     "",
 		PASSWORD: "",
 		HOST:     "",
@@ -57,9 +57,9 @@ func init() {
 	Server.Settings.Set("REDIS_DB", 0)
 
 	// 设置最大缓存大小
-	Server.Cache.EVICT_POLICY = hgee.ALLKEYS_LRU   // 缓存淘汰策略
-	Server.Cache.EXPIRATION_POLICY = hgee.PERIODIC // 过期策略
-	Server.Cache.MAX_SIZE = 100                    // 单位为字节，0 为不限制使用
+	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
+	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
+	Server.Cache.MAX_SIZE = 100                   // 单位为字节，0 为不限制使用
 
 	// 日志设置
 	Server.Log.DEBUG = true
@@ -70,10 +70,10 @@ func init() {
 	Server.Log.SplitSize = 1024 * 1024
 	Server.Log.SplitTime = "2006-01-02"
 	// 日志打印
-	// Server.Log.Debug() = hgee.Log.Debug() = hgee.Log.Log(hgee.DEBUG, "")
-	// Server.Log.Info() = hgee.Log.Info()
-	// Server.Log.Warning() = hgee.Log.Warning()
-	// Server.Log.Error() = hgee.Log.Error()
+	// Server.Log.Debug() = goi.Log.Debug() = goi.Log.Log(goi.DEBUG, "")
+	// Server.Log.Info() = goi.Log.Info()
+	// Server.Log.Warning() = goi.Log.Warning()
+	// Server.Log.Error() = goi.Log.Error()
 
 	// Server.Settings.LOG_OUTPATH = "/log/server.log"
 	// log_path := path.Join(BASE_DIR, LOG_OUTPATH)

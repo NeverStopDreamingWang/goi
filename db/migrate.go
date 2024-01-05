@@ -2,8 +2,8 @@ package db
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/hgee"
-	"github.com/NeverStopDreamingWang/hgee/model"
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/model"
 	"strings"
 )
 
@@ -24,7 +24,7 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 	}
 	// 迁移所有
 	if strings.ToLower(Migrations.DATABASES[0]) == "all" {
-		for DBName, Database := range hgee.Settings.DATABASES {
+		for DBName, Database := range goi.Settings.DATABASES {
 			if strings.ToLower(Database.ENGINE) != "mysql" {
 				continue
 			}
@@ -68,7 +68,7 @@ func MysqlMigrate(Migrations model.MysqlMakeMigrations) {
 	fmt.Println("migrations DATABASES", Migrations.DATABASES)
 	// 迁移到指定数据库
 	for _, DBName := range Migrations.DATABASES {
-		Database, ok := hgee.Settings.DATABASES[DBName]
+		Database, ok := goi.Settings.DATABASES[DBName]
 		if ok == false {
 			panic(fmt.Sprintf("配置数据库: %v 不存在！", DBName))
 		}
@@ -119,7 +119,7 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 	}
 	// 迁移所有
 	if strings.ToLower(Migrations.DATABASES[0]) == "all" {
-		for DBName, Database := range hgee.Settings.DATABASES {
+		for DBName, Database := range goi.Settings.DATABASES {
 			if strings.ToLower(Database.ENGINE) != "sqlite3" {
 				continue
 			}
@@ -163,7 +163,7 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 	fmt.Println("migrations DATABASES", Migrations.DATABASES)
 	// 迁移到指定数据库
 	for _, DBName := range Migrations.DATABASES {
-		Database, ok := hgee.Settings.DATABASES[DBName]
+		Database, ok := goi.Settings.DATABASES[DBName]
 		if ok == false {
 			panic(fmt.Sprintf("配置数据库: %v 不存在！", DBName))
 		}

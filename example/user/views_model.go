@@ -3,20 +3,20 @@ package user
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/NeverStopDreamingWang/hgee"
-	"github.com/NeverStopDreamingWang/hgee/db"
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/db"
 	"net/http"
 	"time"
 )
 
 // 读取多条数据到 Model
-func TestModelList(request *hgee.Request) any {
+func TestModelList(request *goi.Request) any {
 	// mysqlObj, err := db.MysqlConnect("default", "mysql_slave_2")
 	// defer mysqlObj.Close()
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -33,7 +33,7 @@ func TestModelList(request *hgee.Request) any {
 	err = Sqlite3DB.Fields("Id", "Username", "Password").Where("id>?", 1).Select(userSlice)
 
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -61,25 +61,25 @@ func TestModelList(request *hgee.Request) any {
 
 	jsonData, err := json.Marshal(userSlice)
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
 
-	return hgee.Response{
+	return goi.Response{
 		Status: http.StatusOK,
 		Data:   jsonData,
 	}
 }
 
 // 读取第一条数据到 Model
-func TestModelRetrieve(request *hgee.Request) any {
+func TestModelRetrieve(request *goi.Request) any {
 	user_id := request.PathParams.Get("user_id").(int)
 
 	if user_id == 0 {
-		// 返回 hgee.Response
-		return hgee.Response{
+		// 返回 goi.Response
+		return goi.Response{
 			Status: http.StatusNotFound, // Status 指定响应状态码
 			Data:   nil,
 		}
@@ -90,7 +90,7 @@ func TestModelRetrieve(request *hgee.Request) any {
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -102,7 +102,7 @@ func TestModelRetrieve(request *hgee.Request) any {
 	// mysqlObj.SetModel(UserModel{})                                       // 设置操作表
 	// err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(user) // 将数据读到 user 中
 	// if err != nil {
-	// 	return hgee.Response{
+	// 	return goi.Response{
 	// 		Status: http.StatusInternalServerError,
 	// 		Data:   err.Error(),
 	// 	}
@@ -113,7 +113,7 @@ func TestModelRetrieve(request *hgee.Request) any {
 	Sqlite3DB.SetModel(UserSqliteModel{})
 	err = Sqlite3DB.Fields("Id", "Username").Where("id=?", user_id).First(user)
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -134,32 +134,32 @@ func TestModelRetrieve(request *hgee.Request) any {
 
 	jsonData, err := json.Marshal(user)
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
-	return hgee.Response{
+	return goi.Response{
 		Status: http.StatusOK,
 		Data:   jsonData,
 	}
 }
 
 // 添加一条数据到 Model
-func TestModelCreate(request *hgee.Request) any {
+func TestModelCreate(request *goi.Request) any {
 	// mysqlObj, err := db.MysqlConnect("default", "mysql_slave_2")
 	// defer mysqlObj.Close()
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
 	username := request.BodyParams.Get("username").(string)
 	password := request.BodyParams.Get("password").(string)
-	create_time := time.Now().In(hgee.Settings.LOCATION).Format("2006-01-02 15:04:05")
+	create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	// user := &UserModel{
 	// 	Username:    &username,
@@ -181,14 +181,14 @@ func TestModelCreate(request *hgee.Request) any {
 	result, err := Sqlite3DB.Fields("Id", "Password", "Create_time").Insert(user)
 
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -209,25 +209,25 @@ func TestModelCreate(request *hgee.Request) any {
 
 	jsonData, err := json.Marshal(user)
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
-	return hgee.Response{
+	return goi.Response{
 		Status: http.StatusOK,
 		Data:   jsonData,
 	}
 }
 
 // 修改 Model
-func TestModelUpdate(request *hgee.Request) any {
+func TestModelUpdate(request *goi.Request) any {
 	user_id := request.PathParams.Get("user_id").(int)
 	username := request.BodyParams.Get("username").(string)
 
 	if user_id == 0 {
-		// 返回 hgee.Response
-		return hgee.Response{
+		// 返回 goi.Response
+		return goi.Response{
 			Status: http.StatusNotFound, // Status 指定响应状态码
 			Data:   nil,
 		}
@@ -238,12 +238,12 @@ func TestModelUpdate(request *hgee.Request) any {
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
-	update_time := time.Now().In(hgee.Settings.LOCATION).Format("2006-01-02 15:04:05")
+	update_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	// update_user := &UserModel{
 	// 	Username:    &username,
@@ -262,22 +262,22 @@ func TestModelUpdate(request *hgee.Request) any {
 	result, err := Sqlite3DB.Where("id=?", user_id).Update(update_user)
 
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
 	rowNum, err := result.RowsAffected()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
 	if rowNum == 0 {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusOK,
-			Data: hgee.Data{
+			Data: goi.Data{
 				Status: http.StatusInternalServerError,
 				Msg:    "修改失败！",
 				Data:   nil,
@@ -291,7 +291,7 @@ func TestModelUpdate(request *hgee.Request) any {
 	Sqlite3DB.SetModel(UserSqliteModel{})
 	err = Sqlite3DB.Where("id=?", user_id).First(user)
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -312,24 +312,24 @@ func TestModelUpdate(request *hgee.Request) any {
 
 	jsonData, err := json.Marshal(user)
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
-	return hgee.Response{
+	return goi.Response{
 		Status: http.StatusOK,
 		Data:   jsonData,
 	}
 }
 
 // 删除 Model
-func TestModelDelete(request *hgee.Request) any {
+func TestModelDelete(request *goi.Request) any {
 	user_id := request.PathParams.Get("user_id").(int)
 
 	if user_id == 0 {
-		// 返回 hgee.Response
-		return hgee.Response{
+		// 返回 goi.Response
+		return goi.Response{
 			Status: http.StatusNotFound, // Status 指定响应状态码
 			Data:   nil,
 		}
@@ -340,7 +340,7 @@ func TestModelDelete(request *hgee.Request) any {
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
@@ -354,22 +354,22 @@ func TestModelDelete(request *hgee.Request) any {
 	result, err := Sqlite3DB.Where("id=?", user_id).Delete()
 
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
 	rowNum, err := result.RowsAffected()
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
 	if rowNum == 0 {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusOK,
-			Data: hgee.Data{
+			Data: goi.Data{
 				Status: http.StatusOK,
 				Msg:    "已删除！",
 				Data:   nil,
@@ -378,9 +378,9 @@ func TestModelDelete(request *hgee.Request) any {
 	}
 	fmt.Println("rowNum", rowNum)
 
-	return hgee.Response{
+	return goi.Response{
 		Status: http.StatusOK,
-		Data: hgee.Data{
+		Data: goi.Data{
 			Status: http.StatusOK,
 			Msg:    "删除成功！",
 			Data:   nil,

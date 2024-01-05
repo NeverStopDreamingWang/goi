@@ -2,17 +2,17 @@ package user
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/hgee"
-	"github.com/NeverStopDreamingWang/hgee/jwt"
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/jwt"
 	"net/http"
 	"time"
 )
 
-func UserTest(request *hgee.Request) any {
+func UserTest(request *goi.Request) any {
 
-	return hgee.Response{
+	return goi.Response{
 		Status: http.StatusOK,
-		Data: hgee.Data{
+		Data: goi.Data{
 			Status: http.StatusOK,
 			Msg:    "ok",
 			Data:   nil,
@@ -20,7 +20,7 @@ func UserTest(request *hgee.Request) any {
 	}
 }
 
-func Testlogin(request *hgee.Request) any {
+func Testlogin(request *goi.Request) any {
 	username := request.BodyParams.Get("username")
 	password := request.BodyParams.Get("password")
 	fmt.Println("username", username)
@@ -48,20 +48,20 @@ func Testlogin(request *hgee.Request) any {
 	}
 	token, err := jwt.NewJWT(header, payloads, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")
 	if err != nil {
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusOK,
-			Data: hgee.Data{
+			Data: goi.Data{
 				Status: http.StatusInternalServerError,
 				Msg:    "ok",
 				Data:   err,
 			},
 		}
 	}
-	hgee.Log.Info(token)
+	goi.Log.Info(token)
 
-	return hgee.Response{
+	return goi.Response{
 		Status: http.StatusOK,
-		Data: hgee.Data{
+		Data: goi.Data{
 			Status: http.StatusOK,
 			Msg:    "ok",
 			Data:   token,
@@ -69,23 +69,23 @@ func Testlogin(request *hgee.Request) any {
 	}
 }
 
-func TestAuth(request *hgee.Request) any {
+func TestAuth(request *goi.Request) any {
 	token := request.Object.Header.Get("Authorization")
 
 	payloads, err := jwt.CkeckToken(token, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")
 	if jwt.JwtDecodeError(err) { // token 解码错误！
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusOK,
-			Data: hgee.Data{
+			Data: goi.Data{
 				Status: http.StatusUnauthorized,
 				Msg:    "token 解码错误！",
 				Data:   err,
 			},
 		}
 	} else if jwt.JwtExpiredSignatureError(err) { // token 已过期！
-		return hgee.Response{
+		return goi.Response{
 			Status: http.StatusOK,
-			Data: hgee.Data{
+			Data: goi.Data{
 				Status: http.StatusUnauthorized,
 				Msg:    "token 已过期！",
 				Data:   err,
@@ -93,9 +93,9 @@ func TestAuth(request *hgee.Request) any {
 		}
 	}
 
-	return hgee.Response{
+	return goi.Response{
 		Status: http.StatusOK,
-		Data: hgee.Data{
+		Data: goi.Data{
 			Status: http.StatusOK,
 			Msg:    "ok",
 			Data:   payloads,

@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/NeverStopDreamingWang/hgee"
+	"github.com/NeverStopDreamingWang/goi"
 	"strings"
 	"time"
 )
@@ -100,11 +100,11 @@ func CkeckToken(token string, key string) (map[string]any, error) {
 	if expTimeValue, ok := payloads["exp"]; ok {
 		expTimeStr := expTimeValue.(string)
 		// 解析为time.Time类型
-		expTime, err := time.ParseInLocation("2006-01-02 15:04:05", expTimeStr, hgee.Settings.LOCATION)
+		expTime, err := time.ParseInLocation("2006-01-02 15:04:05", expTimeStr, goi.Settings.LOCATION)
 		if err != nil {
 			return payloads, jwtErrorDecode
 		}
-		if expTime.Before(time.Now().In(hgee.Settings.LOCATION)) {
+		if expTime.Before(time.Now().In(goi.Settings.LOCATION)) {
 			return payloads, jwtErrorExpiredSignature
 		}
 	}

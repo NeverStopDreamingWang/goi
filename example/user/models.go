@@ -1,8 +1,8 @@
 package user
 
 import (
-	"github.com/NeverStopDreamingWang/hgee/db"
-	"github.com/NeverStopDreamingWang/hgee/model"
+	"github.com/NeverStopDreamingWang/goi/db"
+	"github.com/NeverStopDreamingWang/goi/model"
 )
 
 func init() {
