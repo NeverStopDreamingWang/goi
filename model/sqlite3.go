@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// Sqlite3 模型设置
-type Sqlite3Settings struct {
+// SQLite3 模型设置
+type SQLite3Settings struct {
 	TABLE_NAME string // 表名
 
 	// 自定义配置
@@ -15,28 +15,28 @@ type Sqlite3Settings struct {
 }
 
 // 设置自定义配置
-func (modelsettings *Sqlite3Settings) Set(name string, value any) {
+func (modelsettings *SQLite3Settings) Set(name string, value any) {
 	modelsettings.MySettings[name] = value
 }
 
 // 获取自定义配置
-func (modelsettings Sqlite3Settings) Get(name string) any {
+func (modelsettings SQLite3Settings) Get(name string) any {
 	return modelsettings.MySettings[name]
 }
 
 // 模型类
-type Sqlite3Model interface {
-	ModelSet() *Sqlite3Settings
+type SQLite3Model interface {
+	ModelSet() *SQLite3Settings
 }
 
-// Sqlite3 创建迁移
-type Sqlite3MakeMigrations struct {
+// SQLite3 创建迁移
+type SQLite3MakeMigrations struct {
 	DATABASES []string
-	MODELS    []Sqlite3Model
+	MODELS    []SQLite3Model
 }
 
-// Sqlite3 迁移
-func MetaSqlite3Migrate(model Sqlite3Model) string {
+// SQLite3 迁移
+func MetaSQLite3Migrate(model SQLite3Model) string {
 	modelSetting := model.ModelSet()
 
 	modelType := reflect.TypeOf(model)

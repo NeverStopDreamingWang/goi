@@ -26,8 +26,8 @@ func MySQLConnect(UseDataBases ...string) (*MySQLDB, error) {
 	return nil, errors.New("连接 MySQL 错误！")
 }
 
-// 连接 Sqlite3 数据库
-func Sqlite3Connect(UseDataBases ...string) (*Sqlite3DB, error) {
+// 连接 SQLite3 数据库
+func SQLite3Connect(UseDataBases ...string) (*SQLite3DB, error) {
 	if len(UseDataBases) == 0 { // 使用默认数据库
 		UseDataBases = append(UseDataBases, "default")
 	}
@@ -35,7 +35,7 @@ func Sqlite3Connect(UseDataBases ...string) (*Sqlite3DB, error) {
 	for _, Name := range UseDataBases {
 		Database, ok := goi.Settings.DATABASES[Name]
 		if ok == true && strings.ToLower(Database.ENGINE) == "sqlite3" {
-			databaseObject, err := MetaSqlite3Connect(Database)
+			databaseObject, err := MetaSQLite3Connect(Database)
 			if err != nil {
 				continue
 			}
@@ -43,5 +43,5 @@ func Sqlite3Connect(UseDataBases ...string) (*Sqlite3DB, error) {
 			return databaseObject, err
 		}
 	}
-	return nil, errors.New("连接 Sqlite3 错误！")
+	return nil, errors.New("连接 SQLite3 错误！")
 }

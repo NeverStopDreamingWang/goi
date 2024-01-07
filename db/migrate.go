@@ -79,8 +79,8 @@ func MySQLMigrate(Migrations model.MySQLMakeMigrations) {
 	}
 }
 
-// Sqlite3 迁移
-func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
+// SQLite3 迁移
+func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 	if len(Migrations.DATABASES) == 0 {
 		panic("请指定迁移数据库！")
 	}
@@ -104,22 +104,22 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 		if strings.ToLower(Database.ENGINE) != "sqlite3" {
 			continue
 		}
-		sqlite3DB, err := Sqlite3Connect(DBName)
+		sqlite3DB, err := SQLite3Connect(DBName)
 		if err != nil {
-			panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
+			panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 		}
 
 		// 获取所有表
 		TabelSclie := make([]string, 0)
 		rows, err := sqlite3DB.Query("SELECT name FROM sqlite_master WHERE type='table';")
 		if err != nil {
-			panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
+			panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 		}
 		for rows.Next() {
 			var tableData string
 			err = rows.Scan(&tableData)
 			if err != nil {
-				panic(fmt.Sprintf("连接 Sqlite3 [%v] 数据库 错误: %v", DBName, err))
+				panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 			}
 			TabelSclie = append(TabelSclie, tableData)
 		}
@@ -130,12 +130,12 @@ func Sqlite3Migrate(Migrations model.Sqlite3MakeMigrations) {
 			if TableIsExists(TableName, TabelSclie) { // 判断是否存在
 				continue
 			}
-			createSql := model.MetaSqlite3Migrate(Model)
+			createSql := model.MetaSQLite3Migrate(Model)
 			_, err = sqlite3DB.Execute(createSql)
 			if err != nil {
 				panic(fmt.Sprintf("迁移错误: %v", err))
 			}
-			goi.Log.MetaLog(fmt.Sprintf("Migrate Sqlite3: %v DataBase: %v Table: %v ...ok!", DBName, Database.NAME, Model.ModelSet().TABLE_NAME))
+			goi.Log.MetaLog(fmt.Sprintf("Migrate SQLite3: %v DataBase: %v Table: %v ...ok!", DBName, Database.NAME, Model.ModelSet().TABLE_NAME))
 		}
 		_ = sqlite3DB.Close()
 	}
