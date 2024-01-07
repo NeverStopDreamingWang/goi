@@ -6,14 +6,14 @@ import (
 )
 
 func init() {
-	// Mysql 数据库
-	MysqlMigrations := model.MysqlMakeMigrations{
+	// MySQL 数据库
+	MySQLMigrations := model.MySQLMakeMigrations{
 		DATABASES: []string{"all"},
-		MODELS: []model.MysqlModel{
+		MODELS: []model.MySQLModel{
 			UserModel{},
 		},
 	}
-	db.MysqlMigrate(MysqlMigrations)
+	db.MySQLMigrate(MySQLMigrations)
 
 	// sqlite 数据库
 	Sqlite3Migrations := model.Sqlite3MakeMigrations{
@@ -35,14 +35,14 @@ type UserModel struct {
 }
 
 // 设置表配置
-func (UserModel) ModelSet() *model.MysqlSettings {
+func (UserModel) ModelSet() *model.MySQLSettings {
 	encryptFields := []string{
 		"username",
 		"password",
 	}
 
-	modelSettings := &model.MysqlSettings{
-		TableName:       "user_tb",            // 设置表名
+	modelSettings := &model.MySQLSettings{
+		TABLE_NAME:      "user_tb",            // 设置表名
 		ENGINE:          "InnoDB",             // 设置存储引擎，默认: InnoDB
 		AUTO_INCREMENT:  2,                    // 设置自增长起始值
 		COMMENT:         "用户表",                // 设置表注释
@@ -85,7 +85,7 @@ func (UserSqliteModel) ModelSet() *model.Sqlite3Settings {
 	}
 
 	modelSettings := &model.Sqlite3Settings{
-		TableName: "user_tb", // 设置表名
+		TABLE_NAME: "user_tb", // 设置表名
 
 		// 自定义配置
 		MySettings: model.MySettings{

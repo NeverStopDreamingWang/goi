@@ -8,7 +8,7 @@ import (
 
 // Sqlite3 模型设置
 type Sqlite3Settings struct {
-	TableName string // 表名
+	TABLE_NAME string // 表名
 
 	// 自定义配置
 	MySettings MySettings
@@ -51,6 +51,6 @@ func MetaSqlite3Migrate(model Sqlite3Model) string {
 		fieldType := field.Tag.Get("field")
 		field_slice[i] = fmt.Sprintf("`%v` %v", fieldName, fieldType)
 	}
-	createSql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (\n%v\n);", modelSetting.TableName, strings.Join(field_slice, ",\n"))
+	createSql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (\n%v\n);", modelSetting.TABLE_NAME, strings.Join(field_slice, ",\n"))
 	return createSql
 }

@@ -44,9 +44,9 @@ func newRouter() *metaRouter {
 }
 
 // 添加父路由
-func (router *metaRouter) Include(pattern string) *metaRouter {
-	if _, ok := router.includeRouter[pattern]; ok {
-		panic(fmt.Sprintf("路由已存在: %s\n", pattern))
+func (router *metaRouter) Include(UrlPath string) *metaRouter {
+	if _, ok := router.includeRouter[UrlPath]; ok {
+		panic(fmt.Sprintf("路由已存在: %s\n", UrlPath))
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
@@ -55,22 +55,22 @@ func (router *metaRouter) Include(pattern string) *metaRouter {
 		} else {
 			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
-		if len(re.FindStringSubmatch(pattern)) != 0 {
-			panic(fmt.Sprintf("%s 中包含的子路由已被注册: %s\n", pattern, includePatternUri))
+		if len(re.FindStringSubmatch(UrlPath)) != 0 {
+			panic(fmt.Sprintf("%s 中包含的子路由已被注册: %s\n", UrlPath, includePatternUri))
 		}
 	}
-	router.includeRouter[pattern] = &metaRouter{
+	router.includeRouter[UrlPath] = &metaRouter{
 		includeRouter: make(map[string]*metaRouter),
 		viewSet:       AsView{},
 		staticPattern: "",
 	}
-	return router.includeRouter[pattern]
+	return router.includeRouter[UrlPath]
 }
 
 // 添加路由
-func (router *metaRouter) UrlPatterns(pattern string, view AsView) {
-	if _, ok := router.includeRouter[pattern]; ok {
-		panic(fmt.Sprintf("路由已存在: %s\n", pattern))
+func (router *metaRouter) UrlPatterns(UrlPath string, view AsView) {
+	if _, ok := router.includeRouter[UrlPath]; ok {
+		panic(fmt.Sprintf("路由已存在: %s\n", UrlPath))
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
@@ -79,12 +79,12 @@ func (router *metaRouter) UrlPatterns(pattern string, view AsView) {
 		} else {
 			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
-		if len(re.FindStringSubmatch(pattern)) != 0 {
-			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", pattern, includePatternUri))
+		if len(re.FindStringSubmatch(UrlPath)) != 0 {
+			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", UrlPath, includePatternUri))
 		}
 	}
 
-	router.includeRouter[pattern] = &metaRouter{
+	router.includeRouter[UrlPath] = &metaRouter{
 		includeRouter: make(map[string]*metaRouter),
 		viewSet:       view,
 		staticPattern: "",
@@ -92,9 +92,9 @@ func (router *metaRouter) UrlPatterns(pattern string, view AsView) {
 }
 
 // 添加静态路由
-func (router *metaRouter) StaticUrlPatterns(pattern string, StaticPattern string) {
-	if _, ok := router.includeRouter[pattern]; ok {
-		panic(fmt.Sprintf("静态映射路由已存在: %s\n", pattern))
+func (router *metaRouter) StaticUrlPatterns(UrlPath string, StaticUrlPath string) {
+	if _, ok := router.includeRouter[UrlPath]; ok {
+		panic(fmt.Sprintf("静态映射路由已存在: %s\n", UrlPath))
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
@@ -103,17 +103,17 @@ func (router *metaRouter) StaticUrlPatterns(pattern string, StaticPattern string
 		} else {
 			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
 		}
-		if len(re.FindStringSubmatch(pattern)) != 0 {
-			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", pattern, includePatternUri))
+		if len(re.FindStringSubmatch(UrlPath)) != 0 {
+			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", UrlPath, includePatternUri))
 		}
 	}
 	dir, _ := os.Getwd()
-	absolutePath := path.Join(dir, StaticPattern)
+	absolutePath := path.Join(dir, StaticUrlPath)
 	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
-		panic(fmt.Sprintf("静态映射路径不存在: %s\n", StaticPattern))
+		panic(fmt.Sprintf("静态映射路径不存在: %s\n", StaticUrlPath))
 	}
 
-	router.includeRouter[pattern] = &metaRouter{
+	router.includeRouter[UrlPath] = &metaRouter{
 		includeRouter: make(map[string]*metaRouter),
 		viewSet:       AsView{GET: metaStaticHandler},
 		staticPattern: absolutePath,
@@ -202,10 +202,10 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 }
 
 // 路由参数解析
-func routerParse(pattern string) (params []routerParam, converterPattern string) {
+func routerParse(UrlPath string) (params []routerParam, converterPattern string) {
 	regexpStr := `<([^/<>]+):([^/<>]+)>`
 	re := regexp.MustCompile(regexpStr)
-	result := re.FindAllStringSubmatch(pattern, -1)
+	result := re.FindAllStringSubmatch(UrlPath, -1)
 	for _, paramsSlice := range result {
 		if len(paramsSlice) == 3 {
 			converter, ok := metaConverter[paramsSlice[1]]
@@ -213,8 +213,8 @@ func routerParse(pattern string) (params []routerParam, converterPattern string)
 				continue
 			}
 			re = regexp.MustCompile(paramsSlice[0])
-			pattern = re.ReplaceAllString(pattern, converter)
-			converterPattern = pattern
+			UrlPath = re.ReplaceAllString(UrlPath, converter)
+			converterPattern = UrlPath
 
 			param := routerParam{
 				paramName: paramsSlice[2],

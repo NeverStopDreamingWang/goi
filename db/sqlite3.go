@@ -102,7 +102,7 @@ func (sqlite3DB *Sqlite3DB) Insert(ModelData model.Sqlite3Model) (sql.Result, er
 	if sqlite3DB.model == nil {
 		return nil, errors.New("请先设置 SetModel")
 	}
-	TableName := sqlite3DB.model.ModelSet().TableName
+	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
@@ -152,7 +152,7 @@ func (sqlite3DB *Sqlite3DB) Select(ModelSlice []any) error {
 	if sqlite3DB.model == nil {
 		return errors.New("请先设置 SetModel")
 	}
-	TableName := sqlite3DB.model.ModelSet().TableName
+	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelType := reflect.TypeOf(sqlite3DB.model)
 	if ModelType.Kind() == reflect.Ptr {
@@ -220,7 +220,7 @@ func (sqlite3DB *Sqlite3DB) First(ModelData model.Sqlite3Model) error {
 	if sqlite3DB.model == nil {
 		return errors.New("请先设置 SetModel")
 	}
-	TableName := sqlite3DB.model.ModelSet().TableName
+	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
@@ -269,7 +269,7 @@ func (sqlite3DB *Sqlite3DB) Update(ModelData model.Sqlite3Model) (sql.Result, er
 	if sqlite3DB.sql == "" {
 		return nil, errors.New("请先设置 Where 条件")
 	}
-	TableName := sqlite3DB.model.ModelSet().TableName
+	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
@@ -316,7 +316,7 @@ func (sqlite3DB *Sqlite3DB) Delete() (sql.Result, error) {
 	if sqlite3DB.sql == "" {
 		return nil, errors.New("请先设置 Where 条件")
 	}
-	TableName := sqlite3DB.model.ModelSet().TableName
+	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	sqlite3DB.sql = fmt.Sprintf("DELETE FROM `%v` WHERE %v", TableName, sqlite3DB.sql)
 

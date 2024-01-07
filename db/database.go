@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// 连接 Mysql 数据库
-func MysqlConnect(UseDataBases ...string) (*MysqlDB, error) {
+// 连接 MySQL 数据库
+func MySQLConnect(UseDataBases ...string) (*MySQLDB, error) {
 	if len(UseDataBases) == 0 { // 使用默认数据库
 		UseDataBases = append(UseDataBases, "default")
 	}
@@ -15,7 +15,7 @@ func MysqlConnect(UseDataBases ...string) (*MysqlDB, error) {
 	for _, Name := range UseDataBases {
 		database, ok := goi.Settings.DATABASES[Name]
 		if ok == true && strings.ToLower(database.ENGINE) == "mysql" {
-			databaseObject, err := MetaMysqlConnect(database)
+			databaseObject, err := MetaMySQLConnect(database)
 			if err != nil {
 				continue
 			}
@@ -23,7 +23,7 @@ func MysqlConnect(UseDataBases ...string) (*MysqlDB, error) {
 			return databaseObject, err
 		}
 	}
-	return nil, errors.New("连接 Mysql 错误！")
+	return nil, errors.New("连接 MySQL 错误！")
 }
 
 // 连接 Sqlite3 数据库

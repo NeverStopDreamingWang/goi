@@ -58,13 +58,12 @@ func (engine *Engine) RunServer() (err error) {
 		Addr:    fmt.Sprintf("%v:%v", engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT),
 		Handler: engine,
 	}
-	engine.init() // 初始化
 	return server.ListenAndServe()
 	// return http.ListenAndServe(addr, engine)
 }
 
 // 初始化
-func (engine *Engine) init() {
+func (engine *Engine) Init() {
 	// 初始化时区
 	location, err := time.LoadLocation(engine.Settings.TIME_ZONE)
 	if err != nil {
@@ -72,12 +71,17 @@ func (engine *Engine) init() {
 	}
 	engine.Settings.LOCATION = location
 
+	// 初始化日志
+	engine.Log.InitLogger()
+
+	engine.Log.MetaLog(fmt.Sprintf("start time: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
+	engine.Log.MetaLog(fmt.Sprintf("goi version: %v", version))
+	engine.Log.MetaLog(fmt.Sprintf("server run: %v:%v", engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT))
+
+	engine.Log.MetaLog(fmt.Sprintf("time zone: %v", engine.Settings.TIME_ZONE))
+
 	// 初始化缓存
 	engine.Cache.initCache()
-
-	// 初始化日志
-	serverInfo := fmt.Sprintf("goi version:%v \nserver run: %v:%v", version, engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT)
-	engine.Log.InitLogger(serverInfo)
 }
 
 // 实现 ServeHTTP 接口
