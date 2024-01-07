@@ -15,5 +15,5 @@ func formatBytes[T IntAll](ByteSize T) string {
 		}
 		byteSize /= unit
 	}
-	return ""
+	return fmt.Sprintf("%.2f %v", byteSize, exts[len(exts)-1])
 }

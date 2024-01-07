@@ -11,20 +11,20 @@ import (
 	"strings"
 )
 
-type MysqlDB struct {
+type MySQLDB struct {
 	Name   string
 	DB     *sql.DB
-	model  model.MysqlModel
+	model  model.MySQLModel
 	fields []string
 	sql    string
 	args   []any
 }
 
-// 连接 Mysql
-func MetaMysqlConnect(Database goi.MetaDataBase) (*MysqlDB, error) {
+// 连接 MySQL
+func MetaMySQLConnect(Database goi.MetaDataBase) (*MySQLDB, error) {
 	connectStr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", Database.USER, Database.PASSWORD, Database.HOST, Database.PORT, Database.NAME)
 	mysqlDB, err := sql.Open(Database.ENGINE, connectStr)
-	return &MysqlDB{
+	return &MySQLDB{
 		Name:   "",
 		DB:     mysqlDB,
 		model:  nil,
@@ -35,13 +35,13 @@ func MetaMysqlConnect(Database goi.MetaDataBase) (*MysqlDB, error) {
 }
 
 // 关闭连接
-func (mysqlDB *MysqlDB) Close() error {
+func (mysqlDB *MySQLDB) Close() error {
 	err := mysqlDB.DB.Close()
 	return err
 }
 
 // 执行语句
-func (mysqlDB *MysqlDB) Execute(query string, args ...any) (sql.Result, error) {
+func (mysqlDB *MySQLDB) Execute(query string, args ...any) (sql.Result, error) {
 	// 开启事务
 	transaction, err := mysqlDB.DB.Begin()
 	if err != nil {
@@ -68,7 +68,7 @@ func (mysqlDB *MysqlDB) Execute(query string, args ...any) (sql.Result, error) {
 }
 
 // 查询语句
-func (mysqlDB *MysqlDB) Query(query string, args ...any) (*sql.Rows, error) {
+func (mysqlDB *MySQLDB) Query(query string, args ...any) (*sql.Rows, error) {
 	rows, err := mysqlDB.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
@@ -77,23 +77,23 @@ func (mysqlDB *MysqlDB) Query(query string, args ...any) (*sql.Rows, error) {
 }
 
 // 设置使用模型
-func (mysqlDB *MysqlDB) SetModel(model model.MysqlModel) *MysqlDB {
+func (mysqlDB *MySQLDB) SetModel(model model.MySQLModel) *MySQLDB {
 	mysqlDB.model = model
 	return mysqlDB
 }
 
 // 设置查询字段
-func (mysqlDB *MysqlDB) Fields(fields ...string) *MysqlDB {
+func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
 	mysqlDB.fields = fields
 	return mysqlDB
 }
 
 // 插入数据库
-func (mysqlDB *MysqlDB) Insert(ModelData model.MysqlModel) (sql.Result, error) {
+func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 	if mysqlDB.model == nil {
 		return nil, errors.New("请先设置 SetModel")
 	}
-	TableName := mysqlDB.model.ModelSet().TableName
+	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
@@ -133,18 +133,18 @@ func (mysqlDB *MysqlDB) Insert(ModelData model.MysqlModel) (sql.Result, error) {
 }
 
 // 查询语句
-func (mysqlDB *MysqlDB) Where(query string, args ...any) *MysqlDB {
+func (mysqlDB *MySQLDB) Where(query string, args ...any) *MySQLDB {
 	mysqlDB.sql = query
 	mysqlDB.args = args
 	return mysqlDB
 }
 
 // 执行查询语句获取数据
-func (mysqlDB *MysqlDB) Select(ModelSlice []any) error {
+func (mysqlDB *MySQLDB) Select(ModelSlice []any) error {
 	if mysqlDB.model == nil {
 		return errors.New("请先设置 SetModel")
 	}
-	TableName := mysqlDB.model.ModelSet().TableName
+	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	ModelType := reflect.TypeOf(mysqlDB.model)
 	if ModelType.Kind() == reflect.Ptr {
@@ -208,11 +208,11 @@ func (mysqlDB *MysqlDB) Select(ModelSlice []any) error {
 }
 
 // 返回第一条数据
-func (mysqlDB *MysqlDB) First(ModelData model.MysqlModel) error {
+func (mysqlDB *MySQLDB) First(ModelData model.MySQLModel) error {
 	if mysqlDB.model == nil {
 		return errors.New("请先设置 SetModel")
 	}
-	TableName := mysqlDB.model.ModelSet().TableName
+	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
@@ -254,14 +254,14 @@ func (mysqlDB *MysqlDB) First(ModelData model.MysqlModel) error {
 }
 
 // 更新数据，返回操作条数
-func (mysqlDB *MysqlDB) Update(ModelData model.MysqlModel) (sql.Result, error) {
+func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 	if mysqlDB.model == nil {
 		return nil, errors.New("请先设置 SetModel 表")
 	}
 	if mysqlDB.sql == "" {
 		return nil, errors.New("请先设置 Where 条件")
 	}
-	TableName := mysqlDB.model.ModelSet().TableName
+	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
@@ -301,14 +301,14 @@ func (mysqlDB *MysqlDB) Update(ModelData model.MysqlModel) (sql.Result, error) {
 }
 
 // 删除数据，返回操作条数
-func (mysqlDB *MysqlDB) Delete() (sql.Result, error) {
+func (mysqlDB *MySQLDB) Delete() (sql.Result, error) {
 	if mysqlDB.model == nil {
 		return nil, errors.New("请先设置 SetModel 表")
 	}
 	if mysqlDB.sql == "" {
 		return nil, errors.New("请先设置 Where 条件")
 	}
-	TableName := mysqlDB.model.ModelSet().TableName
+	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	mysqlDB.sql = fmt.Sprintf("DELETE FROM `%v` WHERE %v", TableName, mysqlDB.sql)
 

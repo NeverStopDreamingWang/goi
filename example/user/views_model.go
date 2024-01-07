@@ -11,7 +11,7 @@ import (
 
 // 读取多条数据到 Model
 func TestModelList(request *goi.Request) any {
-	// mysqlObj, err := db.MysqlConnect("default", "mysql_slave_2")
+	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	// defer mysqlObj.Close()
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
@@ -85,7 +85,7 @@ func TestModelRetrieve(request *goi.Request) any {
 		}
 	}
 
-	// mysqlObj, err := db.MysqlConnect("default", "mysql_slave_2")
+	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	// defer mysqlObj.Close()
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
@@ -147,7 +147,7 @@ func TestModelRetrieve(request *goi.Request) any {
 
 // 添加一条数据到 Model
 func TestModelCreate(request *goi.Request) any {
-	// mysqlObj, err := db.MysqlConnect("default", "mysql_slave_2")
+	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	// defer mysqlObj.Close()
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
@@ -233,7 +233,7 @@ func TestModelUpdate(request *goi.Request) any {
 		}
 	}
 
-	// mysqlObj, err := db.MysqlConnect("default", "mysql_slave_2")
+	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	// defer mysqlObj.Close()
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()
@@ -335,7 +335,7 @@ func TestModelDelete(request *goi.Request) any {
 		}
 	}
 
-	// mysqlObj, err := db.MysqlConnect("default", "mysql_slave_2")
+	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	// defer mysqlObj.Close()
 	Sqlite3DB, err := db.Sqlite3Connect("sqlite_1")
 	defer Sqlite3DB.Close()

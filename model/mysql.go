@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
-// Mysql 模型设置
-type MysqlSettings struct {
-	TableName       string // 设置表名
+// MySQL 模型设置
+type MySQLSettings struct {
+	TABLE_NAME      string // 设置表名
 	ENGINE          string // 设置存储引擎，默认: InnoDB
 	AUTO_INCREMENT  int    // 设置自增长起始值
 	COMMENT         string // 设置表注释
@@ -29,28 +29,28 @@ type MysqlSettings struct {
 }
 
 // 设置自定义配置
-func (mysqlmodelsettings *MysqlSettings) Set(name string, value any) {
+func (mysqlmodelsettings *MySQLSettings) Set(name string, value any) {
 	mysqlmodelsettings.MySettings[name] = value
 }
 
 // 获取自定义配置
-func (mysqlmodelsettings MysqlSettings) Get(name string) any {
+func (mysqlmodelsettings MySQLSettings) Get(name string) any {
 	return mysqlmodelsettings.MySettings[name]
 }
 
 // 模型类
-type MysqlModel interface {
-	ModelSet() *MysqlSettings
+type MySQLModel interface {
+	ModelSet() *MySQLSettings
 }
 
-// Mysql 创建迁移
-type MysqlMakeMigrations struct {
+// MySQL 创建迁移
+type MySQLMakeMigrations struct {
 	DATABASES []string
-	MODELS    []MysqlModel
+	MODELS    []MySQLModel
 }
 
-// Mysql 迁移
-func MetaMysqlMigrate(model MysqlModel) string {
+// MySQL 迁移
+func MetaMySQLMigrate(model MySQLModel) string {
 	modelSetting := model.ModelSet()
 
 	modelType := reflect.TypeOf(model)
@@ -65,7 +65,7 @@ func MetaMysqlMigrate(model MysqlModel) string {
 		fieldType := field.Tag.Get("field")
 		field_slice[i] = fmt.Sprintf("`%v` %v", fieldName, fieldType)
 	}
-	createSql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (\n%v\n)", modelSetting.TableName, strings.Join(field_slice, ",\n"))
+	createSql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (\n%v\n)", modelSetting.TABLE_NAME, strings.Join(field_slice, ",\n"))
 	if modelSetting.ENGINE != "" { // 设置存储引擎
 		createSql += fmt.Sprintf("\nENGINE=%v", modelSetting.ENGINE)
 	}

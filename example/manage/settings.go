@@ -1,7 +1,6 @@
 package manage
 
 import (
-	"example/middleware"
 	"github.com/NeverStopDreamingWang/goi"
 	"os"
 	"path"
@@ -47,7 +46,8 @@ func init() {
 	}
 
 	// 设置时区
-	Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai
+	Server.Settings.TIME_ZONE = "America/New_York" // 默认 Asia/Shanghai
+	// Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai
 
 	// 设置自定义配置
 	// redis配置
@@ -87,11 +87,5 @@ func init() {
 	// log.SetFlags(0)
 	// // defer log_file.Close()
 
-	// 注册中间件
-	// 注册请求中间件
-	Server.MiddleWares.BeforeRequest(middleware.RequestMiddleWare)
-	// 注册视图中间件
-	// Server.MiddleWares.BeforeView()
-	// 注册响应中间件
-	// Server.MiddleWares.BeforeResponse()
+	Server.Init()
 }
