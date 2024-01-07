@@ -395,10 +395,6 @@ func (logger *MetaLogger) log(level logLevel, log ...any) {
 		if logger.loggerInfoFile != nil {
 			logger.loggerInfoFile.Println(log...)
 		}
-		// ACCESS 日志
-		if logger.loggerAccessFile != nil {
-			logger.loggerAccessFile.Println(log...)
-		}
 	case ERROR:
 		prefix := fmt.Sprintf("[%s] - [ERROR]", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05"))
 		log = append([]any{prefix}, log...)

@@ -13,17 +13,17 @@ import (
 	"strings"
 )
 
-type Sqlite3DB struct {
+type SQLite3DB struct {
 	Name   string
 	DB     *sql.DB
-	model  model.Sqlite3Model
+	model  model.SQLite3Model
 	fields []string
 	sql    string
 	args   []any
 }
 
-// 连接 Sqlite3
-func MetaSqlite3Connect(Database goi.MetaDataBase) (*Sqlite3DB, error) {
+// 连接 SQLite3
+func MetaSQLite3Connect(Database goi.MetaDataBase) (*SQLite3DB, error) {
 	dir := path.Dir(Database.NAME)
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
@@ -33,7 +33,7 @@ func MetaSqlite3Connect(Database goi.MetaDataBase) (*Sqlite3DB, error) {
 		}
 	}
 	sqlite3DB, err := sql.Open(Database.ENGINE, Database.NAME)
-	return &Sqlite3DB{
+	return &SQLite3DB{
 		Name:   "",
 		DB:     sqlite3DB,
 		model:  nil,
@@ -44,13 +44,13 @@ func MetaSqlite3Connect(Database goi.MetaDataBase) (*Sqlite3DB, error) {
 }
 
 // 关闭连接
-func (sqlite3DB *Sqlite3DB) Close() error {
+func (sqlite3DB *SQLite3DB) Close() error {
 	err := sqlite3DB.DB.Close()
 	return err
 }
 
 // 执行语句
-func (sqlite3DB *Sqlite3DB) Execute(query string, args ...any) (sql.Result, error) {
+func (sqlite3DB *SQLite3DB) Execute(query string, args ...any) (sql.Result, error) {
 	// 开启事务
 	transaction, err := sqlite3DB.DB.Begin()
 	if err != nil {
@@ -77,7 +77,7 @@ func (sqlite3DB *Sqlite3DB) Execute(query string, args ...any) (sql.Result, erro
 }
 
 // 查询语句
-func (sqlite3DB *Sqlite3DB) Query(query string, args ...any) (*sql.Rows, error) {
+func (sqlite3DB *SQLite3DB) Query(query string, args ...any) (*sql.Rows, error) {
 	rows, err := sqlite3DB.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
@@ -86,19 +86,25 @@ func (sqlite3DB *Sqlite3DB) Query(query string, args ...any) (*sql.Rows, error) 
 }
 
 // 设置使用模型
-func (sqlite3DB *Sqlite3DB) SetModel(model model.Sqlite3Model) *Sqlite3DB {
+func (sqlite3DB *SQLite3DB) SetModel(model model.SQLite3Model) *SQLite3DB {
 	sqlite3DB.model = model
+	ModelType := reflect.TypeOf(model)
+	// 获取字段
+	sqlite3DB.fields = make([]string, ModelType.NumField())
+	for i := 0; i < ModelType.NumField(); i++ {
+		sqlite3DB.fields[i] = ModelType.Field(i).Name
+	}
 	return sqlite3DB
 }
 
 // 设置查询字段
-func (sqlite3DB *Sqlite3DB) Fields(fields ...string) *Sqlite3DB {
+func (sqlite3DB *SQLite3DB) Fields(fields ...string) *SQLite3DB {
 	sqlite3DB.fields = fields
 	return sqlite3DB
 }
 
 // 插入数据库
-func (sqlite3DB *Sqlite3DB) Insert(ModelData model.Sqlite3Model) (sql.Result, error) {
+func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, error) {
 	if sqlite3DB.model == nil {
 		return nil, errors.New("请先设置 SetModel")
 	}
@@ -107,15 +113,6 @@ func (sqlite3DB *Sqlite3DB) Insert(ModelData model.Sqlite3Model) (sql.Result, er
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
-	}
-	ModelType := ModelValue.Type()
-
-	// 获取字段
-	if len(sqlite3DB.fields) == 0 {
-		sqlite3DB.fields = make([]string, ModelType.NumField())
-		for i := 0; i < ModelValue.NumField(); i++ {
-			sqlite3DB.fields[i] = ModelType.Field(i).Name
-		}
 	}
 
 	insertValues := make([]any, len(sqlite3DB.fields))
@@ -141,29 +138,24 @@ func (sqlite3DB *Sqlite3DB) Insert(ModelData model.Sqlite3Model) (sql.Result, er
 }
 
 // 查询语句
-func (sqlite3DB *Sqlite3DB) Where(query string, args ...any) *Sqlite3DB {
+func (sqlite3DB *SQLite3DB) Where(query string, args ...any) *SQLite3DB {
 	sqlite3DB.sql = query
 	sqlite3DB.args = args
 	return sqlite3DB
 }
 
 // 执行查询语句获取数据
-func (sqlite3DB *Sqlite3DB) Select(ModelSlice []any) error {
+func (sqlite3DB *SQLite3DB) Select() ([]model.SQLite3Model, error) {
+	var queryResult []model.SQLite3Model
+
 	if sqlite3DB.model == nil {
-		return errors.New("请先设置 SetModel")
+		return queryResult, errors.New("请先设置 SetModel")
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelType := reflect.TypeOf(sqlite3DB.model)
 	if ModelType.Kind() == reflect.Ptr {
 		ModelType = ModelType.Elem()
-	}
-
-	if len(sqlite3DB.fields) == 0 {
-		sqlite3DB.fields = make([]string, ModelType.NumField())
-		for i := 0; i < ModelType.NumField(); i++ {
-			sqlite3DB.fields[i] = ModelType.Field(i).Name
-		}
 	}
 
 	queryFields := make([]string, len(sqlite3DB.fields))
@@ -176,70 +168,56 @@ func (sqlite3DB *Sqlite3DB) Select(ModelSlice []any) error {
 	sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, sqlite3DB.sql)
 
 	rows, err := sqlite3DB.DB.Query(sqlite3DB.sql, sqlite3DB.args...)
-	if err != nil {
-		return err
-	} else if rows.Err() != nil {
-		return rows.Err()
-	}
 	defer rows.Close()
+	if err != nil {
+		return queryResult, err
+	} else if rows.Err() != nil {
+		return queryResult, rows.Err()
+	}
 
-	idx := 0
 	for rows.Next() {
-		if len(ModelSlice) == idx {
-			break
-		}
 		scanValues := make([]any, len(queryFields))
-		ModelData := reflect.New(ModelType).Interface()
-		ModelSlice[idx] = ModelData
+		ModelItem := reflect.New(ModelType)
 
-		ModelValue := reflect.ValueOf(ModelData)
-		if ModelValue.Kind() == reflect.Ptr {
-			ModelValue = ModelValue.Elem()
+		if ModelItem.Kind() == reflect.Ptr {
+			ModelItem = ModelItem.Elem()
 		}
 		for i, fieldName := range sqlite3DB.fields {
-			field := ModelValue.FieldByName(fieldName)
+			field := ModelItem.FieldByName(fieldName)
 			scanValues[i] = field.Addr().Interface()
 		}
 
 		err = rows.Scan(scanValues...)
 		if err != nil {
-			return err
+			return queryResult, err
 		}
-		idx += 1
+		queryResult = append(queryResult, ModelItem.Interface().(model.SQLite3Model))
 	}
-	for len(ModelSlice) != idx {
-		ModelData := reflect.New(ModelType).Interface()
-		ModelSlice[idx] = ModelData
-		idx += 1
-	}
-	return nil
+	return queryResult, nil
 }
 
 // 返回第一条数据
-func (sqlite3DB *Sqlite3DB) First(ModelData model.Sqlite3Model) error {
+func (sqlite3DB *SQLite3DB) First() (model.SQLite3Model, error) {
 	if sqlite3DB.model == nil {
-		return errors.New("请先设置 SetModel")
+		return nil, errors.New("请先设置 SetModel")
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
-	ModelValue := reflect.ValueOf(ModelData)
-	if ModelValue.Kind() == reflect.Ptr {
-		ModelValue = ModelValue.Elem()
+	ModelType := reflect.TypeOf(sqlite3DB.model)
+	if ModelType.Kind() == reflect.Ptr {
+		ModelType = ModelType.Elem()
 	}
-	ModelType := ModelValue.Type()
 
-	if len(sqlite3DB.fields) == 0 {
-		sqlite3DB.fields = make([]string, ModelType.NumField())
-		for i := 0; i < ModelType.NumField(); i++ {
-			sqlite3DB.fields[i] = ModelType.Field(i).Name
-		}
+	queryResult := reflect.New(ModelType)
+	if queryResult.Kind() == reflect.Ptr {
+		queryResult = queryResult.Elem()
 	}
 
 	queryFields := make([]string, len(sqlite3DB.fields))
 	scanValues := make([]any, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
-		field := ModelValue.FieldByName(fieldName)
+		field := queryResult.FieldByName(fieldName)
 		scanValues[i] = field.Addr().Interface()
 	}
 
@@ -249,20 +227,20 @@ func (sqlite3DB *Sqlite3DB) First(ModelData model.Sqlite3Model) error {
 
 	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
 	if row == nil {
-		return nil
+		return nil, nil
 	} else if row.Err() != nil {
-		return row.Err()
+		return nil, row.Err()
 	}
 
 	err := row.Scan(scanValues...)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return queryResult.Interface().(model.SQLite3Model), nil
 }
 
 // 更新数据，返回操作条数
-func (sqlite3DB *Sqlite3DB) Update(ModelData model.Sqlite3Model) (sql.Result, error) {
+func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, error) {
 	if sqlite3DB.model == nil {
 		return nil, errors.New("请先设置 SetModel 表")
 	}
@@ -274,15 +252,6 @@ func (sqlite3DB *Sqlite3DB) Update(ModelData model.Sqlite3Model) (sql.Result, er
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
-	}
-	ModelType := ModelValue.Type()
-
-	// 获取字段
-	if len(sqlite3DB.fields) == 0 {
-		sqlite3DB.fields = make([]string, ModelType.NumField())
-		for i := 0; i < ModelValue.NumField(); i++ {
-			sqlite3DB.fields[i] = ModelType.Field(i).Name
-		}
 	}
 
 	// 字段
@@ -309,7 +278,7 @@ func (sqlite3DB *Sqlite3DB) Update(ModelData model.Sqlite3Model) (sql.Result, er
 }
 
 // 删除数据，返回操作条数
-func (sqlite3DB *Sqlite3DB) Delete() (sql.Result, error) {
+func (sqlite3DB *SQLite3DB) Delete() (sql.Result, error) {
 	if sqlite3DB.model == nil {
 		return nil, errors.New("请先设置 SetModel 表")
 	}

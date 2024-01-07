@@ -79,6 +79,12 @@ func (mysqlDB *MySQLDB) Query(query string, args ...any) (*sql.Rows, error) {
 // 设置使用模型
 func (mysqlDB *MySQLDB) SetModel(model model.MySQLModel) *MySQLDB {
 	mysqlDB.model = model
+	ModelType := reflect.TypeOf(model)
+	// 获取字段
+	mysqlDB.fields = make([]string, ModelType.NumField())
+	for i := 0; i < ModelType.NumField(); i++ {
+		mysqlDB.fields[i] = ModelType.Field(i).Name
+	}
 	return mysqlDB
 }
 
@@ -98,15 +104,6 @@ func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
-	}
-	ModelType := ModelValue.Type()
-
-	// 获取字段
-	if len(mysqlDB.fields) == 0 {
-		mysqlDB.fields = make([]string, ModelType.NumField())
-		for i := 0; i < ModelValue.NumField(); i++ {
-			mysqlDB.fields[i] = ModelType.Field(i).Name
-		}
 	}
 
 	insertValues := make([]any, len(mysqlDB.fields))
@@ -140,22 +137,17 @@ func (mysqlDB *MySQLDB) Where(query string, args ...any) *MySQLDB {
 }
 
 // 执行查询语句获取数据
-func (mysqlDB *MySQLDB) Select(ModelSlice []any) error {
+func (mysqlDB *MySQLDB) Select() ([]model.MySQLModel, error) {
+	var queryResult []model.MySQLModel
+
 	if mysqlDB.model == nil {
-		return errors.New("请先设置 SetModel")
+		return queryResult, errors.New("请先设置 SetModel")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	ModelType := reflect.TypeOf(mysqlDB.model)
 	if ModelType.Kind() == reflect.Ptr {
 		ModelType = ModelType.Elem()
-	}
-
-	if len(mysqlDB.fields) == 0 {
-		mysqlDB.fields = make([]string, ModelType.NumField())
-		for i := 0; i < ModelType.NumField(); i++ {
-			mysqlDB.fields[i] = ModelType.Field(i).Name
-		}
 	}
 
 	queryFields := make([]string, len(mysqlDB.fields))
@@ -168,70 +160,56 @@ func (mysqlDB *MySQLDB) Select(ModelSlice []any) error {
 	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, mysqlDB.sql)
 
 	rows, err := mysqlDB.DB.Query(mysqlDB.sql, mysqlDB.args...)
-	if err != nil {
-		return err
-	} else if rows.Err() != nil {
-		return rows.Err()
-	}
 	defer rows.Close()
+	if err != nil {
+		return queryResult, err
+	} else if rows.Err() != nil {
+		return queryResult, rows.Err()
+	}
 
-	idx := 0
 	for rows.Next() {
-		if len(ModelSlice) == idx {
-			break
-		}
 		scanValues := make([]any, len(queryFields))
-		ModelData := reflect.New(ModelType).Interface()
-		ModelSlice[idx] = ModelData
+		ModelItem := reflect.New(ModelType)
 
-		ModelValue := reflect.ValueOf(ModelData)
-		if ModelValue.Kind() == reflect.Ptr {
-			ModelValue = ModelValue.Elem()
+		if ModelItem.Kind() == reflect.Ptr {
+			ModelItem = ModelItem.Elem()
 		}
 		for i, fieldName := range mysqlDB.fields {
-			field := ModelValue.FieldByName(fieldName)
+			field := ModelItem.FieldByName(fieldName)
 			scanValues[i] = field.Addr().Interface()
 		}
 
 		err = rows.Scan(scanValues...)
 		if err != nil {
-			return err
+			return queryResult, err
 		}
-		idx += 1
+		queryResult = append(queryResult, ModelItem.Interface().(model.MySQLModel))
 	}
-	for len(ModelSlice) != idx {
-		ModelData := reflect.New(ModelType).Interface()
-		ModelSlice[idx] = ModelData
-		idx += 1
-	}
-	return nil
+	return queryResult, nil
 }
 
 // 返回第一条数据
-func (mysqlDB *MySQLDB) First(ModelData model.MySQLModel) error {
+func (mysqlDB *MySQLDB) First() (model.MySQLModel, error) {
 	if mysqlDB.model == nil {
-		return errors.New("请先设置 SetModel")
+		return nil, errors.New("请先设置 SetModel")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
-	ModelValue := reflect.ValueOf(ModelData)
-	if ModelValue.Kind() == reflect.Ptr {
-		ModelValue = ModelValue.Elem()
+	ModelType := reflect.TypeOf(mysqlDB.model)
+	if ModelType.Kind() == reflect.Ptr {
+		ModelType = ModelType.Elem()
 	}
-	ModelType := ModelValue.Type()
 
-	if len(mysqlDB.fields) == 0 {
-		mysqlDB.fields = make([]string, ModelType.NumField())
-		for i := 0; i < ModelType.NumField(); i++ {
-			mysqlDB.fields[i] = ModelType.Field(i).Name
-		}
+	queryResult := reflect.New(ModelType)
+	if queryResult.Kind() == reflect.Ptr {
+		queryResult = queryResult.Elem()
 	}
 
 	queryFields := make([]string, len(mysqlDB.fields))
 	scanValues := make([]any, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
-		field := ModelValue.FieldByName(fieldName)
+		field := queryResult.FieldByName(fieldName)
 		scanValues[i] = field.Addr().Interface()
 	}
 
@@ -241,16 +219,16 @@ func (mysqlDB *MySQLDB) First(ModelData model.MySQLModel) error {
 
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 	if row == nil {
-		return nil
+		return nil, nil
 	} else if row.Err() != nil {
-		return row.Err()
+		return nil, row.Err()
 	}
 
 	err := row.Scan(scanValues...)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return queryResult.Interface().(model.MySQLModel), nil
 }
 
 // 更新数据，返回操作条数
@@ -266,15 +244,6 @@ func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
-	}
-	ModelType := ModelValue.Type()
-
-	// 获取字段
-	if len(mysqlDB.fields) == 0 {
-		mysqlDB.fields = make([]string, ModelType.NumField())
-		for i := 0; i < ModelValue.NumField(); i++ {
-			mysqlDB.fields[i] = ModelType.Field(i).Name
-		}
 	}
 
 	// 字段

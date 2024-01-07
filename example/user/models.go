@@ -16,13 +16,13 @@ func init() {
 	db.MySQLMigrate(MySQLMigrations)
 
 	// sqlite 数据库
-	Sqlite3Migrations := model.Sqlite3MakeMigrations{
+	SQLite3Migrations := model.SQLite3MakeMigrations{
 		DATABASES: []string{"all"},
-		MODELS: []model.Sqlite3Model{
+		MODELS: []model.SQLite3Model{
 			UserSqliteModel{},
 		},
 	}
-	db.Sqlite3Migrate(Sqlite3Migrations)
+	db.SQLite3Migrate(SQLite3Migrations)
 }
 
 // 用户表
@@ -78,13 +78,13 @@ type UserSqliteModel struct {
 }
 
 // 设置表配置
-func (UserSqliteModel) ModelSet() *model.Sqlite3Settings {
+func (UserSqliteModel) ModelSet() *model.SQLite3Settings {
 	encryptFields := []string{
 		"username",
 		"password",
 	}
 
-	modelSettings := &model.Sqlite3Settings{
+	modelSettings := &model.SQLite3Settings{
 		TABLE_NAME: "user_tb", // 设置表名
 
 		// 自定义配置
