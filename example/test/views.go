@@ -140,14 +140,7 @@ func TestContext(request *goi.Request) any {
 
 // 返回文件
 func TestFile(request *goi.Request) any {
-	baseDir, err := os.Getwd()
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusInternalServerError,
-			Data:   "获取目录失败！",
-		}
-	}
-	absolutePath := path.Join(baseDir, "template/test.txt")
+	absolutePath := path.Join(goi.Settings.BASE_DIR, "template/test.txt")
 	file, err := os.Open(absolutePath)
 	if err != nil {
 		file.Close()
