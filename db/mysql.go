@@ -137,7 +137,7 @@ func (mysqlDB *MySQLDB) Where(query string, args ...any) *MySQLDB {
 }
 
 // 执行查询语句获取数据
-func (mysqlDB *MySQLDB) Select() ([]model.MySQLModel, error) {
+func (mysqlDB *MySQLDB) Select() (any, error) {
 	var queryResult []model.MySQLModel
 
 	if mysqlDB.model == nil {
@@ -189,7 +189,7 @@ func (mysqlDB *MySQLDB) Select() ([]model.MySQLModel, error) {
 }
 
 // 返回第一条数据
-func (mysqlDB *MySQLDB) First() (model.MySQLModel, error) {
+func (mysqlDB *MySQLDB) First() (any, error) {
 	if mysqlDB.model == nil {
 		return nil, errors.New("请先设置 SetModel")
 	}

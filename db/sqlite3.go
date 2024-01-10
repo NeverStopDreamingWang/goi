@@ -145,7 +145,7 @@ func (sqlite3DB *SQLite3DB) Where(query string, args ...any) *SQLite3DB {
 }
 
 // 执行查询语句获取数据
-func (sqlite3DB *SQLite3DB) Select() ([]model.SQLite3Model, error) {
+func (sqlite3DB *SQLite3DB) Select() (any, error) {
 	var queryResult []model.SQLite3Model
 
 	if sqlite3DB.model == nil {
@@ -197,7 +197,7 @@ func (sqlite3DB *SQLite3DB) Select() ([]model.SQLite3Model, error) {
 }
 
 // 返回第一条数据
-func (sqlite3DB *SQLite3DB) First() (model.SQLite3Model, error) {
+func (sqlite3DB *SQLite3DB) First() (any, error) {
 	if sqlite3DB.model == nil {
 		return nil, errors.New("请先设置 SetModel")
 	}
