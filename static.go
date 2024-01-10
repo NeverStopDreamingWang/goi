@@ -4,23 +4,25 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 )
 
 // 静态文件处理函数
 func metaStaticHandler(request *Request) any {
-	staticPattern := request.PathParams.Get("staticPattern").(string)
 	staticPath := request.PathParams.Get("staticPath").(string)
 
-	absolutePath := path.Join(staticPattern, staticPath)
-	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
+	if staticPath[0] != '/' {
+		staticPath = filepath.Join(engine.Settings.BASE_DIR, staticPath)
+	}
+
+	if _, err := os.Stat(staticPath); os.IsNotExist(err) {
 		return Response{
 			Status: http.StatusNotFound,
 			Data:   nil,
 		}
 	}
-	file, err := os.Open(absolutePath)
+	file, err := os.Open(staticPath)
 	if err != nil {
 		file.Close()
 		return Response{
