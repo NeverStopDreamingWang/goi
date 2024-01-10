@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"net/http"
-	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
+// 路由视图
 type AsView struct {
 	GET     HandlerFunc
 	HEAD    HandlerFunc
@@ -20,18 +22,20 @@ type AsView struct {
 	CONNECT HandlerFunc
 	OPTIONS HandlerFunc
 	TRACE   HandlerFunc
-}
-
-type routerParam struct {
-	paramName string
-	paramType string
+	File    string   // 文件
+	DIR     http.Dir // 文件夹
 }
 
 // 路由表
 type metaRouter struct {
 	includeRouter map[string]*metaRouter // 子路由
 	viewSet       AsView                 // 视图方法
-	staticPattern string                 // 是否是静态路由
+}
+
+// 路由参数
+type routerParam struct {
+	paramName string
+	paramType string
 }
 
 // 创建路由
@@ -39,18 +43,17 @@ func newRouter() *metaRouter {
 	return &metaRouter{
 		includeRouter: make(map[string]*metaRouter),
 		viewSet:       AsView{},
-		staticPattern: "",
 	}
 }
 
-// 添加父路由
-func (router *metaRouter) Include(UrlPath string) *metaRouter {
+// 判断路由是否被注册
+func (router *metaRouter) isUrl(UrlPath string) {
 	if _, ok := router.includeRouter[UrlPath]; ok {
 		panic(fmt.Sprintf("路由已存在: %s\n", UrlPath))
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) == 0 && Irouter.staticPattern == "" {
+		if len(Irouter.includeRouter) == 0 && Irouter.viewSet.File == "" && Irouter.viewSet.DIR == "" {
 			re = regexp.MustCompile(includePatternUri + "%")
 		} else {
 			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
@@ -59,64 +62,46 @@ func (router *metaRouter) Include(UrlPath string) *metaRouter {
 			panic(fmt.Sprintf("%s 中包含的子路由已被注册: %s\n", UrlPath, includePatternUri))
 		}
 	}
+}
+
+// 添加父路由
+func (router *metaRouter) Include(UrlPath string) *metaRouter {
+	router.isUrl(UrlPath)
 	router.includeRouter[UrlPath] = &metaRouter{
 		includeRouter: make(map[string]*metaRouter),
 		viewSet:       AsView{},
-		staticPattern: "",
 	}
 	return router.includeRouter[UrlPath]
 }
 
 // 添加路由
 func (router *metaRouter) UrlPatterns(UrlPath string, view AsView) {
-	if _, ok := router.includeRouter[UrlPath]; ok {
-		panic(fmt.Sprintf("路由已存在: %s\n", UrlPath))
-	}
-	var re *regexp.Regexp
-	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) == 0 && Irouter.staticPattern == "" {
-			re = regexp.MustCompile(includePatternUri + "%")
-		} else {
-			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
-		}
-		if len(re.FindStringSubmatch(UrlPath)) != 0 {
-			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", UrlPath, includePatternUri))
-		}
-	}
-
+	router.isUrl(UrlPath)
 	router.includeRouter[UrlPath] = &metaRouter{
-		includeRouter: make(map[string]*metaRouter),
+		includeRouter: nil,
 		viewSet:       view,
-		staticPattern: "",
 	}
 }
 
-// 添加静态路由
-func (router *metaRouter) StaticUrlPatterns(UrlPath string, StaticUrlPath string) {
-	if _, ok := router.includeRouter[UrlPath]; ok {
-		panic(fmt.Sprintf("静态映射路由已存在: %s\n", UrlPath))
-	}
-	var re *regexp.Regexp
-	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) == 0 && Irouter.staticPattern == "" {
-			re = regexp.MustCompile(includePatternUri + "%")
-		} else {
-			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
-		}
-		if len(re.FindStringSubmatch(UrlPath)) != 0 {
-			panic(fmt.Sprintf("%s 中的父路由已被注册: %s\n", UrlPath, includePatternUri))
-		}
-	}
-	dir, _ := os.Getwd()
-	absolutePath := path.Join(dir, StaticUrlPath)
-	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
-		panic(fmt.Sprintf("静态映射路径不存在: %s\n", StaticUrlPath))
-	}
-
+// 添加文件静态路由
+func (router *metaRouter) StaticFilePatterns(UrlPath string, FilePath string) {
+	router.isUrl(UrlPath)
 	router.includeRouter[UrlPath] = &metaRouter{
-		includeRouter: make(map[string]*metaRouter),
-		viewSet:       AsView{GET: metaStaticHandler},
-		staticPattern: absolutePath,
+		includeRouter: nil,
+		viewSet:       AsView{GET: metaStaticHandler, File: FilePath},
+	}
+}
+
+// 添加文件夹静态路由
+func (router *metaRouter) StaticDirPatterns(UrlPath string, DirPath http.Dir) {
+	router.isUrl(UrlPath)
+
+	if DirPath == "" {
+		DirPath = "."
+	}
+	router.includeRouter[UrlPath] = &metaRouter{
+		includeRouter: nil,
+		viewSet:       AsView{GET: metaStaticHandler, DIR: DirPath},
 	}
 }
 
@@ -164,19 +149,25 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 	var re *regexp.Regexp
 	for includePatternUri, router := range includeRouter {
 		params, converterPattern := routerParse(includePatternUri)
+		var reString string
 		if len(params) == 0 { // 无参数直接匹配
-			if len(router.includeRouter) == 0 && router.staticPattern == "" {
-				re = regexp.MustCompile(includePatternUri + "$")
+			if len(router.includeRouter) == 0 || router.viewSet.File != "" {
+				reString = includePatternUri + ""
+			} else if strings.HasSuffix(includePatternUri, "/") == false {
+				reString = includePatternUri + "/"
 			} else {
-				re = regexp.MustCompile(includePatternUri + "/")
+				reString = includePatternUri
 			}
 		} else {
-			if len(router.includeRouter) == 0 && router.staticPattern == "" {
-				re = regexp.MustCompile(converterPattern + "$")
+			if len(router.includeRouter) == 0 || router.viewSet.File != "" {
+				reString = converterPattern + "$"
+			} else if strings.HasSuffix(includePatternUri, "/") == false {
+				reString = converterPattern + "/"
 			} else {
-				re = regexp.MustCompile(converterPattern + "/")
+				reString = converterPattern
 			}
 		}
+		re = regexp.MustCompile(reString)
 
 		paramsSlice := re.FindStringSubmatch(requestPattern)
 		if len(paramsSlice)-1 != len(params) || len(paramsSlice) == 0 {
@@ -188,9 +179,14 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 			value := parseValue(param.paramType, paramsSlice[i])
 			PathParams[param.paramName] = append(PathParams[param.paramName], value) // 添加参数
 		}
-		if router.staticPattern != "" { // 静态路由映射
-			PathParams["staticPattern"] = append(PathParams["staticPattern"], router.staticPattern)
-			PathParams["staticPath"] = append(PathParams["static"], requestPattern[len(includePatternUri):])
+		if router.viewSet.DIR != "" { // 静态路由映射
+			fileName := path.Clean("/" + requestPattern[len(includePatternUri):])
+			dir := string(router.viewSet.DIR)
+			filePath := filepath.Join(dir, fileName)
+			PathParams["staticPath"] = append(PathParams["static"], filePath)
+			return router.viewSet, true
+		} else if router.viewSet.File != "" {
+			PathParams["staticPath"] = append(PathParams["static"], router.viewSet.File)
 			return router.viewSet, true
 		} else if len(router.includeRouter) == 0 { // API
 			return router.viewSet, true
@@ -237,17 +233,5 @@ func parseValue(paramType string, paramValue string) any {
 		return value
 	default:
 		return paramValue
-	}
-}
-
-func createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc {
-	fileServer := http.StripPrefix(relativePath, http.FileServer(fs))
-	return func(request *Request) any {
-		file := request.PathParams.Get("static").(string)
-		// Check if file exists and/or if we have permission to access it
-		if _, err := fs.Open(file); err != nil {
-			return Response{Status: http.StatusNotFound, Data: ""}
-		}
-		return fileServer.ServeHTTP
 	}
 }
