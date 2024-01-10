@@ -37,9 +37,9 @@ func TestModelList(request *goi.Request) any {
 		}
 	}
 
-	for i, item := range resultSlice {
-		// user := item.(UserModel) // mysql 数据库
-		user := item.(UserSqliteModel) // sqlite3 数据库
+	// userSlice := resultSlice.([]UserModel) // mysql 数据库
+	userSlice := resultSlice.([]UserSqliteModel) // sqlite3 数据库
+	for i, user := range userSlice {
 		// *user.Username = "test"
 		fmt.Println(i)
 		if user.Id != nil {
