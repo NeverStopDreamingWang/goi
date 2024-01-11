@@ -111,7 +111,7 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 
 		// 获取所有表
 		TabelSclie := make([]string, 0)
-		rows, err := sqlite3DB.Query("SELECT name FROM sqlite_master WHERE type='table';")
+		rows, err := sqlite3DB.Query("SELECT name FROM sqlite_master WHERE type='table' AND name not in ('sqlite_master','sqlite_sequence');")
 		if err != nil {
 			panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 		}
