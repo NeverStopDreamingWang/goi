@@ -93,13 +93,13 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 					goi.Log.MetaLog(fmt.Sprintf("正在更新 SQLite3: %v 数据库: %v 表: %v ", DBName, Database.NAME, TableName))
 
 					oldTableName := fmt.Sprintf("%v_%v", TableName, goi.Version())
-					goi.Log.MetaLog(fmt.Sprintf("重命名旧表：%v...", oldTableName))
+					goi.Log.MetaLog(fmt.Sprintf("- 重命名旧表：%v...", oldTableName))
 					_, err = sqlite3DB.Execute(fmt.Sprintf("ALTER TABLE `%v` RENAME TO `%v`;", TableName, oldTableName))
 					if err != nil {
 						panic(fmt.Sprintf("重命名旧表错误: %v", err))
 					}
 
-					goi.Log.MetaLog(fmt.Sprintf("创建新表：%v...", oldTableName))
+					goi.Log.MetaLog(fmt.Sprintf("- 创建新表：%v...", oldTableName))
 					_, err = sqlite3DB.Execute(createSql)
 					if err != nil {
 						panic(fmt.Sprintf("创建新表错误: %v", err))
@@ -129,7 +129,7 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 					}
 					_ = rows.Close()
 
-					goi.Log.MetaLog("迁移数据...")
+					goi.Log.MetaLog("- 迁移数据...")
 					migrateFieldSql := strings.Join(TabelFieldSlice, ",")
 					migrateSql := fmt.Sprintf("INSERT INTO `%v` (%v) SELECT %v FROM `%v`;", TableName, migrateFieldSql, migrateFieldSql, oldTableName)
 					_, err = sqlite3DB.Execute(migrateSql)
