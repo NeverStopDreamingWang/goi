@@ -1,28 +1,28 @@
 package user
 
 import (
-	"github.com/NeverStopDreamingWang/goi/db"
+	"github.com/NeverStopDreamingWang/goi/migrate"
 	"github.com/NeverStopDreamingWang/goi/model"
 )
 
 func init() {
 	// MySQL 数据库
 	MySQLMigrations := model.MySQLMakeMigrations{
-		DATABASES: []string{"all"},
+		DATABASES: []string{"default"},
 		MODELS: []model.MySQLModel{
 			UserModel{},
 		},
 	}
-	db.MySQLMigrate(MySQLMigrations)
+	migrate.MySQLMigrate(MySQLMigrations)
 
 	// sqlite 数据库
 	SQLite3Migrations := model.SQLite3MakeMigrations{
-		DATABASES: []string{"all"},
+		DATABASES: []string{"sqlite_1"},
 		MODELS: []model.SQLite3Model{
 			UserSqliteModel{},
 		},
 	}
-	db.SQLite3Migrate(SQLite3Migrations)
+	migrate.SQLite3Migrate(SQLite3Migrations)
 }
 
 // 用户表
@@ -45,7 +45,7 @@ func (UserModel) ModelSet() *model.MySQLSettings {
 		TABLE_NAME:      "user_tb",            // 设置表名
 		ENGINE:          "InnoDB",             // 设置存储引擎，默认: InnoDB
 		AUTO_INCREMENT:  2,                    // 设置自增长起始值
-		COMMENT:         "用户表",                // 设置表注释
+		COMMENT:         "用户表",             // 设置表注释
 		DEFAULT_CHARSET: "utf8mb4",            // 设置默认字符集，如: utf8mb4
 		COLLATE:         "utf8mb4_0900_ai_ci", // 设置校对规则，如 utf8mb4_0900_ai_ci;
 		ROW_FORMAT:      "",                   // 设置行的存储格式，如 DYNAMIC, COMPACT, FULL.
@@ -75,6 +75,7 @@ type UserSqliteModel struct {
 	Password    *string `field:"TEXT" json:"password"`
 	Create_time *string `field:"TEXT NOT NULL" json:"create_time"`
 	Update_time *string `field:"TEXT" json:"update_time"`
+	// Test         *string `field:"TEXT" json:"txt"` // 更新表字段
 }
 
 // 设置表配置
