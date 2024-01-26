@@ -110,7 +110,6 @@ func (logger *MetaLogger) loggerInfoFileInit() {
 		panic(fmt.Sprintln("初始化[INFO]日志错误: ", err))
 	}
 	logger.loggerInfoFile = defaultLog.New(logger.outInfoFile, "", 0)
-	logger.loggerInfoFile.SetFlags(0)
 	logger.createInfoTime = time.Now().In(Settings.LOCATION)
 }
 
@@ -192,7 +191,6 @@ func (logger *MetaLogger) loggerAccessFileInit() {
 		panic(fmt.Sprintln("初始化[ACCESS]日志错误: ", err))
 	}
 	logger.loggerAccessFile = defaultLog.New(logger.outAccessFile, "", 0)
-	logger.loggerAccessFile.SetFlags(0)
 	logger.createAccessTime = time.Now().In(Settings.LOCATION)
 }
 
@@ -274,7 +272,6 @@ func (logger *MetaLogger) loggerErrorFileInit() {
 		panic(fmt.Sprintln("初始化[ERROR]日志错误: ", err))
 	}
 	logger.loggerErrorFile = defaultLog.New(logger.outErrorFile, "", 0)
-	logger.loggerErrorFile.SetFlags(0)
 	logger.createErrorTime = time.Now().In(Settings.LOCATION)
 }
 
