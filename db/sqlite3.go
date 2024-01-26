@@ -60,17 +60,17 @@ func (sqlite3DB *SQLite3DB) Execute(query string, args ...any) (sql.Result, erro
 	// 执行SQL语句
 	result, err := transaction.Exec(query, args...)
 	if err != nil {
-		err = transaction.Rollback() // 回滚事务
-		if err != nil {
-			return nil, err
+		rollErr := transaction.Rollback() // 回滚事务
+		if rollErr != nil {
+			return result, rollErr
 		}
-		return nil, err
+		return result, err
 	}
 
 	// 提交事务
 	err = transaction.Commit()
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
 	return result, err
@@ -145,11 +145,10 @@ func (sqlite3DB *SQLite3DB) Where(query string, args ...any) *SQLite3DB {
 }
 
 // 执行查询语句获取数据
-func (sqlite3DB *SQLite3DB) Select() (any, error) {
-	var queryResult []model.SQLite3Model
+func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 
 	if sqlite3DB.model == nil {
-		return queryResult, errors.New("请先设置 SetModel")
+		return errors.New("请先设置 SetModel")
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
@@ -170,9 +169,9 @@ func (sqlite3DB *SQLite3DB) Select() (any, error) {
 	rows, err := sqlite3DB.DB.Query(sqlite3DB.sql, sqlite3DB.args...)
 	defer rows.Close()
 	if err != nil {
-		return queryResult, err
+		return err
 	} else if rows.Err() != nil {
-		return queryResult, rows.Err()
+		return rows.Err()
 	}
 
 	for rows.Next() {
@@ -189,11 +188,11 @@ func (sqlite3DB *SQLite3DB) Select() (any, error) {
 
 		err = rows.Scan(scanValues...)
 		if err != nil {
-			return queryResult, err
+			return err
 		}
-		queryResult = append(queryResult, ModelItem.Interface().(model.SQLite3Model))
+		// queryResult = append(queryResult, ModelItem.Interface())
 	}
-	return queryResult, nil
+	return nil
 }
 
 // 返回第一条数据

@@ -51,9 +51,9 @@ func (mysqlDB *MySQLDB) Execute(query string, args ...any) (sql.Result, error) {
 	// 执行SQL语句
 	result, err := transaction.Exec(query, args...)
 	if err != nil {
-		err = transaction.Rollback() // 回滚事务
-		if err != nil {
-			return nil, err
+		rollErr := transaction.Rollback() // 回滚事务
+		if rollErr != nil {
+			return result, rollErr
 		}
 		return result, err
 	}
