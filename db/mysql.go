@@ -137,98 +137,106 @@ func (mysqlDB *MySQLDB) Where(query string, args ...any) *MySQLDB {
 }
 
 // 执行查询语句获取数据
-func (mysqlDB *MySQLDB) Select() (any, error) {
-	var queryResult []model.MySQLModel
-
+func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 	if mysqlDB.model == nil {
-		return queryResult, errors.New("请先设置 SetModel")
+		return errors.New("请先设置 SetModel")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
-	ModelType := reflect.TypeOf(mysqlDB.model)
-	if ModelType.Kind() == reflect.Ptr {
-		ModelType = ModelType.Elem()
+	var (
+		isPtr      bool
+		resultType reflect.Type
+		result     = reflect.ValueOf(queryResult)
+	)
+	if result.Kind() == reflect.Ptr {
+		result = result.Elem()
+	}
+
+	if kind := result.Kind(); kind != reflect.Slice {
+		return errors.New("查询结果不是一个切片")
+	}
+
+	result.Set(reflect.MakeSlice(result.Type(), 0, 0))
+
+	resultType = result.Type().Elem()
+	if resultType.Kind() == reflect.Ptr {
+		isPtr = true
+		resultType = resultType.Elem()
 	}
 
 	queryFields := make([]string, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
-
 	fieldsSQl := strings.Join(queryFields, "`,`")
-
 	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, mysqlDB.sql)
-
 	rows, err := mysqlDB.DB.Query(mysqlDB.sql, mysqlDB.args...)
 	defer rows.Close()
 	if err != nil {
-		return queryResult, err
+		return err
 	} else if rows.Err() != nil {
-		return queryResult, rows.Err()
+		return rows.Err()
 	}
 
 	for rows.Next() {
-		scanValues := make([]any, len(queryFields))
-		ModelItem := reflect.New(ModelType)
+		values := make([]interface{}, len(mysqlDB.fields))
 
-		if ModelItem.Kind() == reflect.Ptr {
-			ModelItem = ModelItem.Elem()
-		}
+		item := reflect.New(resultType).Elem()
+
 		for i, fieldName := range mysqlDB.fields {
-			field := ModelItem.FieldByName(fieldName)
-			scanValues[i] = field.Addr().Interface()
+			field := item.FieldByName(fieldName)
+			values[i] = field.Addr().Interface()
 		}
 
-		err = rows.Scan(scanValues...)
+		err = rows.Scan(values...)
 		if err != nil {
-			return queryResult, err
+			return err
 		}
-		queryResult = append(queryResult, ModelItem.Interface().(model.MySQLModel))
+		if isPtr {
+			result.Set(reflect.Append(result, item.Addr()))
+		} else {
+			result.Set(reflect.Append(result, item))
+		}
 	}
-	return queryResult, nil
+	return nil
 }
 
 // 返回第一条数据
-func (mysqlDB *MySQLDB) First() (any, error) {
+func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	if mysqlDB.model == nil {
-		return nil, errors.New("请先设置 SetModel")
+		return errors.New("请先设置 SetModel")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
-	ModelType := reflect.TypeOf(mysqlDB.model)
-	if ModelType.Kind() == reflect.Ptr {
-		ModelType = ModelType.Elem()
-	}
-
-	queryResult := reflect.New(ModelType)
-	if queryResult.Kind() == reflect.Ptr {
-		queryResult = queryResult.Elem()
+	result := reflect.ValueOf(queryResult)
+	if result.Kind() == reflect.Ptr {
+		result = result.Elem()
 	}
 
 	queryFields := make([]string, len(mysqlDB.fields))
-	scanValues := make([]any, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
-		field := queryResult.FieldByName(fieldName)
-		scanValues[i] = field.Addr().Interface()
 	}
-
 	fieldsSQl := strings.Join(queryFields, "`,`")
-
 	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, mysqlDB.sql)
-
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 	if row == nil {
-		return nil, nil
+		return nil
 	} else if row.Err() != nil {
-		return nil, row.Err()
+		return row.Err()
 	}
 
-	err := row.Scan(scanValues...)
-	if err != nil {
-		return nil, err
+	values := make([]interface{}, len(mysqlDB.fields))
+	for i, fieldName := range mysqlDB.fields {
+		field := result.FieldByName(fieldName)
+		values[i] = field.Addr().Interface()
 	}
-	return queryResult.Interface().(model.MySQLModel), nil
+
+	err := row.Scan(values...)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // 更新数据，返回操作条数

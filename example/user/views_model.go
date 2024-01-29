@@ -23,12 +23,14 @@ func TestModelList(request *goi.Request) any {
 	}
 
 	// mysql 数据库
-	// mysqlObj.SetModel(UserModel{})                                                              // 设置操作表
-	// resultSlice, err := mysqlObj.Fields("Id", "Username", "Password").Where("id>?", 1).Select()
+	// var userSlice []UserModel
+	// mysqlObj.SetModel(UserModel{}) // 设置操作表
+	// err = mysqlObj.Fields("Id", "Username", "Password").Where("id>?", 1).Select(&userSlice)
 
 	// sqlite3 数据库
+	var userSlice []UserSqliteModel
 	SQLite3DB.SetModel(UserSqliteModel{})
-	resultSlice, err := SQLite3DB.Fields("Id", "Username", "Password").Where("id>? limit 1, 2", 1).Select()
+	err = SQLite3DB.Fields("Id", "Username", "Password").Where("id>? limit 1, 2", 1).Select(&userSlice)
 
 	if err != nil {
 		return goi.Response{
@@ -37,8 +39,6 @@ func TestModelList(request *goi.Request) any {
 		}
 	}
 
-	// userSlice := resultSlice.([]UserModel) // mysql 数据库
-	userSlice := resultSlice.([]UserSqliteModel) // sqlite3 数据库
 	for i, user := range userSlice {
 		// *user.Username = "test"
 		fmt.Println(i)
@@ -56,7 +56,7 @@ func TestModelList(request *goi.Request) any {
 		}
 	}
 
-	jsonData, err := json.Marshal(resultSlice)
+	jsonData, err := json.Marshal(userSlice)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -94,12 +94,14 @@ func TestModelRetrieve(request *goi.Request) any {
 	}
 
 	// mysql 数据库
-	// mysqlObj.SetModel(UserModel{})                                                  // 设置操作表
-	// result, err := mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First()
+	// user := UserModel{}
+	// mysqlObj.SetModel(UserModel{}) // 设置操作表
+	// err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(&user)
 
 	// sqlite3 数据库
+	user := UserSqliteModel{}
 	SQLite3DB.SetModel(UserSqliteModel{})
-	result, err := SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).First()
+	err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).First(&user)
 
 	if err != nil {
 		return goi.Response{
@@ -107,8 +109,6 @@ func TestModelRetrieve(request *goi.Request) any {
 			Data:   err.Error(),
 		}
 	}
-	// user := result.(UserModel)
-	user := result.(UserSqliteModel)
 	if user.Id != nil {
 		fmt.Println("Id", *user.Id)
 	}
@@ -244,12 +244,8 @@ func TestModelUpdate(request *goi.Request) any {
 	// result, err := mysqlObj.Fields("Username").Where("id=?", user_id).Update(update_user) // 更新指定字段
 
 	// sqlite3 数据库
-	update_user := &UserSqliteModel{
-		Username:    &username,
-		Update_time: &update_time,
-	}
 	SQLite3DB.SetModel(UserSqliteModel{})
-	result, err := SQLite3DB.Where("id=?", user_id).Update(update_user)
+	result, err := SQLite3DB.Where("id=?", user_id).Update(UserSqliteModel{Username: &username, Update_time: &update_time})
 
 	if err != nil {
 		return goi.Response{
@@ -277,16 +273,15 @@ func TestModelUpdate(request *goi.Request) any {
 	fmt.Println("rowNum", rowNum)
 
 	// sqlite3 数据库
+	user := UserSqliteModel{}
 	SQLite3DB.SetModel(UserSqliteModel{})
-	queryResult, err := SQLite3DB.Where("id=?", user_id).First()
+	err = SQLite3DB.Where("id=?", user_id).First(&user)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   err.Error(),
 		}
 	}
-	user := queryResult.(UserSqliteModel)
-
 	if user.Id != nil {
 		fmt.Println("Id", *user.Id)
 	}
