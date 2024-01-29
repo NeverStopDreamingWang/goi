@@ -5,6 +5,27 @@ import (
 	"net/http"
 )
 
+type Request struct {
+	Object      *http.Request
+	Context     context.Context // 请求上下文
+	PathParams  metaValues      // 路由参数
+	QueryParams metaValues      // 查询字符串参数
+	BodyParams  metaValues      // Body 传参
+}
+
+// 请求响应数据
+type Response struct {
+	Status int
+	Data   any
+}
+
+// 内置响应数据格式
+type Data struct {
+	Status int    `json:"status"`
+	Msg    string `json:"msg"`
+	Data   any    `json:"data"`
+}
+
 type metaValues map[string][]any
 
 // 根据键获取一个值, 获取不到返回 nil
@@ -38,25 +59,4 @@ func (values metaValues) Del(key string) {
 func (values metaValues) Has(key string) bool {
 	_, ok := values[key]
 	return ok
-}
-
-type Request struct {
-	Object      *http.Request
-	Context     context.Context // 请求上下文
-	PathParams  metaValues      // 路由参数
-	QueryParams metaValues      // 查询字符串参数
-	BodyParams  metaValues      // Body 传参
-}
-
-// 内置响应数据格式
-type Data struct {
-	Status int    `json:"status"`
-	Msg    string `json:"msg"`
-	Data   any    `json:"data"`
-}
-
-// 请求响应数据
-type Response struct {
-	Status int
-	Data   any
 }
