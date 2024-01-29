@@ -46,8 +46,8 @@ func init() {
 	}
 
 	// 设置时区
-	Server.Settings.TIME_ZONE = "America/New_York" // 默认 Asia/Shanghai
-	// Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai
+	Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai
+	// Server.Settings.TIME_ZONE = "America/New_York"
 
 	// 设置自定义配置
 	// redis配置
