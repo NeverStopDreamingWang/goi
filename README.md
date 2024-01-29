@@ -167,7 +167,7 @@ func TestModelList(request *goi.Request) any {
 			Data:   err.Error(),
 		}
 	}
-    ...
+	...
 }
 ```
 
