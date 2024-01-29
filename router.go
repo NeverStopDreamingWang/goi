@@ -152,7 +152,7 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 		var reString string
 		if len(params) == 0 { // 无参数直接匹配
 			if len(router.includeRouter) == 0 || router.viewSet.File != "" {
-				reString = includePatternUri + ""
+				reString = includePatternUri + "&"
 			} else if strings.HasSuffix(includePatternUri, "/") == false {
 				reString = includePatternUri + "/"
 			} else {
