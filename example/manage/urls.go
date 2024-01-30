@@ -1,3 +1,0 @@
-package manage
-
-func init() {}
