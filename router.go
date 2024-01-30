@@ -53,7 +53,7 @@ func (router *metaRouter) isUrl(UrlPath string) {
 	}
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) == 0 && Irouter.viewSet.File == "" && Irouter.viewSet.DIR == "" {
+		if len(Irouter.includeRouter) == 0 || Irouter.viewSet.File != "" {
 			re = regexp.MustCompile(includePatternUri + "%")
 		} else {
 			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
