@@ -61,7 +61,7 @@ type MetaCache struct {
 	dict              map[string]*list.Element
 }
 
-type CacheItems struct {
+type cacheItems struct {
 	key       string
 	valueType reflect.Type
 	byteValue []byte
@@ -98,7 +98,7 @@ func (cache *MetaCache) initCache() {
 // Get 查找键的值
 func (cache *MetaCache) Get(key string) (any, bool) {
 	if element, ok := cache.dict[key]; ok {
-		cacheItem := element.Value.(*CacheItems)
+		cacheItem := element.Value.(*cacheItems)
 
 		nowTime := time.Now().In(Settings.LOCATION)                         // 获取当前时间
 		if cacheItem.expires.IsZero() || cacheItem.expires.After(nowTime) { // 判断是否过期
@@ -144,7 +144,7 @@ func (cache *MetaCache) Set(key string, value any, expires int) {
 		}
 	}
 	if element, ok := cache.dict[key]; ok {
-		cacheItem := element.Value.(*CacheItems)
+		cacheItem := element.Value.(*cacheItems)
 		cacheItem.mutex.Lock()
 
 		cache.used_size += int64(buffer.Len() - len(cacheItem.byteValue))
@@ -153,7 +153,7 @@ func (cache *MetaCache) Set(key string, value any, expires int) {
 		cacheItem.expires = expiresTime
 		cacheItem.mutex.Unlock()
 	} else {
-		cacheItem := &CacheItems{
+		cacheItem := &cacheItems{
 			key:       key,
 			valueType: reflect.TypeOf(value),
 			byteValue: buffer.Bytes(),
@@ -175,7 +175,7 @@ func (cache *MetaCache) Set(key string, value any, expires int) {
 // Del 删除键值
 func (cache *MetaCache) Del(key string) {
 	if element, ok := cache.dict[key]; ok {
-		cacheItem := element.Value.(*CacheItems)
+		cacheItem := element.Value.(*cacheItems)
 
 		cache.list.Remove(element)
 		delete(cache.dict, key)
@@ -186,7 +186,7 @@ func (cache *MetaCache) Del(key string) {
 // DelExp 删除过期的 key， 如果 key 已过期则删除返回 true，未过期则不会删除返回 false
 func (cache *MetaCache) DelExp(key string) bool {
 	if element, ok := cache.dict[key]; ok {
-		cacheItem := element.Value.(*CacheItems)
+		cacheItem := element.Value.(*cacheItems)
 
 		cache.list.Remove(element)
 		nowTime := time.Now().In(Settings.LOCATION) // 获取当前时间
@@ -222,7 +222,7 @@ func (cache *MetaCache) cacheEvict() {
 			var totalUnix int64
 			var i int64 = 0
 			for _, element := range cache.dict {
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 				totalUnix += cacheItem.lru.Unix()
 				i++
 				if i >= num {
@@ -240,7 +240,7 @@ func (cache *MetaCache) cacheEvict() {
 				if cache.MAX_SIZE > cache.used_size {
 					break
 				}
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 
 				if averageUnix > cacheItem.lru.Unix() {
 					cache.list.Remove(element)
@@ -261,7 +261,7 @@ func (cache *MetaCache) cacheEvict() {
 			var totalCounter int64
 			var i int64 = 0
 			for _, element := range cache.dict {
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 				totalCounter += int64(cacheItem.lfu)
 				i++
 				if i >= num {
@@ -279,7 +279,7 @@ func (cache *MetaCache) cacheEvict() {
 				if cache.MAX_SIZE > cache.used_size {
 					break
 				}
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 
 				if averageCounter > cacheItem.lfu {
 					cache.list.Remove(element)
@@ -297,7 +297,7 @@ func (cache *MetaCache) cacheEvict() {
 			if cache.MAX_SIZE > cache.used_size {
 				break
 			}
-			if cacheItem := element.Value.(*CacheItems); cacheItem.expires.IsZero() {
+			if cacheItem := element.Value.(*cacheItems); cacheItem.expires.IsZero() {
 				continue
 			}
 			cache.Del(key)
@@ -309,7 +309,7 @@ func (cache *MetaCache) cacheEvict() {
 			var totalUnix int64
 			var i int64 = 0
 			for _, element := range cache.dict {
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
 					continue
 				}
@@ -330,7 +330,7 @@ func (cache *MetaCache) cacheEvict() {
 				if cache.MAX_SIZE > cache.used_size {
 					break
 				}
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
 					continue
 				}
@@ -353,7 +353,7 @@ func (cache *MetaCache) cacheEvict() {
 			var totalCounter int64
 			var i int64 = 0
 			for _, element := range cache.dict {
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
 					continue
 				}
@@ -374,7 +374,7 @@ func (cache *MetaCache) cacheEvict() {
 				if cache.MAX_SIZE > cache.used_size {
 					break
 				}
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
 					continue
 				}
@@ -397,7 +397,7 @@ func (cache *MetaCache) cacheEvict() {
 			var totalUnix int64
 			var i int64 = 0
 			for _, element := range cache.dict {
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
 					continue
 				}
@@ -418,7 +418,7 @@ func (cache *MetaCache) cacheEvict() {
 				if cache.MAX_SIZE > cache.used_size {
 					break
 				}
-				cacheItem := element.Value.(*CacheItems)
+				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
 					continue
 				}
