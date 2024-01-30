@@ -49,13 +49,6 @@ func init() {
 	Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai
 	// Server.Settings.TIME_ZONE = "America/New_York"
 
-	// 设置自定义配置
-	// redis配置
-	Server.Settings.Set("REDIS_HOST", "127.0.0.1")
-	Server.Settings.Set("REDIS_PORT", 6379)
-	Server.Settings.Set("REDIS_PASSWORD", "123")
-	Server.Settings.Set("REDIS_DB", 0)
-
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
 	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
@@ -86,6 +79,13 @@ func init() {
 	// // 设置日志前缀为空
 	// log.SetFlags(0)
 	// // defer log_file.Close()
+
+	// 设置自定义配置
+	// redis配置
+	Server.Settings.Set("REDIS_HOST", "127.0.0.1")
+	Server.Settings.Set("REDIS_PORT", 6379)
+	Server.Settings.Set("REDIS_PASSWORD", "123")
+	Server.Settings.Set("REDIS_DB", 0)
 
 	Server.Init()
 }
