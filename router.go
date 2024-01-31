@@ -51,15 +51,32 @@ func (router *metaRouter) isUrl(UrlPath string) {
 	if _, ok := router.includeRouter[UrlPath]; ok {
 		panic(fmt.Sprintf("路由已存在: %s\n", UrlPath))
 	}
+
 	var re *regexp.Regexp
 	for includePatternUri, Irouter := range router.includeRouter {
-		if len(Irouter.includeRouter) == 0 || Irouter.viewSet.File != "" {
-			re = regexp.MustCompile(includePatternUri + "%")
+		params, converterPattern := routerParse(includePatternUri)
+		var reString string
+		if len(params) == 0 { // 无参数直接匹配
+			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.File != "" {
+				reString = includePatternUri + "&"
+			} else if strings.HasSuffix(includePatternUri, "/") == false {
+				reString = includePatternUri + "/"
+			} else {
+				reString = includePatternUri
+			}
 		} else {
-			re = regexp.MustCompile(includePatternUri + "/") // 拥有子路由,或静态路径
+			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.File != "" {
+				reString = converterPattern + "$"
+			} else if strings.HasSuffix(includePatternUri, "/") == false {
+				reString = converterPattern + "/"
+			} else {
+				reString = converterPattern
+			}
 		}
+		re = regexp.MustCompile(reString)
+
 		if len(re.FindStringSubmatch(UrlPath)) != 0 {
-			panic(fmt.Sprintf("%s 中包含的子路由已被注册: %s\n", UrlPath, includePatternUri))
+			panic(fmt.Sprintf("%s 冲突路由: %s\n", UrlPath, includePatternUri))
 		}
 	}
 }
@@ -147,11 +164,11 @@ func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerF
 // 路由解析
 func routeResolution(requestPattern string, includeRouter map[string]*metaRouter, PathParams metaValues) (AsView, bool) {
 	var re *regexp.Regexp
-	for includePatternUri, router := range includeRouter {
+	for includePatternUri, Irouter := range includeRouter {
 		params, converterPattern := routerParse(includePatternUri)
 		var reString string
 		if len(params) == 0 { // 无参数直接匹配
-			if len(router.includeRouter) == 0 || router.viewSet.File != "" {
+			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.File != "" {
 				reString = includePatternUri + "&"
 			} else if strings.HasSuffix(includePatternUri, "/") == false {
 				reString = includePatternUri + "/"
@@ -159,7 +176,7 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 				reString = includePatternUri
 			}
 		} else {
-			if len(router.includeRouter) == 0 || router.viewSet.File != "" {
+			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.File != "" {
 				reString = converterPattern + "$"
 			} else if strings.HasSuffix(includePatternUri, "/") == false {
 				reString = converterPattern + "/"
@@ -179,26 +196,28 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 			value := parseValue(param.paramType, paramsSlice[i])
 			PathParams[param.paramName] = append(PathParams[param.paramName], value) // 添加参数
 		}
-		if router.viewSet.DIR != "" { // 静态路由映射
+		if Irouter.viewSet.DIR != "" { // 静态路由映射
 			fileName := path.Clean("/" + requestPattern[len(includePatternUri):])
-			dir := string(router.viewSet.DIR)
+			dir := string(Irouter.viewSet.DIR)
 			filePath := filepath.Join(dir, fileName)
 			PathParams["staticPath"] = append(PathParams["static"], filePath)
-			return router.viewSet, true
-		} else if router.viewSet.File != "" {
-			PathParams["staticPath"] = append(PathParams["static"], router.viewSet.File)
-			return router.viewSet, true
-		} else if len(router.includeRouter) == 0 { // API
-			return router.viewSet, true
+			return Irouter.viewSet, true
+		} else if Irouter.viewSet.File != "" {
+			PathParams["staticPath"] = append(PathParams["static"], Irouter.viewSet.File)
+			return Irouter.viewSet, true
+		} else if len(Irouter.includeRouter) == 0 { // API
+			return Irouter.viewSet, true
 		} else { // 子路由
-			return routeResolution(requestPattern[len(includePatternUri):], router.includeRouter, PathParams)
+			return routeResolution(requestPattern[len(includePatternUri):], Irouter.includeRouter, PathParams)
 		}
 	}
 	return AsView{}, false
 }
 
 // 路由参数解析
-func routerParse(UrlPath string) (params []routerParam, converterPattern string) {
+func routerParse(UrlPath string) ([]routerParam, string) {
+	var params []routerParam
+	var converterPattern string
 	regexpStr := `<([^/<>]+):([^/<>]+)>`
 	re := regexp.MustCompile(regexpStr)
 	result := re.FindAllStringSubmatch(UrlPath, -1)
@@ -219,7 +238,7 @@ func routerParse(UrlPath string) (params []routerParam, converterPattern string)
 			params = append(params, param)
 		}
 	}
-	return
+	return params, converterPattern
 }
 
 // 参数解析
