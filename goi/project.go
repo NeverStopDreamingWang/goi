@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"github.com/NeverStopDreamingWang/goi"
 	"github.com/spf13/cobra"
 	"os"
 	"path"
-	"reflect"
+	"regexp"
+	"runtime"
 )
 
 var CreateProject = &cobra.Command{
@@ -20,11 +22,14 @@ func init() {
 	GoiCmd.AddCommand(CreateProject) // 创建项目
 }
 
+// 创建-项目
 var secretKey string
 
 var MainAppFileList = []InitFile{
 	settings,
 	converter,
+	mainGo,
+	goMod,
 }
 
 // 创建项目
@@ -34,30 +39,8 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	}
 	projectName = args[0]
 
-	baseDir, _ := os.Getwd()
-
-	// 创建项目目录
-	projectDir := path.Join(baseDir, projectName)
-	_, err := os.Stat(projectDir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(projectDir, 0644)
-		if err != nil {
-			return err
-		}
-	}
-
-	// 创建项目主 app
-	projectAppDir := path.Join(projectDir, projectName)
-	_, err = os.Stat(projectAppDir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(projectAppDir, 0644)
-		if err != nil {
-			return err
-		}
-	}
-
 	randomBytes := make([]byte, 32)
-	_, err = rand.Read(randomBytes)
+	_, err := rand.Read(randomBytes)
 	if err != nil {
 		return err
 	}
@@ -67,15 +50,21 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	// 将随机字节串转换为十六进制字符串
 	// secretKey = hex.EncodeToString(randomBytes)
 
-	for _, ItemFile := range MainAppFileList {
-		// 创建路由转换器文件
-		filePath := path.Join(projectAppDir, ItemFile.Name)
+	for _, itemFile := range MainAppFileList {
+		itemPath := itemFile.Path()
+		_, err = os.Stat(itemPath)
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(itemPath, 0644)
+			if err != nil {
+				return err
+			}
+		}
+
+		// 创建文件
+		filePath := path.Join(itemPath, itemFile.Name)
 		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
 
-		for i, arg := range ItemFile.Args {
-			ItemFile.Args[i] = reflect.ValueOf(arg).Elem().Interface()
-		}
-		Content := fmt.Sprintf(ItemFile.Content, ItemFile.Args...)
+		Content := itemFile.Content()
 		_, err = file.WriteString(Content)
 		if err != nil {
 			return err
@@ -85,10 +74,75 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// main.go 文件
+var mainGo = InitFile{
+	Name: "main.go",
+	Content: func() string {
+		content := `package main
+
+import (
+	"fmt"
+	"%s/%s"
+
+	// 注册app
+	// _ "xxx"
+)
+
+func main() {
+
+	// 启动服务
+	err := %s.Server.RunServer()
+	if err != nil {
+		fmt.Printf("服务已停止！", err)
+		// panic(fmt.Sprintf("停止: %v\n", err))
+
+	}
+}
+`
+		return fmt.Sprintf(content, projectName, projectName, projectName)
+	},
+	Path: func() string {
+		return path.Join(baseDir, projectName)
+	},
+}
+
+// go.mod 文件
+var goMod = InitFile{
+	Name: "go.mod",
+	Content: func() string {
+		content := `module %s
+
+go %s
+
+require (
+	github.com/NeverStopDreamingWang/goi v%s
+	github.com/go-sql-driver/mysql v1.7.1 // indirect
+	github.com/google/uuid v1.5.0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.17 // indirectgo.sum
+)
+
+`
+		var version string
+		versionStr := runtime.Version()
+
+		regexpStr := `(\d+.\d+)`
+		re := regexp.MustCompile(regexpStr)
+		result := re.FindAllStringSubmatch(versionStr, -1)
+		if len(result) == 1 {
+			version = result[0][0]
+		}
+		return fmt.Sprintf(content, projectName, version, goi.Version())
+	},
+	Path: func() string {
+		return path.Join(baseDir, projectName)
+	},
+}
+
 // 配置文件
 var settings = InitFile{
 	Name: "settings.go",
-	Content: `package %s
+	Content: func() string {
+		content := `package %s
 
 import (
 	"os"
@@ -179,14 +233,19 @@ func init() {
 	
 	Server.Init()
 }
-`,
-	Args: []any{&projectName, &secretKey},
+`
+		return fmt.Sprintf(content, projectName, secretKey)
+	},
+	Path: func() string {
+		return path.Join(baseDir, projectName, projectName)
+	},
 }
 
 // 路由转换器文件
 var converter = InitFile{
 	Name: "converter.go",
-	Content: `package %s
+	Content: func() string {
+		content := `package %s
 
 import "github.com/NeverStopDreamingWang/goi"
 
@@ -197,6 +256,10 @@ func RegisterMyConverter() {
 	goi.RegisterConverter("phone", ` + "`(1[3456789]\\d{9})`)" + `
 	
 }
-`,
-	Args: []any{&projectName},
+`
+		return fmt.Sprintf(content, projectName)
+	},
+	Path: func() string {
+		return path.Join(baseDir, projectName, projectName)
+	},
 }

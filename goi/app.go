@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 )
 
 var CreateApp = &cobra.Command{
@@ -19,6 +18,7 @@ func init() {
 	GoiCmd.AddCommand(CreateApp) // 创建应用
 }
 
+// 创建-应用
 var AppFileList = []InitFile{
 	models,
 	serializer,
@@ -26,36 +26,30 @@ var AppFileList = []InitFile{
 	views,
 }
 
-// 创建项目
+// 创建应用
 func GoiCreateApp(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("请输入应用名称")
 	}
 	appName = args[0]
 
-	baseDir, _ := os.Getwd()
-
-	// 创建项目目录
-	appDir := path.Join(baseDir, appName)
-	_, err := os.Stat(appDir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(appDir, 0644)
-		if err != nil {
-			return err
-		}
-	}
-
 	projectName = filepath.Base(baseDir)
 
-	for _, ItemFile := range AppFileList {
-		// 创建路由转换器文件
-		filePath := path.Join(appDir, ItemFile.Name)
+	for _, itemFile := range AppFileList {
+		itemPath := itemFile.Path()
+		_, err := os.Stat(itemPath)
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(itemPath, 0644)
+			if err != nil {
+				return err
+			}
+		}
+
+		// 创建文件
+		filePath := path.Join(itemPath, itemFile.Name)
 		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
 
-		for i, arg := range ItemFile.Args {
-			ItemFile.Args[i] = reflect.ValueOf(arg).Elem().Interface()
-		}
-		Content := fmt.Sprintf(ItemFile.Content, ItemFile.Args...)
+		Content := itemFile.Content()
 		_, err = file.WriteString(Content)
 		if err != nil {
 			return err
@@ -68,7 +62,8 @@ func GoiCreateApp(cmd *cobra.Command, args []string) error {
 // ORM
 var models = InitFile{
 	Name: "models.go",
-	Content: `package %s
+	Content: func() string {
+		content := `package %s
 
 import (
 	"github.com/NeverStopDreamingWang/goi/migrate"
@@ -94,23 +89,33 @@ func init() {
 	}
 	migrate.SQLite3Migrate(SQLite3Migrations)
 }
-`,
-	Args: []any{&appName},
+`
+		return fmt.Sprintf(content, appName)
+	},
+	Path: func() string {
+		return path.Join(baseDir, appName)
+	},
 }
 
 // 序列化器
 var serializer = InitFile{
 	Name: "serializer.go",
-	Content: `package %s
+	Content: func() string {
+		content := `package %s
 
-`,
-	Args: []any{&appName},
+`
+		return fmt.Sprintf(content, appName)
+	},
+	Path: func() string {
+		return path.Join(baseDir, appName)
+	},
 }
 
 // 路由
 var urls = InitFile{
 	Name: "urls.go",
-	Content: `package %s
+	Content: func() string {
+		content := `package %s
 
 import (
 	"%s"
@@ -125,14 +130,19 @@ func init() {
 		// testRouter.UrlPatterns("/test_views", goi.AsView{GET: TestView})
 	}
 }
-`,
-	Args: []any{&appName, &projectName, &appName, &projectName, &appName},
+`
+		return fmt.Sprintf(content, appName, projectName, appName, projectName, appName)
+	},
+	Path: func() string {
+		return path.Join(baseDir, appName)
+	},
 }
 
 // 序列化器
 var views = InitFile{
 	Name: "views.go",
-	Content: `package %s
+	Content: func() string {
+		content := `package %s
 
 import (
 	"github.com/NeverStopDreamingWang/goi"
@@ -150,6 +160,10 @@ func TestView(request *goi.Request) any {
 		},
 	}
 }
-`,
-	Args: []any{&appName},
+`
+		return fmt.Sprintf(content, appName)
+	},
+	Path: func() string {
+		return path.Join(baseDir, appName)
+	},
 }

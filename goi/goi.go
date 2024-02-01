@@ -2,17 +2,19 @@ package main
 
 import (
 	"fmt"
+	"github.com/NeverStopDreamingWang/goi"
 	"github.com/spf13/cobra"
 	"os"
 )
 
+var baseDir, _ = os.Getwd()
 var projectName string
 var appName string
 
 type InitFile struct {
 	Name    string
-	Content string
-	Args    []any
+	Content func() string
+	Path    func() string
 }
 
 var goiHelp = `goi version（版本）：%s
@@ -31,9 +33,8 @@ var GoiCmd = &cobra.Command{
 	Use:   "goi",
 	Short: `goi 一款 web 框架`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// help_txt := fmt.Sprintf(goiHelp, goi.Version())
-		// fmt.Print(help_txt)
-		fmt.Print("root", args)
+		help_txt := fmt.Sprintf(goiHelp, goi.Version())
+		fmt.Print(help_txt)
 		return nil
 	},
 }
