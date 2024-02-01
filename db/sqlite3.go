@@ -27,7 +27,7 @@ func MetaSQLite3Connect(Database goi.MetaDataBase) (*SQLite3DB, error) {
 	dir := path.Dir(Database.NAME)
 	_, err := os.Stat(dir)
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0644)
+		err = os.MkdirAll(dir, 0755)
 		if err != nil {
 			panic(fmt.Sprintf("创建数据库目录错误: ", err))
 		}
