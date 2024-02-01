@@ -54,7 +54,7 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 		itemPath := itemFile.Path()
 		_, err = os.Stat(itemPath)
 		if os.IsNotExist(err) {
-			err = os.MkdirAll(itemPath, 0644)
+			err = os.MkdirAll(itemPath, 0755)
 			if err != nil {
 				return err
 			}
