@@ -451,6 +451,36 @@ func TestModelDelete(request *goi.Request) any {
      pass
   }
   ```
+## goi 创建命令
+
+使用 `go env GOMODCACHE` 获取 go 软件包路径：`mypath\Go\pkg\mod` + `github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe`
+
+使用 `go env GOROOT` 获取 go 安装路径 `mypath\Go` + `bin`
+将可执行文件复制到 Go\bin 目录下
+Windows: `copy mypath\Go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe mypath\Go\bin\goi.exe`
+Linux: `cp mypath\go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi mypath\go\bin\goi`
+
+```shel
+> goi
+
+Usage（用法）:                                         
+        goi <command> [arguments]                      
+The commands are（命令如下）:                          
+        create-project  myproject   创建项目       
+        create-app      myapp       创建app
+
+```
+
+示例
+```shell
+# 创建项目
+> goi create-project example
+
+# 新建应用 app
+> cd example
+> goi create-app myapp
+
+```
 
 ## 
 
