@@ -457,8 +457,9 @@ func TestModelDelete(request *goi.Request) any {
 
 使用 `go env GOROOT` 获取 go 安装路径 `mypath\Go` + `bin`
 将可执行文件复制到 Go\bin 目录下
-Windows: `copy mypath\Go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe mypath\Go\bin\goi.exe`
-Linux: `cp mypath\go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi mypath\go\bin\goi`
+
+**Windows**: `copy mypath\Go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe mypath\Go\bin\goi.exe`
+**Linux**: `cp mypath\go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi mypath\go\bin\goi`
 
 ```shel
 > goi
