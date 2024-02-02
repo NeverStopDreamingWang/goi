@@ -16,6 +16,7 @@ var CreateProject = &cobra.Command{
 	Use:   "create-project",
 	Short: "创建项目",
 	RunE:  GoiCreateProject,
+	Args:  cobra.ExactArgs(1),
 }
 
 func init() {
@@ -34,9 +35,6 @@ var MainAppFileList = []InitFile{
 
 // 创建项目
 func GoiCreateProject(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("请输入项目名称")
-	}
 	projectName = args[0]
 
 	randomBytes := make([]byte, 32)

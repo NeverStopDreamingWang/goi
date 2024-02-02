@@ -12,6 +12,7 @@ var CreateApp = &cobra.Command{
 	Use:   "create-app",
 	Short: "创建应用",
 	RunE:  GoiCreateApp,
+	Args:  cobra.ExactArgs(1),
 }
 
 func init() {
@@ -28,9 +29,6 @@ var AppFileList = []InitFile{
 
 // 创建应用
 func GoiCreateApp(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("请输入应用名称")
-	}
 	appName = args[0]
 
 	projectName = filepath.Base(baseDir)
