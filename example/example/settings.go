@@ -1,4 +1,4 @@
-package manage
+package example
 
 import (
 	"github.com/NeverStopDreamingWang/goi"
@@ -16,16 +16,26 @@ func init() {
 	// version := goi.Version() // 获取版本信息
 	// fmt.Println("goi 版本", version)
 
+	// 设置网络协议
+	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 运行地址
-	Server.Settings.SERVER_ADDRESS = "0.0.0.0"
+	Server.Settings.ADDRESS = "0.0.0.0"
 	// 端口
-	Server.Settings.SERVER_PORT = 8080
+	Server.Settings.PORT = 8080
 
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
 
 	// 项目
 	Server.Settings.SECRET_KEY = "xxxxxxxxxxxxxxxxx"
+
+	// 设置 SSL
+	Server.Settings.SSL = goi.MetaSSL{
+		STATUS:    false, // SSL 开关
+		CERT_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/example.crt"),
+		KEY_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/example.key"),
+		CSR_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/example.csr"), // 可选
+	}
 
 	// 数据库配置
 	Server.Settings.DATABASES["default"] = goi.MetaDataBase{
