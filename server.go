@@ -2,9 +2,11 @@ package goi
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"reflect"
@@ -16,7 +18,7 @@ var engine *Engine
 var Settings *metaSettings
 var Cache *MetaCache
 var Log *MetaLogger
-var version = "1.0.12"
+var version = "1.0.13"
 
 // 版本
 func Version() string {
@@ -52,16 +54,6 @@ func NewHttpServer() *Engine {
 	return engine
 }
 
-// 启动 http 服务
-func (engine *Engine) RunServer() (err error) {
-	server := http.Server{
-		Addr:    fmt.Sprintf("%v:%v", engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT),
-		Handler: engine,
-	}
-	return server.ListenAndServe()
-	// return http.ListenAndServe(addr, engine)
-}
-
 // 初始化
 func (engine *Engine) Init() {
 	// 初始化时区
@@ -76,12 +68,49 @@ func (engine *Engine) Init() {
 
 	engine.Log.MetaLog(fmt.Sprintf("启动时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
 	engine.Log.MetaLog(fmt.Sprintf("goi 版本: %v", version))
-	engine.Log.MetaLog(fmt.Sprintf("监听地址: %v:%v", engine.Settings.SERVER_ADDRESS, engine.Settings.SERVER_PORT))
-
 	engine.Log.MetaLog(fmt.Sprintf("当前时区: %v", engine.Settings.TIME_ZONE))
 
 	// 初始化缓存
 	engine.Cache.initCache()
+}
+
+// 启动 http 服务
+func (engine *Engine) RunServer() {
+
+	server := http.Server{
+		Addr:    fmt.Sprintf("%v:%v", engine.Settings.ADDRESS, engine.Settings.PORT),
+		Handler: engine,
+	}
+	ln, err := net.Listen(engine.Settings.NET_WORK, server.Addr)
+	if err != nil {
+		panic(err)
+	}
+	if engine.Settings.SSL.STATUS == true {
+		certificate, err := os.ReadFile(engine.Settings.SSL.CERT_PATH)
+		if err != nil {
+			panic(err)
+		}
+		key, err := os.ReadFile(engine.Settings.SSL.KEY_PATH)
+		if err != nil {
+			panic(err)
+		}
+		cert, err := tls.X509KeyPair(certificate, key)
+		if err != nil {
+			panic(err)
+		}
+		server.TLSConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+
+		engine.Log.MetaLog(fmt.Sprintf("listen at https://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		err = server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
+	} else {
+		engine.Log.MetaLog(fmt.Sprintf("listen at http://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		err = server.Serve(ln)
+	}
+	if err != nil {
+		panic(err)
+	}
 }
 
 // 实现 ServeHTTP 接口
