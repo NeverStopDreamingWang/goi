@@ -1,14 +1,14 @@
 package middleware
 
 import (
-	"example/manage"
+	"example/example"
 	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {
 	// 注册中间件
 	// 注册请求中间件
-	manage.Server.MiddleWares.BeforeRequest(RequestMiddleWare)
+	example.Server.MiddleWares.BeforeRequest(RequestMiddleWare)
 	// 注册视图中间件
 	// Server.MiddleWares.BeforeView()
 	// 注册响应中间件

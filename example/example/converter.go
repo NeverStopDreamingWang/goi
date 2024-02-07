@@ -1,4 +1,4 @@
-package manage
+package example
 
 import "github.com/NeverStopDreamingWang/goi"
 

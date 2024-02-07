@@ -1,13 +1,13 @@
 package test
 
 import (
-	"example/manage"
+	"example/example"
 	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {
 	// 创建一个子路由
-	testRouter := manage.Server.Router.Include("/test")
+	testRouter := example.Server.Router.Include("/test")
 	{
 		// 注册一个路径
 		testRouter.UrlPatterns("/test1", goi.AsView{GET: Test1})
@@ -43,16 +43,16 @@ func init() {
 
 	// 静态路由
 	// 静态文件
-	manage.Server.Router.StaticFilePatterns("/index.html", "template/html/index.html")
+	example.Server.Router.StaticFilePatterns("/index.html", "template/html/index.html")
 
 	// 静态目录
-	manage.Server.Router.StaticDirPatterns("/static", "template")
+	example.Server.Router.StaticDirPatterns("/static", "template")
 	// testRouter.StaticDirPatterns("/static", "./template")
 
 	// 自定义方法
 	// 返回文件
-	manage.Server.Router.UrlPatterns("/test_file", goi.AsView{GET: TestFile})
+	example.Server.Router.UrlPatterns("/test_file", goi.AsView{GET: TestFile})
 
 	// 异常处理
-	manage.Server.Router.UrlPatterns("/test_panic", goi.AsView{GET: TestPanic})
+	example.Server.Router.UrlPatterns("/test_panic", goi.AsView{GET: TestPanic})
 }

@@ -1,13 +1,13 @@
 package user
 
 import (
-	"example/manage"
+	"example/example"
 	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {
 	// 创建一个子路由
-	userRouter := manage.Server.Router.Include("/user")
+	userRouter := example.Server.Router.Include("/user")
 	{
 		// 添加路由
 		userRouter.UrlPatterns("/test", goi.AsView{GET: UserTest})
