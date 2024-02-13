@@ -236,8 +236,6 @@ func init() {
 	Server.Settings.Set("REDIS_PORT", 6379)
 	Server.Settings.Set("REDIS_PASSWORD", "123")
 	Server.Settings.Set("REDIS_DB", 0)
-	
-	Server.Init()
 }
 `
 		return fmt.Sprintf(content, projectName, secretKey, projectName, projectName, projectName)
