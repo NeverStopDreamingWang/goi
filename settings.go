@@ -49,7 +49,7 @@ func newSettings() *metaSettings {
 		SSL:        MetaSSL{},
 		DATABASES:  make(map[string]MetaDataBase),
 		TIME_ZONE:  "Asia/Shanghai",
-		LOCATION:   nil,
+		LOCATION:   time.Now().Location(),
 		mySettings: make(map[string]any),
 	}
 }
