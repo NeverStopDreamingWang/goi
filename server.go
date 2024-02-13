@@ -9,16 +9,20 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"reflect"
+	"syscall"
 	"time"
 )
 
 // Http 服务
+var version = "1.0.13"
 var engine *Engine
 var Settings *metaSettings
 var Cache *MetaCache
 var Log *MetaLogger
-var version = "1.0.13"
+
+var exitChan = make(chan os.Signal, 1)
 
 // 版本
 func Version() string {
@@ -32,6 +36,8 @@ type HandlerFunc func(*Request) any
 
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
+	startTime   *time.Time
+	server      http.Server
 	Router      *metaRouter
 	MiddleWares *metaMiddleWares
 	Settings    *metaSettings
@@ -45,6 +51,8 @@ func NewHttpServer() *Engine {
 	Cache = newCache()
 	Log = NewLogger()
 	engine = &Engine{
+		startTime:   nil,
+		server:      http.Server{},
 		Router:      newRouter(),
 		MiddleWares: newMiddleWares(),
 		Settings:    Settings,
@@ -66,6 +74,7 @@ func (engine *Engine) Init() {
 	// 初始化日志
 	engine.Log.InitLogger()
 
+	engine.Log.MetaLog("---start---")
 	engine.Log.MetaLog(fmt.Sprintf("启动时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
 	engine.Log.MetaLog(fmt.Sprintf("goi 版本: %v", version))
 	engine.Log.MetaLog(fmt.Sprintf("当前时区: %v", engine.Settings.TIME_ZONE))
@@ -76,12 +85,31 @@ func (engine *Engine) Init() {
 
 // 启动 http 服务
 func (engine *Engine) RunServer() {
+	var err error
 
-	server := http.Server{
+	startTime := time.Now().In(Settings.LOCATION)
+	engine.startTime = &startTime
+
+	// 注册关闭信号
+	signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+
+	go func() {
+		// 等待关闭信号
+		sig, _ := <-exitChan
+		switch sig {
+		case os.Kill, os.Interrupt:
+			err = engine.StopServer()
+			panic(err)
+		default:
+			engine.Log.MetaLog("无效操作！")
+		}
+	}()
+
+	engine.server = http.Server{
 		Addr:    fmt.Sprintf("%v:%v", engine.Settings.ADDRESS, engine.Settings.PORT),
 		Handler: engine,
 	}
-	ln, err := net.Listen(engine.Settings.NET_WORK, server.Addr)
+	ln, err := net.Listen(engine.Settings.NET_WORK, engine.server.Addr)
 	if err != nil {
 		panic(err)
 	}
@@ -98,19 +126,64 @@ func (engine *Engine) RunServer() {
 		if err != nil {
 			panic(err)
 		}
-		server.TLSConfig = &tls.Config{
+		engine.server.TLSConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		}
 
-		engine.Log.MetaLog(fmt.Sprintf("listen at https://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
-		err = server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
+		engine.Log.MetaLog(fmt.Sprintf("监听地址：https://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
 	} else {
-		engine.Log.MetaLog(fmt.Sprintf("listen at http://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
-		err = server.Serve(ln)
+		engine.Log.MetaLog(fmt.Sprintf("监听地址：http://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		err = engine.server.Serve(ln)
 	}
-	if err != nil {
+	if err != nil && err != http.ErrServerClosed {
 		panic(err)
 	}
+}
+
+// 停止 http 服务
+func (engine *Engine) StopServer() error {
+	engine.Log.MetaLog("服务已停止！")
+	engine.Log.MetaLog(fmt.Sprintf("停止时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
+	engine.Log.MetaLog(fmt.Sprintf("共运行：%v", engine.RunTimeStr()))
+	engine.Log.MetaLog("---end---")
+	// 关闭服务器
+	err := engine.server.Shutdown(context.Background())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// 获取当前运行时间 返回时间间隔
+func (engine *Engine) RunTime() time.Duration {
+	// 获取当前时间并设置时区
+	currentTime := time.Now().In(Settings.LOCATION)
+
+	// 计算时间间隔
+	return currentTime.Sub(*engine.startTime)
+}
+
+// 获取当前运行时间 返回字符串
+func (engine *Engine) RunTimeStr() string {
+	// 获取时间间隔
+	elapsed := engine.RunTime()
+	seconds := int(elapsed.Seconds()) % 60
+	minutes := int(elapsed.Minutes()) % 60
+	hours := int(elapsed.Hours()) % 24
+	days := int(elapsed.Hours() / 24)
+
+	elapsedStr := fmt.Sprintf("%02d秒", seconds)
+	if minutes > 0 {
+		elapsedStr = fmt.Sprintf("%02d分", minutes) + elapsedStr
+	}
+	if hours > 0 {
+		elapsedStr = fmt.Sprintf("%02d时", hours) + elapsedStr
+	}
+	if days > 0 {
+		elapsedStr = fmt.Sprintf("%d天", days) + elapsedStr
+	}
+	return elapsedStr
 }
 
 // 实现 ServeHTTP 接口
