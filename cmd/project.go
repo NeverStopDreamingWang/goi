@@ -109,9 +109,12 @@ go %s
 
 require (
 	github.com/NeverStopDreamingWang/goi v%s
-	github.com/go-sql-driver/mysql v1.7.1 // indirect
-	github.com/google/uuid v1.5.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.17 // indirectgo.sum
+)
+
+require (
+	github.com/go-sql-driver/mysql v1.7.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 )
 
 `
@@ -163,7 +166,7 @@ func init() {
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
 
-	// 项目
+	// 项目密钥
 	Server.Settings.SECRET_KEY = "%s"
 
 	// 设置 SSL
