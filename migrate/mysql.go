@@ -56,7 +56,7 @@ func MySQLMigrate(Migrations model.MySQLMakeMigrations) {
 			if err != nil {
 				panic(fmt.Sprintf("迁移错误: %v", err))
 			}
-			goi.Log.MetaLog(fmt.Sprintf("Migrate MySQL: %v DataBase: %v Table: %v ...ok!", DBName, Database.NAME, Model.ModelSet().TABLE_NAME))
+			fmt.Println(fmt.Sprintf("Migrate MySQL: %v DataBase: %v Table: %v ...ok!", DBName, Database.NAME, Model.ModelSet().TABLE_NAME))
 		}
 		_ = mysqlDB.Close()
 	}
