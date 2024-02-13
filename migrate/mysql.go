@@ -71,14 +71,17 @@ func createTableSql(model model.MySQLModel) string {
 		modelType = modelType.Elem()
 	}
 
-	field_slice := make([]string, modelType.NumField(), modelType.NumField())
+	fieldSqlSlice := make([]string, modelType.NumField(), modelType.NumField())
 	for i := 0; i < modelType.NumField(); i++ {
 		field := modelType.Field(i)
-		fieldName := strings.ToLower(field.Name)
-		fieldType := field.Tag.Get("field")
-		field_slice[i] = fmt.Sprintf("`%v` %v", fieldName, fieldType)
+		fieldName, ok := field.Tag.Lookup("field_name")
+		if !ok {
+			fieldName = strings.ToLower(field.Name)
+		}
+		fieldType, ok := field.Tag.Lookup("field_type")
+		fieldSqlSlice[i] = fmt.Sprintf("`%v` %v", fieldName, fieldType)
 	}
-	createSql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (\n%v\n)", modelSetting.TABLE_NAME, strings.Join(field_slice, ",\n"))
+	createSql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (\n%v\n)", modelSetting.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
 	if modelSetting.ENGINE != "" { // 设置存储引擎
 		createSql += fmt.Sprintf("\nENGINE=%v", modelSetting.ENGINE)
 	}
