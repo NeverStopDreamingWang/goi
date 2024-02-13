@@ -62,8 +62,10 @@ func NewHttpServer() *Engine {
 	return engine
 }
 
-// 初始化
-func (engine *Engine) Init() {
+// 启动 http 服务
+func (engine *Engine) RunServer() {
+	var err error
+
 	// 初始化时区
 	location, err := time.LoadLocation(engine.Settings.TIME_ZONE)
 	if err != nil {
@@ -81,11 +83,6 @@ func (engine *Engine) Init() {
 
 	// 初始化缓存
 	engine.Cache.initCache()
-}
-
-// 启动 http 服务
-func (engine *Engine) RunServer() {
-	var err error
 
 	startTime := time.Now().In(Settings.LOCATION)
 	engine.startTime = &startTime
