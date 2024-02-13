@@ -50,13 +50,13 @@ func MySQLMigrate(Migrations model.MySQLMakeMigrations) {
 
 			if TableIsExists(TableName, TabelSclie) { // 判断是否存在
 				continue
+			} else {
+				_, err = mysqlDB.Execute(createSql)
+				if err != nil {
+					panic(fmt.Sprintf("迁移错误: %v", err))
+				}
+				fmt.Println(fmt.Sprintf("正在迁移 MySQL: %v 数据库: %v 表: %v ...", DBName, Database.NAME, Model.ModelSet().TABLE_NAME))
 			}
-
-			_, err = mysqlDB.Execute(createSql)
-			if err != nil {
-				panic(fmt.Sprintf("迁移错误: %v", err))
-			}
-			fmt.Println(fmt.Sprintf("Migrate MySQL: %v DataBase: %v Table: %v ...ok!", DBName, Database.NAME, Model.ModelSet().TABLE_NAME))
 		}
 		_ = mysqlDB.Close()
 	}
@@ -79,50 +79,47 @@ func createTableSql(model model.MySQLModel) string {
 			fieldName = strings.ToLower(field.Name)
 		}
 		fieldType, ok := field.Tag.Lookup("field_type")
-		fieldSqlSlice[i] = fmt.Sprintf("`%v` %v", fieldName, fieldType)
+		fieldSqlSlice[i] = fmt.Sprintf("  `%v` %v", fieldName, fieldType)
 	}
-	createSql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (\n%v\n)", modelSetting.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
+	createSql := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", modelSetting.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
 	if modelSetting.ENGINE != "" { // 设置存储引擎
-		createSql += fmt.Sprintf("\nENGINE=%v", modelSetting.ENGINE)
+		createSql += fmt.Sprintf(" ENGINE=%v", modelSetting.ENGINE)
 	}
 	if modelSetting.AUTO_INCREMENT != 0 { // 设置自增长起始值
-		createSql += fmt.Sprintf("\nAUTO_INCREMENT=%v", modelSetting.AUTO_INCREMENT)
-	}
-	if modelSetting.COMMENT != "" { // 设置表注释
-		createSql += fmt.Sprintf("\nCOMMENT='%v'", modelSetting.COMMENT)
+		createSql += fmt.Sprintf(" AUTO_INCREMENT=%v", modelSetting.AUTO_INCREMENT)
 	}
 	if modelSetting.DEFAULT_CHARSET != "" { // 设置默认字符集
-		createSql += fmt.Sprintf("\nDEFAULT CHARSET=%v", modelSetting.DEFAULT_CHARSET)
+		createSql += fmt.Sprintf(" DEFAULT CHARSET=%v", modelSetting.DEFAULT_CHARSET)
 	}
 	if modelSetting.COLLATE != "" { // 设置校对规则
-		createSql += fmt.Sprintf("\nCOLLATE=%v", modelSetting.COLLATE)
-	}
-	if modelSetting.ROW_FORMAT != "" { // 设置行的存储格式
-		createSql += fmt.Sprintf("\nROW_FORMAT=%v", modelSetting.ROW_FORMAT)
-	}
-	if modelSetting.DATA_DIRECTORY != "" { // 设置数据存储目录
-		createSql += fmt.Sprintf("\nDATA DIRECTORY='%v'", modelSetting.DATA_DIRECTORY)
-	}
-	if modelSetting.INDEX_DIRECTORY != "" { // 设置索引存储目录
-		createSql += fmt.Sprintf("\nINDEX DIRECTORY='%v'", modelSetting.INDEX_DIRECTORY)
-	}
-	if modelSetting.STORAGE != "" { // 设置存储类型
-		createSql += fmt.Sprintf("\nSTORAGE=%v", modelSetting.STORAGE)
-	}
-	if modelSetting.CHECKSUM != 0 { // 表格的校验和算法
-		createSql += fmt.Sprintf("\nCHECKSUM=%v", modelSetting.CHECKSUM)
-	}
-	if modelSetting.DELAY_KEY_WRITE != 0 { // 控制非唯一索引的写延迟
-		createSql += fmt.Sprintf("\nDELAY_KEY_WRITE=%v", modelSetting.DELAY_KEY_WRITE)
-	}
-	if modelSetting.MAX_ROWS != 0 { // 设置最大行数
-		createSql += fmt.Sprintf("\nMAX_ROWS=%v", modelSetting.MAX_ROWS)
+		createSql += fmt.Sprintf(" COLLATE=%v", modelSetting.COLLATE)
 	}
 	if modelSetting.MIN_ROWS != 0 { // 设置最小行数
-		createSql += fmt.Sprintf("\nMIN_ROWS=%v", modelSetting.MIN_ROWS)
+		createSql += fmt.Sprintf(" MIN_ROWS=%v", modelSetting.MIN_ROWS)
+	}
+	if modelSetting.MAX_ROWS != 0 { // 设置最大行数
+		createSql += fmt.Sprintf(" MAX_ROWS=%v", modelSetting.MAX_ROWS)
+	}
+	if modelSetting.CHECKSUM != 0 { // 表格的校验和算法
+		createSql += fmt.Sprintf(" CHECKSUM=%v", modelSetting.CHECKSUM)
+	}
+	if modelSetting.DELAY_KEY_WRITE != 0 { // 控制非唯一索引的写延迟
+		createSql += fmt.Sprintf(" DELAY_KEY_WRITE=%v", modelSetting.DELAY_KEY_WRITE)
+	}
+	if modelSetting.ROW_FORMAT != "" { // 设置行的存储格式
+		createSql += fmt.Sprintf(" ROW_FORMAT=%v", modelSetting.ROW_FORMAT)
+	}
+	if modelSetting.DATA_DIRECTORY != "" { // 设置数据存储目录
+		createSql += fmt.Sprintf(" DATA DIRECTORY='%v'", modelSetting.DATA_DIRECTORY)
+	}
+	if modelSetting.INDEX_DIRECTORY != "" { // 设置索引存储目录
+		createSql += fmt.Sprintf(" INDEX DIRECTORY='%v'", modelSetting.INDEX_DIRECTORY)
 	}
 	if modelSetting.PARTITION_BY != "" { // 定义分区方式
-		createSql += fmt.Sprintf("\nPARTITION_BY %v", modelSetting.PARTITION_BY)
+		createSql += fmt.Sprintf(" PARTITION_BY %v", modelSetting.PARTITION_BY)
+	}
+	if modelSetting.COMMENT != "" { // 设置表注释
+		createSql += fmt.Sprintf(" COMMENT='%v'", modelSetting.COMMENT)
 	}
 	createSql += ";"
 	return createSql
