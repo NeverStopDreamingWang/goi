@@ -71,7 +71,7 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 				}
 				fieldType, ok := field.Tag.Lookup("field_type")
 				tampFieldMap[fieldName] = nil
-				fieldSqlSlice[i] = fmt.Sprintf("`%v` %v", fieldName, fieldType)
+				fieldSqlSlice[i] = fmt.Sprintf("  `%v` %v", fieldName, fieldType)
 			}
 			createSql := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", TableName, strings.Join(fieldSqlSlice, ",\n"))
 
@@ -99,7 +99,7 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 						panic(fmt.Sprintf("重命名旧表错误: %v", err))
 					}
 
-					fmt.Println(fmt.Sprintf("- 创建新表：%v...", oldTableName))
+					fmt.Println(fmt.Sprintf("- 创建新表：%v...", TableName))
 					_, err = sqlite3DB.Execute(createSql)
 					if err != nil {
 						panic(fmt.Sprintf("创建新表错误: %v", err))
@@ -146,7 +146,6 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 				if err != nil {
 					panic(fmt.Sprintf("迁移错误: %v", err))
 				}
-				fmt.Println("迁移完成!\n")
 			}
 		}
 		_ = sqlite3DB.Close()
