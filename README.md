@@ -97,11 +97,11 @@ The commands are（命令如下）:
   ```go
   // MySQL
   type UserModel struct {
-  	Id          *int64  `field:"int NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '用户id'" json:"id"`
-  	Username    *string `field:"varchar(255) DEFAULT NULL COMMENT '用户名'" json:"username"`
-  	Password    *string `field:"varchar(255) DEFAULT NULL COMMENT '密码'" json:"password"`
-  	Create_time *string `field:"DATETIME DEFAULT NULL COMMENT '更新时间'" json:"create_time"`
-  	Update_time *string `field:"DATETIME DEFAULT NULL COMMENT '创建时间'" json:"update_time"`
+  	Id          *int64  `field_name:"id" field_type:"int NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '用户id'" json:"id"`
+  	Username    *string `field_name:"username" field_type:"varchar(255) DEFAULT NULL COMMENT '用户名'" json:"username"`
+  	Password    *string `field_name:"password" field_type:"varchar(255) DEFAULT NULL COMMENT '密码'" json:"password"`
+  	Create_time *string `field_name:"create_time" field_type:"DATETIME DEFAULT NULL COMMENT '更新时间'" json:"create_time"`
+  	Update_time *string `field_name:"update_time" field_type:"DATETIME DEFAULT NULL COMMENT '创建时间'" json:"update_time"`
   }
   
   // 设置表配置
@@ -143,11 +143,12 @@ The commands are（命令如下）:
   ```go
   // 用户表
   type UserSqliteModel struct {
-  	Id          *int64  `field:"INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" json:"id"`
-  	Username    *string `field:"TEXT" json:"username"`
-  	Password    *string `field:"TEXT" json:"password"`
-  	Create_time *string `field:"TEXT NOT NULL" json:"create_time"`
-  	Update_time *string `field:"TEXT" json:"update_time"`
+  	Id          *int64  `field_name:"id" field_type:"INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" json:"id"`
+  	Username    *string `field_name:"username" field_type:"TEXT" json:"username"`
+  	Password    *string `field_name:"password" field_type:"TEXT" json:"password"`
+  	Create_time *string `field_name:"create_time" field_type:"TEXT NOT NULL" json:"create_time"`
+  	Update_time *string `field_name:"update_time" field_type:"TEXT" json:"update_time"`
+  	Test        *string `field_name:"test_txt" field_type:"TEXT" json:"txt"` // 更新表字段
   }
   
   // 设置表配置
