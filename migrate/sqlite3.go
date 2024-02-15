@@ -136,8 +136,6 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 					if err != nil {
 						panic(fmt.Sprintf("迁移表数据错误: %v", err))
 					}
-
-					fmt.Println("更新完成!\n")
 				}
 
 			} else { // 创建表
