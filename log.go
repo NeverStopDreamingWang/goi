@@ -157,7 +157,7 @@ func (logger *MetaLogger) loggerInfoFileSplit() {
 			isSplit = true
 		}
 	}
-	if isSplit == true {
+	if isSplit == true && logger.outInfoFile != nil {
 		err = logger.outInfoFile.Close()
 		if err != nil {
 			panic(fmt.Sprintln("关闭[INFO]日志错误: ", err))
@@ -238,7 +238,7 @@ func (logger *MetaLogger) loggerAccessFileSplit() {
 			isSplit = true
 		}
 	}
-	if isSplit == true {
+	if isSplit == true && logger.outAccessFile != nil {
 		err = logger.outAccessFile.Close()
 		if err != nil {
 			panic(fmt.Sprintln("关闭[ACCESS]日志错误: ", err))
@@ -319,7 +319,7 @@ func (logger *MetaLogger) loggerErrorFileSplit() {
 			isSplit = true
 		}
 	}
-	if isSplit == true {
+	if isSplit == true && logger.outErrorFile != nil {
 		err = logger.outErrorFile.Close()
 		if err != nil {
 			panic(fmt.Sprintln("关闭[ERROR]日志错误: ", err))
