@@ -63,7 +63,7 @@ func generateCertificate(SSLPath string) {
 		BasicConstraintsValid: true,
 	}
 
-	err = goi.GenerateRSACertificate(certificateTemplate, SSLPath) // RSA 算法
+	err = goi.GenerateRSACertificate(2048, certificateTemplate, SSLPath) // RSA 算法
 	// err = GenerateECCCertificate(certificateTemplate, SSLPath) // ECC 算法
 	if err != nil {
 		panic(fmt.Sprintf("生成SSL证书和私钥时发生错误: ", err))

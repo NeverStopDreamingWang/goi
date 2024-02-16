@@ -12,9 +12,9 @@ import (
 	"path"
 )
 
-func GenerateRSACertificate(certificateTemplate x509.Certificate, outPath string) error {
+func GenerateRSACertificate(bits int, certificateTemplate x509.Certificate, outPath string) error {
 	// 生成 RSA 密钥对
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return err
 	}
