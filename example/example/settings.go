@@ -26,8 +26,14 @@ func init() {
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
 
-	// 项目
+	// 项目 AES 密钥
 	Server.Settings.SECRET_KEY = "xxxxxxxxxxxxxxxxx"
+
+	// 项目 RSA 私钥
+	Server.Settings.PRIVATE_KEY = "xxxxxxxxxxxxxxxxx"
+
+	// 项目 RSA 公钥
+	Server.Settings.PUBLIC_KEY = "xxxxxxxxxxxxxxxxx"
 
 	// 设置 SSL
 	Server.Settings.SSL = goi.MetaSSL{
