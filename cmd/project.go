@@ -1,10 +1,10 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/crypto"
 	"github.com/spf13/cobra"
 	"os"
 	"path"
@@ -23,8 +23,14 @@ func init() {
 	GoiCmd.AddCommand(CreateProject) // 创建项目
 }
 
-// 创建-项目
+// AES 密钥
 var secretKey string
+
+// RSA 私钥
+var privateKey string
+
+// RSA 公钥
+var publicKey string
 
 var MainAppFileList = []InitFile{
 	settings,
@@ -38,16 +44,23 @@ var MainAppFileList = []InitFile{
 func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	projectName = args[0]
 
-	randomBytes := make([]byte, 32)
-	_, err := rand.Read(randomBytes)
+	// 生成 AES 密钥
+	secretKeyBytes := make([]byte, 32)
+	err := crypto.GenerateAES(secretKeyBytes)
 	if err != nil {
 		return err
 	}
 	// 将随机字节转换为Base64编码的字符串
-	secretKey = base64.StdEncoding.EncodeToString(randomBytes)
+	secretKey = base64.StdEncoding.EncodeToString(secretKeyBytes)
 
-	// 将随机字节串转换为十六进制字符串
-	// secretKey = hex.EncodeToString(randomBytes)
+	// 生成 RSA 密钥
+	var privateKeyBytes, publicKeyBytes []byte
+	err = crypto.GenerateRSA(2048, &privateKeyBytes, &publicKeyBytes)
+	if err != nil {
+		return err
+	}
+	privateKey = string(privateKeyBytes)
+	publicKey = string(publicKeyBytes)
 
 	for _, itemFile := range MainAppFileList {
 		itemPath := itemFile.Path()
@@ -166,8 +179,14 @@ func init() {
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
 
-	// 项目密钥
+	// 项目 AES 密钥
 	Server.Settings.SECRET_KEY = "%s"
+
+	// 项目 RSA 私钥
+	Server.Settings.PRIVATE_KEY = %s
+
+	// 项目 RSA 公钥
+	Server.Settings.PUBLIC_KEY = %s
 
 	// 设置 SSL
 	Server.Settings.SSL = goi.MetaSSL{
@@ -238,7 +257,7 @@ func init() {
 	Server.Settings.Set("REDIS_DB", 0)
 }
 `
-		return fmt.Sprintf(content, projectName, secretKey, projectName, projectName, projectName)
+		return fmt.Sprintf(content, projectName, secretKey, "`"+privateKey+"`", "`"+publicKey+"`", projectName, projectName, projectName)
 	},
 	Path: func() string {
 		return path.Join(baseDir, projectName, projectName)
@@ -257,11 +276,11 @@ func RegisterMyConverter() {
 	// 注册一个路由转换器
 	
 	// 手机号
-	goi.RegisterConverter("phone", ` + "`(1[3456789]\\d{9})`)" + `
+	goi.RegisterConverter("phone", %s)
 	
 }
 `
-		return fmt.Sprintf(content, projectName)
+		return fmt.Sprintf(content, projectName, "`(1[3456789]\\d{9})`")
 	},
 	Path: func() string {
 		return path.Join(baseDir, projectName, projectName)
@@ -337,7 +356,7 @@ func generateCertificate(SSLPath string) {
 		BasicConstraintsValid: true,
 	}
 
-	err = goi.GenerateRSACertificate(certificateTemplate, SSLPath) // RSA 算法
+	err = goi.GenerateRSACertificate(2048, certificateTemplate, SSLPath) // RSA 算法
 	// err = GenerateECCCertificate(certificateTemplate, SSLPath) // ECC 算法
 	if err != nil {
 		panic(fmt.Sprintf("生成SSL证书和私钥时发生错误: ", err))
