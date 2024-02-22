@@ -17,7 +17,7 @@ type InitFile struct {
 	Path    func() string
 }
 
-var goiHelp = `goi version（版本）：%s
+var goiHelp = `goi version（版本）: %s
 使用"goi help <command>"获取命令的更多信息。
 
 Usage（用法）:
