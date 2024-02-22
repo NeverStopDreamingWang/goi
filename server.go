@@ -79,6 +79,20 @@ func (engine *Engine) RunServer() {
 	engine.Log.MetaLog("---start---")
 	engine.Log.MetaLog(fmt.Sprintf("启动时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
 	engine.Log.MetaLog(fmt.Sprintf("goi 版本: %v", version))
+
+	engine.Log.MetaLog(fmt.Sprintf("日志 DEBUG: %v", engine.Log.DEBUG))
+	if engine.Log.INFO_OUT_PATH != "" {
+		engine.Log.MetaLog(fmt.Sprintf("- INFO 日志: %v", engine.Log.INFO_OUT_PATH))
+	}
+	if engine.Log.ACCESS_OUT_PATH != "" {
+		engine.Log.MetaLog(fmt.Sprintf("- ACCESS 日志: %v", engine.Log.ACCESS_OUT_PATH))
+	}
+	if engine.Log.ERROR_OUT_PATH != "" {
+		engine.Log.MetaLog(fmt.Sprintf("- ERROR 日志: %v", engine.Log.ERROR_OUT_PATH))
+	}
+	engine.Log.MetaLog(fmt.Sprintf("日志切割大小: %v", formatBytes(engine.Log.SplitSize)))
+	engine.Log.MetaLog(fmt.Sprintf("日志切割格式: %v", engine.Log.SplitTime))
+
 	engine.Log.MetaLog(fmt.Sprintf("当前时区: %v", engine.Settings.TIME_ZONE))
 
 	// 初始化缓存
@@ -127,10 +141,10 @@ func (engine *Engine) RunServer() {
 			Certificates: []tls.Certificate{cert},
 		}
 
-		engine.Log.MetaLog(fmt.Sprintf("监听地址：https://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		engine.Log.MetaLog(fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
 		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
 	} else {
-		engine.Log.MetaLog(fmt.Sprintf("监听地址：http://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		engine.Log.MetaLog(fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
 		err = engine.server.Serve(ln)
 	}
 	if err != nil && err != http.ErrServerClosed {
@@ -142,7 +156,7 @@ func (engine *Engine) RunServer() {
 func (engine *Engine) StopServer() error {
 	engine.Log.MetaLog("服务已停止！")
 	engine.Log.MetaLog(fmt.Sprintf("停止时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
-	engine.Log.MetaLog(fmt.Sprintf("共运行：%v", engine.RunTimeStr()))
+	engine.Log.MetaLog(fmt.Sprintf("共运行: %v", engine.RunTimeStr()))
 	engine.Log.MetaLog("---end---")
 	// 关闭服务器
 	err := engine.server.Shutdown(context.Background())
