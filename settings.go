@@ -25,17 +25,17 @@ type MetaDataBase struct {
 
 // 项目设置
 type metaSettings struct {
-	NET_WORK    string                  // 网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
-	ADDRESS     string                  // 服务地址
-	PORT        uint16                  // 服务端口
-	BASE_DIR    string                  // 项目根路径
-	SECRET_KEY  string                  // 项目 AES 密钥
-	PRIVATE_KEY string                  // 项目 RSA 私钥
-	PUBLIC_KEY  string                  // 项目 RSA 公钥
-	SSL         MetaSSL                 // SSL
-	DATABASES   map[string]MetaDataBase // 数据库配置
-	TIME_ZONE   string                  // 时区
-	LOCATION    *time.Location          // 地区时区
+	NET_WORK     string                  // 网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
+	BIND_ADDRESS string                  // 服务地址
+	PORT         uint16                  // 服务端口
+	BASE_DIR     string                  // 项目根路径
+	SECRET_KEY   string                  // 项目 AES 密钥
+	PRIVATE_KEY  string                  // 项目 RSA 私钥
+	PUBLIC_KEY   string                  // 项目 RSA 公钥
+	SSL          MetaSSL                 // SSL
+	DATABASES    map[string]MetaDataBase // 数据库配置
+	TIME_ZONE    string                  // 时区
+	LOCATION     *time.Location          // 地区时区
 
 	// 自定义设置
 	mySettings map[string]any
@@ -43,18 +43,18 @@ type metaSettings struct {
 
 func newSettings() *metaSettings {
 	return &metaSettings{
-		NET_WORK:    "tcp",
-		ADDRESS:     "127.0.0.1",
-		PORT:        8080,
-		BASE_DIR:    "",
-		SECRET_KEY:  "",
-		PRIVATE_KEY: "",
-		PUBLIC_KEY:  "",
-		SSL:         MetaSSL{},
-		DATABASES:   make(map[string]MetaDataBase),
-		TIME_ZONE:   "Asia/Shanghai",
-		LOCATION:    time.Now().Location(),
-		mySettings:  make(map[string]any),
+		NET_WORK:     "tcp",
+		BIND_ADDRESS: "127.0.0.1",
+		PORT:         8080,
+		BASE_DIR:     "",
+		SECRET_KEY:   "",
+		PRIVATE_KEY:  "",
+		PUBLIC_KEY:   "",
+		SSL:          MetaSSL{},
+		DATABASES:    make(map[string]MetaDataBase),
+		TIME_ZONE:    "Asia/Shanghai",
+		LOCATION:     time.Now().Location(),
+		mySettings:   make(map[string]any),
 	}
 }
 

@@ -19,7 +19,7 @@ func init() {
 	// 设置网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 运行地址
-	Server.Settings.ADDRESS = "0.0.0.0"
+	Server.Settings.BIND_ADDRESS = "0.0.0.0"
 	// 端口
 	Server.Settings.PORT = 8080
 
