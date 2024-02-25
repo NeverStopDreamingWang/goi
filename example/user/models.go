@@ -117,21 +117,19 @@ func InitUserData() error {
 		return err
 	}
 
-	userData := [][]any{
-		{1, "张三", "123"},
-		{2, "李四", "456"},
+	userData := [][]string{
+		{"张三", "123"},
+		{"李四", "456"},
 	}
 
-	for _, userItem := range userData {
-		id := int64(userItem[0].(int))
-		username := userItem[1].(string)
-		password := userItem[1].(string)
+	for i, item := range userData {
+		id := int64(i + 1)
 		create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 
 		user := &UserSqliteModel{
 			Id:          &id,
-			Username:    &username,
-			Password:    &password,
+			Username:    &item[0],
+			Password:    &item[1],
 			Create_time: &create_time,
 		}
 		SQLite3DB.SetModel(UserSqliteModel{})
