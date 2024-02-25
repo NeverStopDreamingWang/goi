@@ -1,8 +1,11 @@
 package user
 
 import (
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/migrate"
 	"github.com/NeverStopDreamingWang/goi/model"
+	"time"
 )
 
 func init() {
@@ -43,6 +46,11 @@ func (UserModel) ModelSet() *model.MySQLSettings {
 	}
 
 	modelSettings := &model.MySQLSettings{
+		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
+			BeforeFunc: nil, // 迁移之前处理函数
+			AfterFunc:  nil, // 迁移之后处理函数
+		},
+
 		TABLE_NAME:      "user_tb",            // 设置表名
 		ENGINE:          "InnoDB",             // 设置存储引擎，默认: InnoDB
 		AUTO_INCREMENT:  2,                    // 设置自增长起始值
@@ -86,6 +94,11 @@ func (UserSqliteModel) ModelSet() *model.SQLite3Settings {
 	}
 
 	modelSettings := &model.SQLite3Settings{
+		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
+			BeforeFunc: nil,          // 迁移之前处理函数
+			AfterFunc:  InitUserData, // 迁移之后处理函数
+		},
+
 		TABLE_NAME: "user_tb", // 设置表名
 
 		// 自定义配置
@@ -94,4 +107,38 @@ func (UserSqliteModel) ModelSet() *model.SQLite3Settings {
 		},
 	}
 	return modelSettings
+}
+
+// 初始化数据
+func InitUserData() error {
+	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
+	defer SQLite3DB.Close()
+	if err != nil {
+		return err
+	}
+
+	userData := [][]any{
+		{1, "张三", "123"},
+		{2, "李四", "456"},
+	}
+
+	for _, userItem := range userData {
+		id := int64(userItem[0].(int))
+		username := userItem[1].(string)
+		password := userItem[1].(string)
+		create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
+
+		user := &UserSqliteModel{
+			Id:          &id,
+			Username:    &username,
+			Password:    &password,
+			Create_time: &create_time,
+		}
+		SQLite3DB.SetModel(UserSqliteModel{})
+		_, err = SQLite3DB.Insert(user)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

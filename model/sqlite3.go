@@ -2,6 +2,8 @@ package model
 
 // SQLite3 模型设置
 type SQLite3Settings struct {
+	MigrationsHandler // 迁移处理函数
+
 	TABLE_NAME string // 表名
 
 	// 自定义配置

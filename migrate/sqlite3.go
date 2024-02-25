@@ -55,7 +55,8 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 		_ = rows.Close()
 
 		for _, Model := range Migrations.MODELS {
-			TableName := Model.ModelSet().TABLE_NAME
+			modelSettings := Model.ModelSet()
+			TableName := modelSettings.TABLE_NAME
 
 			modelType := reflect.TypeOf(Model)
 			if modelType.Kind() == reflect.Ptr {
@@ -139,10 +140,26 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 				}
 
 			} else { // 创建表
+				if modelSettings.MigrationsHandler.BeforeFunc != nil { // 迁移之前处理
+					fmt.Println("迁移之前处理...")
+					err = modelSettings.MigrationsHandler.BeforeFunc()
+					if err != nil {
+						panic(fmt.Sprintf("迁移之前处理错误: %v", err))
+					}
+				}
+
 				fmt.Println(fmt.Sprintf("正在迁移 SQLite3: %v 数据库: %v 表: %v ...", DBName, Database.NAME, TableName))
 				_, err = sqlite3DB.Execute(createSql)
 				if err != nil {
 					panic(fmt.Sprintf("迁移错误: %v", err))
+				}
+
+				if modelSettings.MigrationsHandler.AfterFunc != nil { // 迁移之后处理
+					fmt.Println("迁移之后处理...")
+					err = modelSettings.MigrationsHandler.AfterFunc()
+					if err != nil {
+						panic(fmt.Sprintf("迁移之后处理错误: %v", err))
+					}
 				}
 			}
 		}

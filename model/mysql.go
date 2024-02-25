@@ -2,6 +2,8 @@ package model
 
 // MySQL 模型设置
 type MySQLSettings struct {
+	MigrationsHandler // 迁移处理函数
+
 	TABLE_NAME      string // 设置表名
 	ENGINE          string // 设置存储引擎，默认: InnoDB
 	AUTO_INCREMENT  int    // 设置自增长起始值
