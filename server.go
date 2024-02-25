@@ -117,7 +117,7 @@ func (engine *Engine) RunServer() {
 	}()
 
 	engine.server = http.Server{
-		Addr:    fmt.Sprintf("%v:%v", engine.Settings.ADDRESS, engine.Settings.PORT),
+		Addr:    fmt.Sprintf("%v:%v", engine.Settings.BIND_ADDRESS, engine.Settings.PORT),
 		Handler: engine,
 	}
 	ln, err := net.Listen(engine.Settings.NET_WORK, engine.server.Addr)
@@ -141,10 +141,10 @@ func (engine *Engine) RunServer() {
 			Certificates: []tls.Certificate{cert},
 		}
 
-		engine.Log.MetaLog(fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		engine.Log.MetaLog(fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
 		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
 	} else {
-		engine.Log.MetaLog(fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		engine.Log.MetaLog(fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
 		err = engine.server.Serve(ln)
 	}
 	if err != nil && err != http.ErrServerClosed {
