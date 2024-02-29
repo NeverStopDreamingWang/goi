@@ -52,7 +52,7 @@ var expirationPolicyNames = map[ExpirationPolicy]string{
 	SCHEDULED: "SCHEDULED",
 }
 
-type MetaCache struct {
+type metaCache struct {
 	EVICT_POLICY      EvictPolicy      // 缓存淘汰策略
 	EXPIRATION_POLICY ExpirationPolicy // 过期策略
 	MAX_SIZE          int64
@@ -72,8 +72,8 @@ type cacheItems struct {
 }
 
 // 创建缓存
-func newCache() *MetaCache {
-	cache := &MetaCache{
+func newCache() *metaCache {
+	cache := &metaCache{
 		EVICT_POLICY:      NOEVICTION,
 		EXPIRATION_POLICY: PERIODIC,
 		MAX_SIZE:          0,
@@ -85,10 +85,10 @@ func newCache() *MetaCache {
 }
 
 // 初始化缓存
-func (cache *MetaCache) initCache() {
-	engine.Log.MetaLog(fmt.Sprintf("缓存大小: %v", formatBytes(engine.Cache.MAX_SIZE)))
-	engine.Log.MetaLog(fmt.Sprintf("- 淘汰策略: %v", evictPolicyNames[engine.Cache.EVICT_POLICY]))
-	engine.Log.MetaLog(fmt.Sprintf("- 过期策略: %v", expirationPolicyNames[engine.Cache.EXPIRATION_POLICY]))
+func (cache *metaCache) initCache() {
+	engine.Log.Log(meta, fmt.Sprintf("缓存大小: %v", formatBytes(engine.Cache.MAX_SIZE)))
+	engine.Log.Log(meta, fmt.Sprintf("- 淘汰策略: %v", evictPolicyNames[engine.Cache.EVICT_POLICY]))
+	engine.Log.Log(meta, fmt.Sprintf("- 过期策略: %v", expirationPolicyNames[engine.Cache.EXPIRATION_POLICY]))
 
 	if cache.EXPIRATION_POLICY == PERIODIC {
 		go cache.cachePeriodicDeleteExpires()
@@ -96,7 +96,7 @@ func (cache *MetaCache) initCache() {
 }
 
 // Get 查找键的值
-func (cache *MetaCache) Get(key string) (any, bool) {
+func (cache *metaCache) Get(key string) (any, bool) {
 	if element, ok := cache.dict[key]; ok {
 		cacheItem := element.Value.(*cacheItems)
 
@@ -128,7 +128,7 @@ func (cache *MetaCache) Get(key string) (any, bool) {
 }
 
 // Set 设置键值
-func (cache *MetaCache) Set(key string, value any, expires int) {
+func (cache *metaCache) Set(key string, value any, expires int) {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	err := encoder.Encode(value)
@@ -173,7 +173,7 @@ func (cache *MetaCache) Set(key string, value any, expires int) {
 }
 
 // Del 删除键值
-func (cache *MetaCache) Del(key string) {
+func (cache *metaCache) Del(key string) {
 	if element, ok := cache.dict[key]; ok {
 		cacheItem := element.Value.(*cacheItems)
 
@@ -184,7 +184,7 @@ func (cache *MetaCache) Del(key string) {
 }
 
 // DelExp 删除过期的 key， 如果 key 已过期则删除返回 true，未过期则不会删除返回 false
-func (cache *MetaCache) DelExp(key string) bool {
+func (cache *metaCache) DelExp(key string) bool {
 	if element, ok := cache.dict[key]; ok {
 		cacheItem := element.Value.(*cacheItems)
 
@@ -200,7 +200,7 @@ func (cache *MetaCache) DelExp(key string) bool {
 }
 
 // 缓存淘汰
-func (cache *MetaCache) cacheEvict() {
+func (cache *metaCache) cacheEvict() {
 	if len(cache.dict) == 0 {
 		return
 	}
@@ -438,7 +438,7 @@ func (cache *MetaCache) cacheEvict() {
 }
 
 // 定期删除
-func (cache *MetaCache) cachePeriodicDeleteExpires() {
+func (cache *metaCache) cachePeriodicDeleteExpires() {
 	for cache.EXPIRATION_POLICY == PERIODIC {
 		if len(cache.dict) == 0 {
 			time.Sleep(3 * time.Second)

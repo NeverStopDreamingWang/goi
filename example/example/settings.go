@@ -62,8 +62,7 @@ func init() {
 	}
 
 	// 设置时区
-	Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai
-	// Server.Settings.TIME_ZONE = "America/New_York"
+	Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai，America/New_York
 
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
@@ -72,29 +71,21 @@ func init() {
 
 	// 日志设置
 	Server.Log.DEBUG = true
-	Server.Log.INFO_OUT_PATH = "logs/info.log"      // 输出所有日志到文件
-	Server.Log.ACCESS_OUT_PATH = "logs/asccess.log" // 输出访问日志文件
-	Server.Log.ERROR_OUT_PATH = "logs/error.log"    // 输出错误日志文件
-	// Server.Log.OUT_DATABASE = ""  // 输出到的数据库 例: default
-	Server.Log.SplitSize = 1024 * 1024
-	Server.Log.SplitTime = "2006-01-02"
+	// 日志列表
+	defaultLog := newDefaultLog()
+	accessLog := newAccessLog()
+	errorLog := newErrorLog()
+	Server.Log.LOGGERS = []*goi.MetaLogger{
+		defaultLog, // 默认日志
+		accessLog,  // 访问日志
+		errorLog,   // 错误日志
+	}
+
 	// 日志打印
-	// Server.Log.Debug() = goi.Log.Debug() = goi.Log.Log(goi.DEBUG, "")
+	// Server.Log.Log() = goi.Log.Log()
 	// Server.Log.Info() = goi.Log.Info()
 	// Server.Log.Warning() = goi.Log.Warning()
 	// Server.Log.Error() = goi.Log.Error()
-
-	// Server.Settings.LOG_OUTPATH = "/log/server.log"
-	// log_path := path.Join(BASE_DIR, LOG_OUTPATH)
-	// log_file, err := os.OpenFile(log_path, os.O_CREATE|os.O_APPEND, 0777)
-	// if err != nil {
-	// 	panic(fmt.Sprintf("异常【日志创建】: %v\n", err))
-	// 	return
-	// }
-	// log.SetOutput(log_file)
-	// // 设置日志前缀为空
-	// log.SetFlags(0)
-	// // defer log_file.Close()
 
 	// 设置自定义配置
 	// redis配置
