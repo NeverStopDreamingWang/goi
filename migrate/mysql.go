@@ -12,33 +12,33 @@ import (
 // MySQL 迁移
 func MySQLMigrate(Migrations model.MySQLMakeMigrations) {
 	if len(Migrations.DATABASES) == 0 {
-		panic("请指定迁移数据库！")
+		goi.Log.Error("请指定迁移数据库！")
 	}
 	// 迁移数据库
 	for _, DBName := range Migrations.DATABASES {
 		Database, ok := goi.Settings.DATABASES[DBName]
 		if ok == false {
-			panic(fmt.Sprintf("配置数据库: %v 不存在！", DBName))
+			goi.Log.Error(fmt.Sprintf("配置数据库: %v 不存在！", DBName))
 		}
 		if strings.ToLower(Database.ENGINE) != "mysql" {
 			continue
 		}
 		mysqlDB, err := db.MySQLConnect(DBName)
 		if err != nil {
-			panic(fmt.Sprintf("连接 MySQL [%v] 数据库 错误: %v", DBName, err))
+			goi.Log.Error(fmt.Sprintf("连接 MySQL [%v] 数据库 错误: %v", DBName, err))
 		}
 
 		// 获取所有表
 		TabelSclie := make([]string, 0)
 		rows, err := mysqlDB.Query("SHOW TABLES;")
 		if err != nil {
-			panic(fmt.Sprintf("连接 MySQL [%v] 数据库 错误: %v", DBName, err))
+			goi.Log.Error(fmt.Sprintf("连接 MySQL [%v] 数据库 错误: %v", DBName, err))
 		}
 		for rows.Next() {
 			var tableData string
 			err = rows.Scan(&tableData)
 			if err != nil {
-				panic(fmt.Sprintf("连接 MySQL [%v] 数据库 错误: %v", DBName, err))
+				goi.Log.Error(fmt.Sprintf("连接 MySQL [%v] 数据库 错误: %v", DBName, err))
 			}
 			TabelSclie = append(TabelSclie, tableData)
 		}
@@ -51,23 +51,23 @@ func MySQLMigrate(Migrations model.MySQLMakeMigrations) {
 
 			if !TableIsExists(TableName, TabelSclie) { // 不存在
 				if modelSettings.MigrationsHandler.BeforeFunc != nil { // 迁移之前处理
-					fmt.Println("迁移之前处理...")
+					goi.Log.Info("迁移之前处理...")
 					err = modelSettings.MigrationsHandler.BeforeFunc()
 					if err != nil {
-						panic(fmt.Sprintf("迁移之前处理错误: %v", err))
+						goi.Log.Error(fmt.Sprintf("迁移之前处理错误: %v", err))
 					}
 				}
 				_, err = mysqlDB.Execute(createSql)
 				if err != nil {
-					panic(fmt.Sprintf("迁移错误: %v", err))
+					goi.Log.Error(fmt.Sprintf("迁移错误: %v", err))
 				}
-				fmt.Println(fmt.Sprintf("正在迁移 MySQL: %v 数据库: %v 表: %v ...", DBName, Database.NAME, Model.ModelSet().TABLE_NAME))
+				goi.Log.Info(fmt.Sprintf("正在迁移 MySQL: %v 数据库: %v 表: %v ...", DBName, Database.NAME, Model.ModelSet().TABLE_NAME))
 
 				if modelSettings.MigrationsHandler.AfterFunc != nil { // 迁移之后处理
-					fmt.Println("迁移之后处理...")
+					goi.Log.Info("迁移之后处理...")
 					err = modelSettings.MigrationsHandler.AfterFunc()
 					if err != nil {
-						panic(fmt.Sprintf("迁移之后处理错误: %v", err))
+						goi.Log.Error(fmt.Sprintf("迁移之后处理错误: %v", err))
 					}
 				}
 			}

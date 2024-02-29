@@ -22,33 +22,33 @@ func TableIsExists(TableName string, TabelSlice []string) bool {
 // SQLite3 迁移
 func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 	if len(Migrations.DATABASES) == 0 {
-		panic("请指定迁移数据库！")
+		goi.Log.Error("请指定迁移数据库！")
 	}
 	// 迁移数据库
 	for _, DBName := range Migrations.DATABASES {
 		Database, ok := goi.Settings.DATABASES[DBName]
 		if ok == false {
-			panic(fmt.Sprintf("配置数据库: %v 不存在！", DBName))
+			goi.Log.Error(fmt.Sprintf("配置数据库: %v 不存在！", DBName))
 		}
 		if strings.ToLower(Database.ENGINE) != "sqlite3" {
 			continue
 		}
 		sqlite3DB, err := db.SQLite3Connect(DBName)
 		if err != nil {
-			panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
+			goi.Log.Error(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 		}
 
 		// 获取所有表
 		TabelSclie := make([]string, 0)
 		rows, err := sqlite3DB.Query("SELECT name FROM sqlite_master WHERE type='table' AND name not in ('sqlite_master','sqlite_sequence');")
 		if err != nil {
-			panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
+			goi.Log.Error(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 		}
 		for rows.Next() {
 			var tableData string
 			err = rows.Scan(&tableData)
 			if err != nil {
-				panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
+				goi.Log.Error(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 			}
 			TabelSclie = append(TabelSclie, tableData)
 		}
@@ -80,36 +80,36 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 				sql := fmt.Sprintf("SELECT sql FROM sqlite_master WHERE type='table' AND name='%v';", TableName)
 				rows, err = sqlite3DB.Query(sql)
 				if err != nil {
-					panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
+					goi.Log.Error(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 				}
 				var old_createSql string
 				for rows.Next() {
 					err = rows.Scan(&old_createSql)
 					if err != nil {
-						panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
+						goi.Log.Error(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 					}
 				}
 				_ = rows.Close()
 				if createSql != old_createSql { // 创建表语句不一样
-					fmt.Println(fmt.Sprintf("正在更新 SQLite3: %v 数据库: %v 表: %v ", DBName, Database.NAME, TableName))
+					goi.Log.Info(fmt.Sprintf("正在更新 SQLite3: %v 数据库: %v 表: %v ", DBName, Database.NAME, TableName))
 
 					oldTableName := fmt.Sprintf("%v_%v", TableName, goi.Version())
-					fmt.Println(fmt.Sprintf("- 重命名旧表：%v...", oldTableName))
+					goi.Log.Info(fmt.Sprintf("- 重命名旧表：%v...", oldTableName))
 					_, err = sqlite3DB.Execute(fmt.Sprintf("ALTER TABLE `%v` RENAME TO `%v`;", TableName, oldTableName))
 					if err != nil {
-						panic(fmt.Sprintf("重命名旧表错误: %v", err))
+						goi.Log.Error(fmt.Sprintf("重命名旧表错误: %v", err))
 					}
 
-					fmt.Println(fmt.Sprintf("- 创建新表：%v...", TableName))
+					goi.Log.Info(fmt.Sprintf("- 创建新表：%v...", TableName))
 					_, err = sqlite3DB.Execute(createSql)
 					if err != nil {
-						panic(fmt.Sprintf("创建新表错误: %v", err))
+						goi.Log.Error(fmt.Sprintf("创建新表错误: %v", err))
 					}
 
 					TabelFieldSlice := make([]string, 0)
 					rows, err = sqlite3DB.Query(fmt.Sprintf("PRAGMA table_info(`%v`);", oldTableName))
 					if err != nil {
-						panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
+						goi.Log.Error(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 					}
 					for rows.Next() {
 						var (
@@ -122,7 +122,7 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 						)
 						err = rows.Scan(&cid, &name, &dataType, &notNull, &dflt_value, &pk)
 						if err != nil {
-							panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
+							goi.Log.Error(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", DBName, err))
 						}
 						if _, exists := tampFieldMap[name]; exists {
 							TabelFieldSlice = append(TabelFieldSlice, name)
@@ -130,35 +130,35 @@ func SQLite3Migrate(Migrations model.SQLite3MakeMigrations) {
 					}
 					_ = rows.Close()
 
-					fmt.Println("- 迁移数据...")
+					goi.Log.Info("- 迁移数据...")
 					migrateFieldSql := strings.Join(TabelFieldSlice, ",")
 					migrateSql := fmt.Sprintf("INSERT INTO `%v` (%v) SELECT %v FROM `%v`;", TableName, migrateFieldSql, migrateFieldSql, oldTableName)
 					_, err = sqlite3DB.Execute(migrateSql)
 					if err != nil {
-						panic(fmt.Sprintf("迁移表数据错误: %v", err))
+						goi.Log.Error(fmt.Sprintf("迁移表数据错误: %v", err))
 					}
 				}
 
-			} else { // 创建表
+			} else {                                                   // 创建表
 				if modelSettings.MigrationsHandler.BeforeFunc != nil { // 迁移之前处理
-					fmt.Println("迁移之前处理...")
+					goi.Log.Info("迁移之前处理...")
 					err = modelSettings.MigrationsHandler.BeforeFunc()
 					if err != nil {
-						panic(fmt.Sprintf("迁移之前处理错误: %v", err))
+						goi.Log.Error(fmt.Sprintf("迁移之前处理错误: %v", err))
 					}
 				}
 
-				fmt.Println(fmt.Sprintf("正在迁移 SQLite3: %v 数据库: %v 表: %v ...", DBName, Database.NAME, TableName))
+				goi.Log.Info(fmt.Sprintf("正在迁移 SQLite3: %v 数据库: %v 表: %v ...", DBName, Database.NAME, TableName))
 				_, err = sqlite3DB.Execute(createSql)
 				if err != nil {
-					panic(fmt.Sprintf("迁移错误: %v", err))
+					goi.Log.Error(fmt.Sprintf("迁移错误: %v", err))
 				}
 
 				if modelSettings.MigrationsHandler.AfterFunc != nil { // 迁移之后处理
-					fmt.Println("迁移之后处理...")
+					goi.Log.Info("迁移之后处理...")
 					err = modelSettings.MigrationsHandler.AfterFunc()
 					if err != nil {
-						panic(fmt.Sprintf("迁移之后处理错误: %v", err))
+						goi.Log.Error(fmt.Sprintf("迁移之后处理错误: %v", err))
 					}
 				}
 			}

@@ -19,8 +19,8 @@ import (
 var version = "1.0.13"
 var engine *Engine
 var Settings *metaSettings
-var Cache *MetaCache
-var Log *MetaLogger
+var Cache *metaCache
+var Log *metaLog
 
 var exitChan = make(chan os.Signal, 1)
 
@@ -41,15 +41,15 @@ type Engine struct {
 	Router      *metaRouter
 	MiddleWares *metaMiddleWares
 	Settings    *metaSettings
-	Cache       *MetaCache
-	Log         *MetaLogger
+	Cache       *metaCache
+	Log         *metaLog
 }
 
 // 创建一个 Http 服务
 func NewHttpServer() *Engine {
 	Settings = newSettings()
 	Cache = newCache()
-	Log = NewLogger()
+	Log = newLog()
 	engine = &Engine{
 		startTime:   nil,
 		server:      http.Server{},
@@ -76,24 +76,16 @@ func (engine *Engine) RunServer() {
 	// 初始化日志
 	engine.Log.InitLogger()
 
-	engine.Log.MetaLog("---start---")
-	engine.Log.MetaLog(fmt.Sprintf("启动时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
-	engine.Log.MetaLog(fmt.Sprintf("goi 版本: %v", version))
+	engine.Log.Log(meta, "---start---")
+	engine.Log.Log(meta, fmt.Sprintf("启动时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
+	engine.Log.Log(meta, fmt.Sprintf("goi 版本: %v", version))
 
-	engine.Log.MetaLog(fmt.Sprintf("日志 DEBUG: %v", engine.Log.DEBUG))
-	if engine.Log.INFO_OUT_PATH != "" {
-		engine.Log.MetaLog(fmt.Sprintf("- INFO 日志: %v", engine.Log.INFO_OUT_PATH))
+	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
+	for _, logger := range engine.Log.LOGGERS {
+		engine.Log.Log(meta, fmt.Sprintf("- [%v] 切割大小: %v 切割日期: %v", logger.Name, formatBytes(logger.SPLIT_SIZE), logger.SPLIT_TIME))
 	}
-	if engine.Log.ACCESS_OUT_PATH != "" {
-		engine.Log.MetaLog(fmt.Sprintf("- ACCESS 日志: %v", engine.Log.ACCESS_OUT_PATH))
-	}
-	if engine.Log.ERROR_OUT_PATH != "" {
-		engine.Log.MetaLog(fmt.Sprintf("- ERROR 日志: %v", engine.Log.ERROR_OUT_PATH))
-	}
-	engine.Log.MetaLog(fmt.Sprintf("日志切割大小: %v", formatBytes(engine.Log.SplitSize)))
-	engine.Log.MetaLog(fmt.Sprintf("日志切割格式: %v", engine.Log.SplitTime))
 
-	engine.Log.MetaLog(fmt.Sprintf("当前时区: %v", engine.Settings.TIME_ZONE))
+	engine.Log.Log(meta, fmt.Sprintf("当前时区: %v", engine.Settings.TIME_ZONE))
 
 	// 初始化缓存
 	engine.Cache.initCache()
@@ -110,9 +102,9 @@ func (engine *Engine) RunServer() {
 		switch sig {
 		case os.Kill, os.Interrupt:
 			err = engine.StopServer()
-			panic(err)
+			engine.Log.Error(err)
 		default:
-			engine.Log.MetaLog("无效操作！")
+			engine.Log.Log(meta, "无效操作！")
 		}
 	}()
 
@@ -122,42 +114,42 @@ func (engine *Engine) RunServer() {
 	}
 	ln, err := net.Listen(engine.Settings.NET_WORK, engine.server.Addr)
 	if err != nil {
-		panic(err)
+		engine.Log.Error(err)
 	}
 	if engine.Settings.SSL.STATUS == true {
 		certificate, err := os.ReadFile(engine.Settings.SSL.CERT_PATH)
 		if err != nil {
-			panic(err)
+			engine.Log.Error(err)
 		}
 		key, err := os.ReadFile(engine.Settings.SSL.KEY_PATH)
 		if err != nil {
-			panic(err)
+			engine.Log.Error(err)
 		}
 		cert, err := tls.X509KeyPair(certificate, key)
 		if err != nil {
-			panic(err)
+			engine.Log.Error(err)
 		}
 		engine.server.TLSConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		}
 
-		engine.Log.MetaLog(fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		engine.Log.Log(meta, fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
 		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
 	} else {
-		engine.Log.MetaLog(fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		engine.Log.Log(meta, fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
 		err = engine.server.Serve(ln)
 	}
 	if err != nil && err != http.ErrServerClosed {
-		panic(err)
+		engine.Log.Error(err)
 	}
 }
 
 // 停止 http 服务
 func (engine *Engine) StopServer() error {
-	engine.Log.MetaLog("服务已停止！")
-	engine.Log.MetaLog(fmt.Sprintf("停止时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
-	engine.Log.MetaLog(fmt.Sprintf("共运行: %v", engine.RunTimeStr()))
-	engine.Log.MetaLog("---end---")
+	engine.Log.Log(meta, "服务已停止！")
+	engine.Log.Log(meta, fmt.Sprintf("停止时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
+	engine.Log.Log(meta, fmt.Sprintf("共运行: %v", engine.RunTimeStr()))
+	engine.Log.Log(meta, "---end---")
 	// 关闭服务器
 	err := engine.server.Shutdown(context.Background())
 	if err != nil {
@@ -237,13 +229,13 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	// 解析 json 数据
 	body, err := io.ReadAll(request.Body)
 	if err != nil {
-		panic(fmt.Sprintf("读取 Body 错误: %v\n", err))
+		engine.Log.Error(fmt.Sprintf("读取 Body 错误: %v\n", err))
 	}
 	if len(body) != 0 {
 		jsonData := make(map[string]any)
 		err = json.Unmarshal(body, &jsonData)
 		if err != nil {
-			panic(fmt.Sprintf("解析 json 错误: %v\n", err))
+			engine.Log.Error(fmt.Sprintf("解析 json 错误: %v\n", err))
 		}
 		for name, value := range jsonData {
 			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
@@ -299,13 +291,13 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	}
 	// 返回响应
 	if err != nil {
-		panic(fmt.Sprintf("响应 json 数据错误: %v\n", err))
+		engine.Log.Error(fmt.Sprintf("响应 json 数据错误: %v\n", err))
 	}
 	// 返回响应
 	response.WriteHeader(StatusCode)
 	write, err = response.Write(ResponseData)
 	if err != nil {
-		panic(fmt.Sprintf("响应错误: %v\n", err))
+		engine.Log.Error(fmt.Sprintf("响应错误: %v\n", err))
 	}
 	log = fmt.Sprintf("- %v - %v %v %v byte status %v %v",
 		request.Host,

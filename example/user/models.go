@@ -39,7 +39,7 @@ type UserModel struct {
 }
 
 // 设置表配置
-func (UserModel) ModelSet() *model.MySQLSettings {
+func (userModel UserModel) ModelSet() *model.MySQLSettings {
 	encryptFields := []string{
 		"username",
 		"password",
@@ -87,7 +87,7 @@ type UserSqliteModel struct {
 }
 
 // 设置表配置
-func (UserSqliteModel) ModelSet() *model.SQLite3Settings {
+func (userSqliteModel UserSqliteModel) ModelSet() *model.SQLite3Settings {
 	encryptFields := []string{
 		"username",
 		"password",
