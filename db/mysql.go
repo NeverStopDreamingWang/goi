@@ -156,8 +156,6 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		return errors.New("查询结果不是一个切片")
 	}
 
-	result.Set(reflect.MakeSlice(result.Type(), 0, 0))
-
 	resultType = result.Type().Elem()
 	if resultType.Kind() == reflect.Ptr {
 		isPtr = true
@@ -169,7 +167,11 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
 	fieldsSQl := strings.Join(queryFields, "`,`")
-	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, mysqlDB.sql)
+	if mysqlDB.sql != "" {
+		mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, mysqlDB.sql)
+	} else {
+		mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
+	}
 	rows, err := mysqlDB.DB.Query(mysqlDB.sql, mysqlDB.args...)
 	defer rows.Close()
 	if err != nil {
@@ -185,7 +187,10 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 
 		for i, fieldName := range mysqlDB.fields {
 			field := item.FieldByName(fieldName)
-			values[i] = field.Addr().Interface()
+			if field.Kind() == reflect.Ptr && field.IsNil() {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+			values[i] = field.Interface()
 		}
 
 		err = rows.Scan(values...)
@@ -213,6 +218,10 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		result = result.Elem()
 	}
 
+	if kind := result.Kind(); kind != reflect.Slice {
+		return errors.New("查询结果不是一个切片")
+	}
+
 	queryFields := make([]string, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
@@ -229,7 +238,10 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	values := make([]interface{}, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		field := result.FieldByName(fieldName)
-		values[i] = field.Addr().Interface()
+		if field.Kind() == reflect.Ptr && field.IsNil() {
+			field.Set(reflect.New(field.Type().Elem()))
+		}
+		values[i] = field.Interface()
 	}
 
 	err := row.Scan(values...)
