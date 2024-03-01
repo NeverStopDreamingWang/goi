@@ -82,7 +82,14 @@ func (engine *Engine) RunServer() {
 
 	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
 	for _, logger := range engine.Log.LOGGERS {
-		engine.Log.Log(meta, fmt.Sprintf("- [%v] 切割大小: %v 切割日期: %v", logger.Name, formatBytes(logger.SPLIT_SIZE), logger.SPLIT_TIME))
+		log := fmt.Sprintf("- [%v]", logger.Name)
+		if logger.SPLIT_SIZE != 0 {
+			log += fmt.Sprintf(" 切割大小: %v", formatBytes(logger.SPLIT_SIZE))
+		}
+		if logger.SPLIT_TIME != "" {
+			log += fmt.Sprintf(" 切割日期: %v", logger.SPLIT_TIME)
+		}
+		engine.Log.Log(meta, log)
 	}
 
 	engine.Log.Log(meta, fmt.Sprintf("当前时区: %v", engine.Settings.TIME_ZONE))
