@@ -16,6 +16,9 @@ func init() {
 	// version := goi.Version() // 获取版本信息
 	// fmt.Println("goi 版本", version)
 
+	// 项目路径
+	Server.Settings.BASE_DIR, _ = os.Getwd()
+
 	// 设置网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 运行地址
@@ -24,9 +27,6 @@ func init() {
 	Server.Settings.PORT = 8080
 	// 域名
 	Server.Settings.Domain = ""
-
-	// 项目路径
-	Server.Settings.BASE_DIR, _ = os.Getwd()
 
 	// 项目 AES 密钥
 	Server.Settings.SECRET_KEY = "xxxxxxxxxxxxxxxxx"
