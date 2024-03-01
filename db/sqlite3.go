@@ -164,8 +164,6 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		return errors.New("查询结果不是一个切片")
 	}
 
-	result.Set(reflect.MakeSlice(result.Type(), 0, 0))
-
 	resultType = result.Type().Elem()
 	if resultType.Kind() == reflect.Ptr {
 		isPtr = true
@@ -177,7 +175,11 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
 	fieldsSQl := strings.Join(queryFields, "`,`")
-	sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, sqlite3DB.sql)
+	if sqlite3DB.sql != "" {
+		sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, sqlite3DB.sql)
+	} else {
+		sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
+	}
 	rows, err := sqlite3DB.DB.Query(sqlite3DB.sql, sqlite3DB.args...)
 	defer rows.Close()
 	if err != nil {
@@ -193,7 +195,10 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 
 		for i, fieldName := range sqlite3DB.fields {
 			field := item.FieldByName(fieldName)
-			values[i] = field.Addr().Interface()
+			if field.Kind() == reflect.Ptr && field.IsNil() {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+			values[i] = field.Interface()
 		}
 
 		err = rows.Scan(values...)
@@ -221,6 +226,10 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		result = result.Elem()
 	}
 
+	if kind := result.Kind(); kind != reflect.Struct {
+		return errors.New("查询结果不是一个结构体")
+	}
+
 	queryFields := make([]string, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
@@ -237,7 +246,10 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	values := make([]interface{}, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
 		field := result.FieldByName(fieldName)
-		values[i] = field.Addr().Interface()
+		if field.Kind() == reflect.Ptr && field.IsNil() {
+			field.Set(reflect.New(field.Type().Elem()))
+		}
+		values[i] = field.Interface()
 	}
 
 	err := row.Scan(values...)
