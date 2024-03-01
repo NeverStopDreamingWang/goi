@@ -7,6 +7,7 @@ import (
 // SSL
 type MetaSSL struct {
 	STATUS    bool
+	TYPE      string
 	CERT_PATH string
 	KEY_PATH  string
 }
