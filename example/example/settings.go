@@ -22,6 +22,8 @@ func init() {
 	Server.Settings.BIND_ADDRESS = "0.0.0.0"
 	// 端口
 	Server.Settings.PORT = 8080
+	// 域名
+	Server.Settings.Domain = ""
 
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
@@ -40,7 +42,6 @@ func init() {
 		STATUS:    false, // SSL 开关
 		CERT_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/example.crt"),
 		KEY_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/example.key"),
-		CSR_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/example.csr"), // 可选
 	}
 
 	// 数据库配置
