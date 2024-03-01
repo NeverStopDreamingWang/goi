@@ -156,12 +156,13 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		resultType reflect.Type
 		result     = reflect.ValueOf(queryResult)
 	)
-	if result.Kind() == reflect.Ptr {
-		result = result.Elem()
+	if result.Kind() != reflect.Ptr {
+		return errors.New("queryResult 不是一个指向结构体的指针")
 	}
+	result = result.Elem()
 
 	if kind := result.Kind(); kind != reflect.Slice {
-		return errors.New("查询结果不是一个切片")
+		return errors.New("queryResult 不是一个切片")
 	}
 
 	resultType = result.Type().Elem()
@@ -218,12 +219,13 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
-	if result.Kind() == reflect.Ptr {
-		result = result.Elem()
+	if result.Kind() != reflect.Ptr {
+		return errors.New("queryResult 不是一个指向结构体的指针")
 	}
+	result = result.Elem()
 
 	if kind := result.Kind(); kind != reflect.Struct {
-		return errors.New("查询结果不是一个结构体")
+		return errors.New("queryResult 不是一个结构体")
 	}
 
 	queryFields := make([]string, len(sqlite3DB.fields))
