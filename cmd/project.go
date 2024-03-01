@@ -170,15 +170,14 @@ func init() {
 	// version := goi.Version() // 获取版本信息
 	// fmt.Println("goi 版本", version)
 	
+	// 项目路径
+	Server.Settings.BASE_DIR, _ = os.Getwd()
 	// 设置网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 运行地址
 	Server.Settings.BIND_ADDRESS = "0.0.0.0"
 	// 端口
 	Server.Settings.PORT = 8080
-
-	// 项目路径
-	Server.Settings.BASE_DIR, _ = os.Getwd()
 
 	// 项目 AES 密钥
 	Server.Settings.SECRET_KEY = "%s"
@@ -250,7 +249,7 @@ func init() {
 	Server.Settings.Set("REDIS_DB", 0)
 }
 `
-		return fmt.Sprintf(content, projectName, secretKey, "`"+privateKey+"`", "`"+publicKey+"`", projectName, projectName, projectName)
+		return fmt.Sprintf(content, projectName, secretKey, "`"+privateKey+"`", "`"+publicKey+"`", projectName, projectName)
 	},
 	Path: func() string {
 		return path.Join(baseDir, projectName, projectName)

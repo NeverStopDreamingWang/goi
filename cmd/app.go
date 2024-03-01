@@ -116,7 +116,7 @@ var urls = InitFile{
 		content := `package %s
 
 import (
-	"%s"
+	"%s/%s"
 	"github.com/NeverStopDreamingWang/goi"
 )
 
@@ -125,11 +125,11 @@ func init() {
 	%sRouter := %s.Server.Router.Include("/%s")
 	{
 		// 注册一个路径
-		// testRouter.UrlPatterns("/test_views", goi.AsView{GET: TestView})
+		%sRouter.UrlPatterns("/test_views", goi.AsView{GET: TestView})
 	}
 }
 `
-		return fmt.Sprintf(content, appName, projectName, appName, projectName, appName)
+		return fmt.Sprintf(content, appName, projectName, projectName, appName, projectName, appName, appName)
 	},
 	Path: func() string {
 		return path.Join(baseDir, appName)
