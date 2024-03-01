@@ -9,7 +9,6 @@ type MetaSSL struct {
 	STATUS    bool
 	CERT_PATH string
 	KEY_PATH  string
-	CSR_PATH  string
 }
 
 // 数据库
