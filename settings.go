@@ -27,6 +27,7 @@ type metaSettings struct {
 	NET_WORK     string                  // 网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	BIND_ADDRESS string                  // 服务地址
 	PORT         uint16                  // 服务端口
+	Domain       string                  // 域名
 	BASE_DIR     string                  // 项目根路径
 	SECRET_KEY   string                  // 项目 AES 密钥
 	PRIVATE_KEY  string                  // 项目 RSA 私钥
@@ -45,6 +46,7 @@ func newSettings() *metaSettings {
 		NET_WORK:     "tcp",
 		BIND_ADDRESS: "127.0.0.1",
 		PORT:         8080,
+		Domain:       "",
 		BASE_DIR:     "",
 		SECRET_KEY:   "",
 		PRIVATE_KEY:  "",
