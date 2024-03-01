@@ -194,11 +194,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		item := reflect.New(resultType).Elem()
 
 		for i, fieldName := range sqlite3DB.fields {
-			field := item.FieldByName(fieldName)
-			if field.Kind() == reflect.Ptr && field.IsNil() {
-				field.Set(reflect.New(field.Type().Elem()))
-			}
-			values[i] = field.Interface()
+			values[i] = item.FieldByName(fieldName).Addr().Interface()
 		}
 
 		err = rows.Scan(values...)
@@ -245,11 +241,7 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 
 	values := make([]interface{}, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
-		field := result.FieldByName(fieldName)
-		if field.Kind() == reflect.Ptr && field.IsNil() {
-			field.Set(reflect.New(field.Type().Elem()))
-		}
-		values[i] = field.Interface()
+		values[i] = result.FieldByName(fieldName).Addr().Interface()
 	}
 
 	err := row.Scan(values...)
