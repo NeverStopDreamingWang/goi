@@ -216,7 +216,7 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	}
 	result = result.Elem()
 
-	if kind := result.Kind(); kind != reflect.Slice {
+	if kind := result.Kind(); kind != reflect.Struct {
 		return errors.New("queryResult 不是一个结构体")
 	}
 
