@@ -7,17 +7,21 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/model"
 	_ "github.com/go-sql-driver/mysql"
+	"math"
 	"reflect"
 	"strings"
 )
 
 type MySQLDB struct {
-	Name   string
-	DB     *sql.DB
-	model  model.MySQLModel
-	fields []string
-	sql    string
-	args   []any
+	Name      string
+	DB        *sql.DB
+	model     model.MySQLModel
+	fields    []string
+	where_sql []string
+	limit_sql string
+	order_sql string
+	sql       string
+	args      []any
 }
 
 // 连接 MySQL
@@ -25,12 +29,15 @@ func MetaMySQLConnect(Database goi.MetaDataBase) (*MySQLDB, error) {
 	connectStr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", Database.USER, Database.PASSWORD, Database.HOST, Database.PORT, Database.NAME)
 	mysqlDB, err := sql.Open(Database.ENGINE, connectStr)
 	return &MySQLDB{
-		Name:   "",
-		DB:     mysqlDB,
-		model:  nil,
-		fields: nil,
-		sql:    "",
-		args:   nil,
+		Name:      "",
+		DB:        mysqlDB,
+		model:     nil,
+		fields:    nil,
+		where_sql: nil,
+		limit_sql: "",
+		order_sql: "",
+		sql:       "",
+		args:      nil,
 	}, err
 }
 
@@ -88,12 +95,6 @@ func (mysqlDB *MySQLDB) SetModel(model model.MySQLModel) *MySQLDB {
 	return mysqlDB
 }
 
-// 设置查询字段
-func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
-	mysqlDB.fields = fields
-	return mysqlDB
-}
-
 // 插入数据库
 func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 	if mysqlDB.model == nil {
@@ -124,20 +125,75 @@ func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 	}
 	valuesSQL := strings.Join(tempValues, ",")
 
-	insertSQL := fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
+	mysqlDB.sql = fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
 
-	return mysqlDB.Execute(insertSQL, insertValues...)
+	return mysqlDB.Execute(mysqlDB.sql, insertValues...)
+}
+
+// 设置查询字段
+func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
+	mysqlDB.fields = fields
+	return mysqlDB
 }
 
 // 查询语句
 func (mysqlDB *MySQLDB) Where(query string, args ...any) *MySQLDB {
-	mysqlDB.sql = query
-	mysqlDB.args = args
+	mysqlDB.where_sql = append(mysqlDB.where_sql, query)
+	mysqlDB.args = append(mysqlDB.args, args...)
 	return mysqlDB
+}
+
+// 排序
+func (mysqlDB *MySQLDB) OrderBy(orders ...string) *MySQLDB {
+	var orderFields []string
+	for _, order := range orders {
+		order = strings.Trim(order, " `'\"")
+		if order == "" {
+			continue
+		}
+
+		var sequence string
+		var orderSQL string
+		if order[0] == '-' {
+			orderSQL = order[1:]
+			sequence = "DESC"
+		} else {
+			orderSQL = order
+			sequence = "ASC"
+		}
+		orderFields = append(orderFields, fmt.Sprintf("`%s` %s", orderSQL, sequence))
+	}
+	if len(orderFields) > 0 {
+		mysqlDB.order_sql = fmt.Sprintf(" ORDER BY %s", strings.Join(orderFields, ", "))
+	} else {
+		mysqlDB.order_sql = ""
+	}
+	return mysqlDB
+}
+
+// 排序
+func (mysqlDB *MySQLDB) Page(page int, pagesize int) (int, int, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pagesize <= 0 {
+		pagesize = 10 // 默认分页大小
+	}
+	offset := (page - 1) * pagesize
+	mysqlDB.limit_sql = fmt.Sprintf(" LIMIT %d OFFSET %d", pagesize, offset)
+	total, err := mysqlDB.Count()
+	totalPages := int(math.Ceil(float64(total) / float64(pagesize)))
+	return total, totalPages, err
 }
 
 // 执行查询语句获取数据
 func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
+	defer func() {
+		mysqlDB.where_sql = nil
+		mysqlDB.limit_sql = ""
+		mysqlDB.order_sql = ""
+		mysqlDB.args = nil
+	}()
 	if mysqlDB.model == nil {
 		return errors.New("请先设置 SetModel")
 	}
@@ -168,11 +224,18 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
 	fieldsSQl := strings.Join(queryFields, "`,`")
-	if mysqlDB.sql != "" {
-		mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, mysqlDB.sql)
-	} else {
-		mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
+
+	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
+	if len(mysqlDB.where_sql) > 0 {
+		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
 	}
+	if mysqlDB.order_sql != "" {
+		mysqlDB.sql += mysqlDB.order_sql
+	}
+	if mysqlDB.limit_sql != "" {
+		mysqlDB.sql += mysqlDB.limit_sql
+	}
+
 	rows, err := mysqlDB.DB.Query(mysqlDB.sql, mysqlDB.args...)
 	defer rows.Close()
 	if err != nil {
@@ -204,7 +267,13 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 }
 
 // 返回第一条数据
-func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
+func (mysqlDB *MySQLDB) Find(queryResult interface{}) error {
+	defer func() {
+		mysqlDB.where_sql = nil
+		mysqlDB.limit_sql = ""
+		mysqlDB.order_sql = ""
+		mysqlDB.args = nil
+	}()
 	if mysqlDB.model == nil {
 		return errors.New("请先设置 SetModel")
 	}
@@ -225,7 +294,17 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
 	fieldsSQl := strings.Join(queryFields, "`,`")
-	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v` WHERE %v", fieldsSQl, TableName, mysqlDB.sql)
+
+	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
+	if len(mysqlDB.where_sql) > 0 {
+		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
+	}
+	if mysqlDB.order_sql != "" {
+		mysqlDB.sql += mysqlDB.order_sql
+	}
+	if mysqlDB.limit_sql != "" {
+		mysqlDB.sql += mysqlDB.limit_sql
+	}
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 	if row == nil {
 		return nil
@@ -245,13 +324,41 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	return nil
 }
 
+// 返回查询条数数量
+func (mysqlDB *MySQLDB) Count() (int, error) {
+	if mysqlDB.model == nil {
+		return 0, errors.New("请先设置 SetModel")
+	}
+	TableName := mysqlDB.model.ModelSet().TABLE_NAME
+
+	mysqlDB.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
+	if len(mysqlDB.where_sql) > 0 {
+		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
+	}
+
+	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
+	if row == nil {
+		return 0, nil
+	} else if row.Err() != nil {
+		return 0, row.Err()
+	}
+
+	var count int
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // 更新数据，返回操作条数
 func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
+	defer func() {
+		mysqlDB.where_sql = nil
+		mysqlDB.args = nil
+	}()
 	if mysqlDB.model == nil {
 		return nil, errors.New("请先设置 SetModel 表")
-	}
-	if mysqlDB.sql == "" {
-		return nil, errors.New("请先设置 Where 条件")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
@@ -277,7 +384,10 @@ func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 	}
 	fieldsSQl := strings.Join(updateFields, ",")
 
-	mysqlDB.sql = fmt.Sprintf("UPDATE `%v` SET %v WHERE %v", TableName, fieldsSQl, mysqlDB.sql)
+	mysqlDB.sql = fmt.Sprintf("UPDATE `%v` SET %v", TableName, fieldsSQl)
+	if len(mysqlDB.where_sql) > 0 {
+		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
+	}
 
 	updateValues = append(updateValues, mysqlDB.args...)
 	return mysqlDB.Execute(mysqlDB.sql, updateValues...)
@@ -285,15 +395,18 @@ func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 
 // 删除数据，返回操作条数
 func (mysqlDB *MySQLDB) Delete() (sql.Result, error) {
+	defer func() {
+		mysqlDB.where_sql = nil
+		mysqlDB.args = nil
+	}()
 	if mysqlDB.model == nil {
 		return nil, errors.New("请先设置 SetModel 表")
 	}
-	if mysqlDB.sql == "" {
-		return nil, errors.New("请先设置 Where 条件")
-	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
-
-	mysqlDB.sql = fmt.Sprintf("DELETE FROM `%v` WHERE %v", TableName, mysqlDB.sql)
+	mysqlDB.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
+	if len(mysqlDB.where_sql) > 0 {
+		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
+	}
 
 	return mysqlDB.Execute(mysqlDB.sql, mysqlDB.args...)
 }
