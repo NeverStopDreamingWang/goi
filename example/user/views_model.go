@@ -6,15 +6,19 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 // 读取多条数据到 Model
 func TestModelList(request *goi.Request) any {
-	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
-	// defer mysqlObj.Close()
-	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
-	defer SQLite3DB.Close()
+	page, _ := strconv.Atoi(request.QueryParams.Get("page").(string))
+	pagesize, _ := strconv.Atoi(request.QueryParams.Get("pagesize").(string))
+
+	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
+	defer mysqlObj.Close()
+	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
+	// defer SQLite3DB.Close()
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -23,14 +27,22 @@ func TestModelList(request *goi.Request) any {
 	}
 
 	// mysql 数据库
-	// var userSlice []UserModel
-	// mysqlObj.SetModel(UserModel{}) // 设置操作表
-	// err = mysqlObj.Fields("Id", "Username", "Password").Where("id>?", 1).Select(&userSlice)
+	var userSlice []UserModel
+	mysqlObj.SetModel(UserModel{}) // 设置操作表
+	mysqlObj.Fields("Id", "Username", "Password").Where("id>?", 1).OrderBy("-id")
+	total, page_number, err := mysqlObj.Page(page, pagesize)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusInternalServerError,
+			Data:   err.Error(),
+		}
+	}
+	err = mysqlObj.Select(&userSlice)
 
 	// sqlite3 数据库
-	var userSlice []UserSqliteModel
-	SQLite3DB.SetModel(UserSqliteModel{})
-	err = SQLite3DB.Fields("Id", "Username", "Password").Where("id>? limit 1, 2", 1).Select(&userSlice)
+	// var userSlice []UserSqliteModel
+	// SQLite3DB.SetModel(UserSqliteModel{})
+	// err = SQLite3DB.Fields("Id", "Username", "Password").Where("id>?", 1).Select(&userSlice)
 
 	if err != nil {
 		return goi.Response{
@@ -43,30 +55,31 @@ func TestModelList(request *goi.Request) any {
 		// *user.Username = "test"
 		fmt.Println(i)
 		if user.Id != nil {
-			fmt.Println("Id", user.Id)
+			fmt.Println("Id", *user.Id)
 		}
 		if user.Username != nil {
-			fmt.Println("Username", user.Username)
+			fmt.Println("Username", *user.Username)
 		}
 		if user.Create_time != nil {
-			fmt.Println("Create_time", user.Create_time)
+			fmt.Println("Create_time", *user.Create_time)
 		}
 		if user.Update_time != nil {
-			fmt.Println("Update_time", user.Update_time)
+			fmt.Println("Update_time", *user.Update_time)
 		}
 	}
 
-	jsonData, err := json.Marshal(userSlice)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusInternalServerError,
-			Data:   err.Error(),
-		}
+	var user_data = map[string]any{
+		"total":       total,
+		"page_number": page_number,
+		"user":        userSlice,
 	}
-
 	return goi.Response{
 		Status: http.StatusOK,
-		Data:   jsonData,
+		Data: goi.Data{
+			Status: http.StatusOK,
+			Msg:    "ok",
+			Data:   user_data,
+		},
 	}
 }
 
@@ -82,10 +95,10 @@ func TestModelRetrieve(request *goi.Request) any {
 		}
 	}
 
-	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
-	// defer mysqlObj.Close()
-	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
-	defer SQLite3DB.Close()
+	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
+	defer mysqlObj.Close()
+	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
+	// defer SQLite3DB.Close()
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -94,14 +107,14 @@ func TestModelRetrieve(request *goi.Request) any {
 	}
 
 	// mysql 数据库
-	// user := UserModel{}
-	// mysqlObj.SetModel(UserModel{}) // 设置操作表
-	// err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(&user)
+	user := UserModel{}
+	mysqlObj.SetModel(UserModel{}) // 设置操作表
+	err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).Find(&user)
 
 	// sqlite3 数据库
-	user := UserSqliteModel{}
-	SQLite3DB.SetModel(UserSqliteModel{})
-	err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).First(&user)
+	// user := UserSqliteModel{}
+	// SQLite3DB.SetModel(UserSqliteModel{})
+	// err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).Find(&user)
 
 	if err != nil {
 		return goi.Response{
@@ -122,25 +135,18 @@ func TestModelRetrieve(request *goi.Request) any {
 		fmt.Println("Update_time", *user.Update_time)
 	}
 
-	jsonData, err := json.Marshal(user)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusInternalServerError,
-			Data:   err.Error(),
-		}
-	}
 	return goi.Response{
 		Status: http.StatusOK,
-		Data:   jsonData,
+		Data:   user,
 	}
 }
 
 // 添加一条数据到 Model
 func TestModelCreate(request *goi.Request) any {
-	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
-	// defer mysqlObj.Close()
-	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
-	defer SQLite3DB.Close()
+	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
+	defer mysqlObj.Close()
+	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
+	// defer SQLite3DB.Close()
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -151,24 +157,24 @@ func TestModelCreate(request *goi.Request) any {
 	password := request.BodyParams.Get("password").(string)
 	create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
-	// user := &UserModel{
-	// 	Username:    &username,
-	// 	Password:    &password,
-	// 	Create_time: &create_time,
-	// }
-	// mysqlObj.SetModel(UserModel{})
-	// result, err := mysqlObj.Insert(user)
-	// result, err := mysqlObj.Fields("Id", "Password").Insert(user) // 指定插入字段
-
-	// // sqlite3 数据库
-	user := &UserSqliteModel{
+	user := &UserModel{
 		Username:    &username,
 		Password:    &password,
 		Create_time: &create_time,
 	}
-	SQLite3DB.SetModel(UserSqliteModel{})
-	// result, err := SQLite3DB.Insert(user)
-	result, err := SQLite3DB.Fields("Id", "Password", "Create_time").Insert(user)
+	mysqlObj.SetModel(UserModel{})
+	// result, err := mysqlObj.Insert(user)
+	result, err := mysqlObj.Fields("Id", "Password").Insert(user) // 指定插入字段
+
+	// // sqlite3 数据库
+	// user := &UserSqliteModel{
+	// 	Username:    &username,
+	// 	Password:    &password,
+	// 	Create_time: &create_time,
+	// }
+	// SQLite3DB.SetModel(UserSqliteModel{})
+	// // result, err := SQLite3DB.Insert(user)
+	// result, err := SQLite3DB.Fields("Id", "Password", "Create_time").Insert(user)
 
 	if err != nil {
 		return goi.Response{
@@ -197,16 +203,16 @@ func TestModelCreate(request *goi.Request) any {
 		fmt.Println("Update_time", *user.Update_time)
 	}
 
-	jsonData, err := json.Marshal(user)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusInternalServerError,
-			Data:   err.Error(),
-		}
-	}
+	// jsonData, err := json.Marshal(user)
+	// if err != nil {
+	// 	return goi.Response{
+	// 		Status: http.StatusInternalServerError,
+	// 		Data:   err.Error(),
+	// 	}
+	// }
 	return goi.Response{
 		Status: http.StatusOK,
-		Data:   jsonData,
+		Data:   user,
 	}
 }
 
@@ -223,10 +229,10 @@ func TestModelUpdate(request *goi.Request) any {
 		}
 	}
 
-	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
-	// defer mysqlObj.Close()
-	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
-	defer SQLite3DB.Close()
+	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
+	defer mysqlObj.Close()
+	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
+	// defer SQLite3DB.Close()
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -235,17 +241,17 @@ func TestModelUpdate(request *goi.Request) any {
 	}
 	update_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
-	// update_user := &UserModel{
-	// 	Username:    &username,
-	// 	Update_time: &update_time,
-	// }
-	// mysqlObj.SetModel(UserModel{})
+	update_user := &UserModel{
+		Username:    &username,
+		Update_time: &update_time,
+	}
+	mysqlObj.SetModel(UserModel{})
 	// result, err := mysqlObj.Where("id=?", user_id).Update(update_user)
-	// result, err := mysqlObj.Fields("Username").Where("id=?", user_id).Update(update_user) // 更新指定字段
+	result, err := mysqlObj.Fields("Username").Where("id=?", user_id).Update(update_user) // 更新指定字段
 
 	// sqlite3 数据库
-	SQLite3DB.SetModel(UserSqliteModel{})
-	result, err := SQLite3DB.Where("id=?", user_id).Update(UserSqliteModel{Username: &username, Update_time: &update_time})
+	// SQLite3DB.SetModel(UserSqliteModel{})
+	// result, err := SQLite3DB.Where("id=?", user_id).Update(UserSqliteModel{Username: &username, Update_time: &update_time})
 
 	if err != nil {
 		return goi.Response{
@@ -272,10 +278,14 @@ func TestModelUpdate(request *goi.Request) any {
 	}
 	fmt.Println("rowNum", rowNum)
 
+	// mysql 数据库
+	user := UserModel{}
+	mysqlObj.SetModel(UserModel{})
+	err = mysqlObj.Where("id=?", user_id).Find(&user)
 	// sqlite3 数据库
-	user := UserSqliteModel{}
-	SQLite3DB.SetModel(UserSqliteModel{})
-	err = SQLite3DB.Where("id=?", user_id).First(&user)
+	// user := UserSqliteModel{}
+	// SQLite3DB.SetModel(UserSqliteModel{})
+	// err = SQLite3DB.Where("id=?", user_id).Find(&user)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -320,10 +330,10 @@ func TestModelDelete(request *goi.Request) any {
 		}
 	}
 
-	// mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
-	// defer mysqlObj.Close()
-	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
-	defer SQLite3DB.Close()
+	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
+	defer mysqlObj.Close()
+	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
+	// defer SQLite3DB.Close()
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -331,12 +341,12 @@ func TestModelDelete(request *goi.Request) any {
 		}
 	}
 	// mysql 数据库
-	// mysqlObj.SetModel(UserModel{})
-	// result, err := mysqlObj.Where("id=?", user_id).Delete()
+	mysqlObj.SetModel(UserModel{})
+	result, err := mysqlObj.Where("id=?", user_id).Delete()
 
 	// sqlite3 数据库
-	SQLite3DB.SetModel(UserSqliteModel{})
-	result, err := SQLite3DB.Where("id=?", user_id).Delete()
+	// SQLite3DB.SetModel(UserSqliteModel{})
+	// result, err := SQLite3DB.Where("id=?", user_id).Delete()
 
 	if err != nil {
 		return goi.Response{
