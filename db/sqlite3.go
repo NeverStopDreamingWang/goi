@@ -274,7 +274,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 }
 
 // 返回第一条数据
-func (sqlite3DB *SQLite3DB) Find(queryResult interface{}) error {
+func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	defer func() {
 		sqlite3DB.where_sql = nil
 		sqlite3DB.limit_sql = ""

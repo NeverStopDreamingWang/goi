@@ -109,12 +109,12 @@ func TestModelRetrieve(request *goi.Request) any {
 	// mysql 数据库
 	user := UserModel{}
 	mysqlObj.SetModel(UserModel{}) // 设置操作表
-	err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).Find(&user)
+	err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(&user)
 
 	// sqlite3 数据库
 	// user := UserSqliteModel{}
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).Find(&user)
+	// err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).First(&user)
 
 	if err != nil {
 		return goi.Response{
@@ -281,11 +281,11 @@ func TestModelUpdate(request *goi.Request) any {
 	// mysql 数据库
 	user := UserModel{}
 	mysqlObj.SetModel(UserModel{})
-	err = mysqlObj.Where("id=?", user_id).Find(&user)
+	err = mysqlObj.Where("id=?", user_id).First(&user)
 	// sqlite3 数据库
 	// user := UserSqliteModel{}
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// err = SQLite3DB.Where("id=?", user_id).Find(&user)
+	// err = SQLite3DB.Where("id=?", user_id).First(&user)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
