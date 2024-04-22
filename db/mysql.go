@@ -267,7 +267,7 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 }
 
 // 返回第一条数据
-func (mysqlDB *MySQLDB) Find(queryResult interface{}) error {
+func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	defer func() {
 		mysqlDB.where_sql = nil
 		mysqlDB.limit_sql = ""
