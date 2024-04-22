@@ -28,9 +28,18 @@ type AsView struct {
 
 // 路由表
 type metaRouter struct {
-	Desc          string                 // 简介
-	ViewSet       AsView                 // 视图方法
-	IncludeRouter map[string]*metaRouter // 子路由
+	desc          string                 // 简介
+	viewSet       AsView                 // 视图方法
+	includeRouter map[string]*metaRouter // 子路由
+}
+
+// 路由信息
+type RouteInfo struct {
+	Uri          string // 路由
+	Desc         string // 简介
+	ViewSet      AsView // 视图方法
+	IsParent     bool   // 是否是父路由
+	ParentRouter string // 父路由
 }
 
 // 路由参数
@@ -42,34 +51,34 @@ type routerParam struct {
 // 创建路由
 func newRouter() *metaRouter {
 	return &metaRouter{
-		Desc:          "",
-		ViewSet:       AsView{},
-		IncludeRouter: make(map[string]*metaRouter),
+		desc:          "根路由",
+		viewSet:       AsView{},
+		includeRouter: make(map[string]*metaRouter),
 	}
 }
 
 // 判断路由是否被注册
 func (router *metaRouter) isUrl(UrlPath string) {
-	if _, ok := router.IncludeRouter[UrlPath]; ok {
+	if _, ok := router.includeRouter[UrlPath]; ok {
 		panic(fmt.Sprintf("路由已存在: %s\n", UrlPath))
 	}
 
 	var re *regexp.Regexp
-	for includePatternUri, Irouter := range router.IncludeRouter {
-		params, converterPattern := routerParse(includePatternUri)
+	for Uri, Irouter := range router.includeRouter {
+		params, converterPattern := routerParse(Uri)
 		var reString string
 		if len(params) == 0 { // 无参数直接匹配
-			if len(Irouter.IncludeRouter) == 0 || Irouter.ViewSet.file != "" {
-				reString = includePatternUri + "$"
-			} else if strings.HasSuffix(includePatternUri, "/") == false {
-				reString = includePatternUri + "/"
+			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
+				reString = Uri + "$"
+			} else if strings.HasSuffix(Uri, "/") == false {
+				reString = Uri + "/"
 			} else {
-				reString = includePatternUri
+				reString = Uri
 			}
 		} else {
-			if len(Irouter.IncludeRouter) == 0 || Irouter.ViewSet.file != "" {
+			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
 				reString = converterPattern + "$"
-			} else if strings.HasSuffix(includePatternUri, "/") == false {
+			} else if strings.HasSuffix(Uri, "/") == false {
 				reString = converterPattern + "/"
 			} else {
 				reString = converterPattern
@@ -78,60 +87,79 @@ func (router *metaRouter) isUrl(UrlPath string) {
 		re = regexp.MustCompile(reString)
 
 		if len(re.FindStringSubmatch(UrlPath)) != 0 {
-			panic(fmt.Sprintf("%s 冲突路由: %s\n", UrlPath, includePatternUri))
+			panic(fmt.Sprintf("%s 冲突路由: %s\n", UrlPath, Uri))
 		}
 	}
 }
 
 // 添加父路由
-func (router *metaRouter) Include(UrlPath string, Desc string) *metaRouter {
+func (router *metaRouter) Include(UrlPath string, desc string) *metaRouter {
 	router.isUrl(UrlPath)
-	router.IncludeRouter[UrlPath] = &metaRouter{
-		Desc:          Desc,
-		ViewSet:       AsView{},
-		IncludeRouter: make(map[string]*metaRouter),
+	router.includeRouter[UrlPath] = &metaRouter{
+		desc:          desc,
+		viewSet:       AsView{},
+		includeRouter: make(map[string]*metaRouter),
 	}
-	return router.IncludeRouter[UrlPath]
+	return router.includeRouter[UrlPath]
 }
 
 // 添加路由
-func (router *metaRouter) UrlPatterns(UrlPath string, Desc string, view AsView) {
+func (router *metaRouter) UrlPatterns(UrlPath string, desc string, view AsView) {
 	router.isUrl(UrlPath)
-	router.IncludeRouter[UrlPath] = &metaRouter{
-		Desc:          Desc,
-		ViewSet:       view,
-		IncludeRouter: nil,
+	router.includeRouter[UrlPath] = &metaRouter{
+		desc:          desc,
+		viewSet:       view,
+		includeRouter: nil,
 	}
 }
 
 // 添加文件静态路由
-func (router *metaRouter) StaticFilePatterns(UrlPath string, Desc string, FilePath string) {
+func (router *metaRouter) StaticFilePatterns(UrlPath string, desc string, FilePath string) {
 	router.isUrl(UrlPath)
-	router.IncludeRouter[UrlPath] = &metaRouter{
-		Desc:          Desc,
-		ViewSet:       AsView{GET: metaStaticHandler, file: FilePath},
-		IncludeRouter: nil,
+	router.includeRouter[UrlPath] = &metaRouter{
+		desc:          desc,
+		viewSet:       AsView{GET: metaStaticHandler, file: FilePath},
+		includeRouter: nil,
 	}
 }
 
 // 添加文件夹静态路由
-func (router *metaRouter) StaticDirPatterns(UrlPath string, Desc string, DirPath http.Dir) {
+func (router *metaRouter) StaticDirPatterns(UrlPath string, desc string, DirPath http.Dir) {
 	router.isUrl(UrlPath)
 
 	if DirPath == "" {
 		DirPath = "."
 	}
-	router.IncludeRouter[UrlPath] = &metaRouter{
-		Desc:          Desc,
-		ViewSet:       AsView{GET: metaStaticHandler, dir: DirPath},
-		IncludeRouter: nil,
+	router.includeRouter[UrlPath] = &metaRouter{
+		desc:          desc,
+		viewSet:       AsView{GET: metaStaticHandler, dir: DirPath},
+		includeRouter: nil,
+	}
+}
+
+// Next 方法用于遍历每个路径并获取路由信息
+func (router *metaRouter) Next(ParentRouter string, routerChan chan<- RouteInfo) {
+	// 遍历子路由
+	for Uri, Irouter := range router.includeRouter {
+		// 发送路由的信息到通道
+		routerChan <- RouteInfo{
+			Uri:          Uri,
+			Desc:         Irouter.desc,
+			ViewSet:      Irouter.viewSet,
+			IsParent:     Irouter.includeRouter != nil,
+			ParentRouter: ParentRouter,
+		}
+		if Irouter.includeRouter != nil {
+			// 递归调用 Next 方法获取子路由的信息
+			Irouter.Next(Uri, routerChan)
+		}
 	}
 }
 
 // 路由器处理程序
 func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerFunc, err string) {
 
-	view_methods, isPattern := routeResolution(request.Object.URL.Path, router.IncludeRouter, request.PathParams)
+	view_methods, isPattern := routeResolution(request.Object.URL.Path, router.includeRouter, request.PathParams)
 	if isPattern == false {
 		err = fmt.Sprintf("URL NOT FOUND: %s", request.Object.URL.Path)
 		return nil, err
@@ -170,21 +198,21 @@ func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerF
 // 路由解析
 func routeResolution(requestPattern string, includeRouter map[string]*metaRouter, PathParams metaValues) (AsView, bool) {
 	var re *regexp.Regexp
-	for includePatternUri, Irouter := range includeRouter {
-		params, converterPattern := routerParse(includePatternUri)
+	for Uri, Irouter := range includeRouter {
+		params, converterPattern := routerParse(Uri)
 		var reString string
 		if len(params) == 0 { // 无参数直接匹配
-			if len(Irouter.IncludeRouter) == 0 || Irouter.ViewSet.file != "" {
-				reString = includePatternUri + "$"
-			} else if strings.HasSuffix(includePatternUri, "/") == false {
-				reString = includePatternUri + "/"
+			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
+				reString = Uri + "$"
+			} else if strings.HasSuffix(Uri, "/") == false {
+				reString = Uri + "/"
 			} else {
-				reString = includePatternUri
+				reString = Uri
 			}
 		} else {
-			if len(Irouter.IncludeRouter) == 0 || Irouter.ViewSet.file != "" {
+			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
 				reString = converterPattern + "$"
-			} else if strings.HasSuffix(includePatternUri, "/") == false {
+			} else if strings.HasSuffix(Uri, "/") == false {
 				reString = converterPattern + "/"
 			} else {
 				reString = converterPattern
@@ -202,19 +230,19 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 			value := parseValue(param.paramType, paramsSlice[i])
 			PathParams[param.paramName] = append(PathParams[param.paramName], value) // 添加参数
 		}
-		if Irouter.ViewSet.dir != "" { // 静态路由映射
-			fileName := path.Clean("/" + requestPattern[len(includePatternUri):])
-			dir := string(Irouter.ViewSet.dir)
+		if Irouter.viewSet.dir != "" { // 静态路由映射
+			fileName := path.Clean("/" + requestPattern[len(Uri):])
+			dir := string(Irouter.viewSet.dir)
 			filePath := filepath.Join(dir, fileName)
 			PathParams["staticPath"] = append(PathParams["static"], filePath)
-			return Irouter.ViewSet, true
-		} else if Irouter.ViewSet.file != "" {
-			PathParams["staticPath"] = append(PathParams["static"], Irouter.ViewSet.file)
-			return Irouter.ViewSet, true
-		} else if len(Irouter.IncludeRouter) == 0 { // API
-			return Irouter.ViewSet, true
+			return Irouter.viewSet, true
+		} else if Irouter.viewSet.file != "" {
+			PathParams["staticPath"] = append(PathParams["static"], Irouter.viewSet.file)
+			return Irouter.viewSet, true
+		} else if len(Irouter.includeRouter) == 0 { // API
+			return Irouter.viewSet, true
 		} else { // 子路由
-			return routeResolution(requestPattern[len(includePatternUri):], Irouter.IncludeRouter, PathParams)
+			return routeResolution(requestPattern[len(Uri):], Irouter.includeRouter, PathParams)
 		}
 	}
 	return AsView{}, false
