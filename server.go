@@ -263,8 +263,6 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		}
 	default:
 		panic(fmt.Sprintf("读取 Body 未知类型: %v\n", err))
-		// http.Error(w, "Unsupported content type", http.StatusUnsupportedMediaType)
-		// return
 	}
 
 	// 处理 HTTP 请求
