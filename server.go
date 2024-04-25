@@ -236,7 +236,7 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		// 解析 json 数据
 		body, err := io.ReadAll(request.Body)
 		if err != nil {
-			engine.Log.Error(fmt.Sprintf("读取 Body 错误: %v\n", err))
+			panic(fmt.Sprintf("读取 Body 错误: %v\n", err))
 		}
 		if len(body) != 0 {
 			jsonData := make(map[string]any)
