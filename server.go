@@ -229,30 +229,42 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		}
 	}
 
-	// 解析 Body 参数
-	request.ParseMultipartForm(32 << 20)
-	for name, values := range request.Form {
-		for _, value := range values {
-			paramType := reflect.TypeOf(value).String()
-			data := parseValue(paramType, value)
-			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], data)
-		}
-	}
-
-	// 解析 json 数据
-	body, err := io.ReadAll(request.Body)
-	if err != nil {
-		engine.Log.Error(fmt.Sprintf("读取 Body 错误: %v\n", err))
-	}
-	if len(body) != 0 {
-		jsonData := make(map[string]any)
-		err = json.Unmarshal(body, &jsonData)
+	// 检查Content-Type头部字段
+	contentType := request.Header.Get("Content-Type")
+	switch contentType {
+	case "application/json":
+		// 解析 json 数据
+		body, err := io.ReadAll(request.Body)
 		if err != nil {
-			engine.Log.Error(fmt.Sprintf("解析 json 错误: %v\n", err))
+			engine.Log.Error(fmt.Sprintf("读取 Body 错误: %v\n", err))
 		}
-		for name, value := range jsonData {
-			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
+		if len(body) != 0 {
+			jsonData := make(map[string]any)
+			err = json.Unmarshal(body, &jsonData)
+			if err != nil {
+				panic(fmt.Sprintf("解析 json 错误: %v\n", err))
+			}
+			for name, value := range jsonData {
+				requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
+			}
 		}
+	case "multipart/form-data":
+		// 解析 Body 参数
+		err = request.ParseMultipartForm(32 << 20)
+		if err != nil {
+			panic(fmt.Sprintf("解析 Body 错误: %v\n", err))
+		}
+		for name, values := range request.Form {
+			for _, value := range values {
+				paramType := reflect.TypeOf(value).String()
+				data := parseValue(paramType, value)
+				requestContext.BodyParams[name] = append(requestContext.BodyParams[name], data)
+			}
+		}
+	default:
+		panic(fmt.Sprintf("读取 Body 未知类型: %v\n", err))
+		// http.Error(w, "Unsupported content type", http.StatusUnsupportedMediaType)
+		// return
 	}
 
 	// 处理 HTTP 请求
@@ -304,13 +316,13 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	}
 	// 返回响应
 	if err != nil {
-		engine.Log.Error(fmt.Sprintf("响应 json 数据错误: %v\n", err))
+		panic(fmt.Sprintf("响应 json 数据错误: %v\n", err))
 	}
 	// 返回响应
 	response.WriteHeader(StatusCode)
 	write, err = response.Write(ResponseData)
 	if err != nil {
-		engine.Log.Error(fmt.Sprintf("响应错误: %v\n", err))
+		panic(fmt.Sprintf("响应错误: %v\n", err))
 	}
 	log = fmt.Sprintf("- %v - %v %v %v byte status %v %v",
 		request.Host,
@@ -320,11 +332,7 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		request.Proto,
 		StatusCode,
 	)
-	if StatusCode == http.StatusOK {
-		engine.Log.Info(log)
-	} else {
-		engine.Log.Error(log)
-	}
+	engine.Log.Info(log)
 }
 
 // 处理 HTTP 请求
