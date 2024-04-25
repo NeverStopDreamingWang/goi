@@ -229,40 +229,33 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		}
 	}
 
-	// 检查Content-Type头部字段
-	contentType := request.Header.Get("Content-Type")
-	switch contentType {
-	case "application/json":
-		// 解析 json 数据
-		body, err := io.ReadAll(request.Body)
+	// 解析 Body 参数
+	err = request.ParseMultipartForm(32 << 20)
+	if err != nil {
+		panic(fmt.Sprintf("解析 Body 错误: %v\n", err))
+	}
+	for name, values := range request.Form {
+		for _, value := range values {
+			paramType := reflect.TypeOf(value).String()
+			data := parseValue(paramType, value)
+			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], data)
+		}
+	}
+
+	// 解析 json 数据
+	body, err := io.ReadAll(request.Body)
+	if err != nil {
+		panic(fmt.Sprintf("读取 Body 错误: %v\n", err))
+	}
+	if len(body) != 0 {
+		jsonData := make(map[string]any)
+		err = json.Unmarshal(body, &jsonData)
 		if err != nil {
-			panic(fmt.Sprintf("读取 Body 错误: %v\n", err))
+			panic(fmt.Sprintf("解析 json 错误: %v\n", err))
 		}
-		if len(body) != 0 {
-			jsonData := make(map[string]any)
-			err = json.Unmarshal(body, &jsonData)
-			if err != nil {
-				panic(fmt.Sprintf("解析 json 错误: %v\n", err))
-			}
-			for name, value := range jsonData {
-				requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
-			}
+		for name, value := range jsonData {
+			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
 		}
-	case "multipart/form-data":
-		// 解析 Body 参数
-		err = request.ParseMultipartForm(32 << 20)
-		if err != nil {
-			panic(fmt.Sprintf("解析 Body 错误: %v\n", err))
-		}
-		for name, values := range request.Form {
-			for _, value := range values {
-				paramType := reflect.TypeOf(value).String()
-				data := parseValue(paramType, value)
-				requestContext.BodyParams[name] = append(requestContext.BodyParams[name], data)
-			}
-		}
-	default:
-		panic(fmt.Sprintf("读取 Body 未知类型: %v\n", err))
 	}
 
 	// 处理 HTTP 请求
