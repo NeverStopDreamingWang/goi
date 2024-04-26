@@ -35,7 +35,7 @@ func JwtDecodeError(err error) bool {
 }
 
 // 生成 token
-func NewJWT(header map[string]any, payload map[string]any, key string) (string, error) {
+func NewJWT(header map[string]interface{}, payload map[string]interface{}, key string) (string, error) {
 	var headerStr string
 	var payloadStr string
 	var signatureStr string
@@ -65,8 +65,8 @@ func NewJWT(header map[string]any, payload map[string]any, key string) (string, 
 }
 
 // 验证 token
-func CkeckToken(token string, key string) (map[string]any, error) {
-	var payloads map[string]any
+func CkeckToken(token string, key string) (map[string]interface{}, error) {
+	var payloads map[string]interface{}
 	var err error
 	tokenSlice := strings.Split(token, ".")
 	if len(tokenSlice) != 3 {
@@ -112,7 +112,7 @@ func CkeckToken(token string, key string) (map[string]any, error) {
 }
 
 // base64 编码
-func base64Encode(data any) (string, error) {
+func base64Encode(data interface{}) (string, error) {
 	var dataByte []byte
 	var err error
 	switch value := data.(type) {
@@ -132,8 +132,8 @@ func base64Encode(data any) (string, error) {
 }
 
 // base64 解码
-func base64Decode(dataStr string) (map[string]any, error) {
-	var data map[string]any
+func base64Decode(dataStr string) (map[string]interface{}, error) {
+	var data map[string]interface{}
 	// 补全字符串末尾的"="符号
 	remainder := len(dataStr) % 4
 	if remainder > 0 {

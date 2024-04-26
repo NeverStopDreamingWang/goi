@@ -1,10 +1,10 @@
 package model
 
 // 自定义设置
-type MySettings map[string]any
+type MySettings map[string]interface{}
 
 // map 数据
-type MapData map[string]any
+type MapData map[string]interface{}
 
 // 迁移处理函数
 type MigrationsHandler struct {

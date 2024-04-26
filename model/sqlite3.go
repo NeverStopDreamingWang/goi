@@ -11,12 +11,12 @@ type SQLite3Settings struct {
 }
 
 // 设置自定义配置
-func (modelsettings *SQLite3Settings) Set(name string, value any) {
+func (modelsettings *SQLite3Settings) Set(name string, value interface{}) {
 	modelsettings.MySettings[name] = value
 }
 
 // 获取自定义配置
-func (modelsettings SQLite3Settings) Get(name string) any {
+func (modelsettings SQLite3Settings) Get(name string) interface{} {
 	return modelsettings.MySettings[name]
 }
 

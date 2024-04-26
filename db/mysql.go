@@ -21,7 +21,7 @@ type MySQLDB struct {
 	limit_sql string
 	order_sql string
 	sql       string
-	args      []any
+	args []interface{}
 }
 
 // 连接 MySQL
@@ -48,7 +48,7 @@ func (mysqlDB *MySQLDB) Close() error {
 }
 
 // 执行语句
-func (mysqlDB *MySQLDB) Execute(query string, args ...any) (sql.Result, error) {
+func (mysqlDB *MySQLDB) Execute(query string, args ...interface{}) (sql.Result, error) {
 	// 开启事务
 	transaction, err := mysqlDB.DB.Begin()
 	if err != nil {
@@ -75,7 +75,7 @@ func (mysqlDB *MySQLDB) Execute(query string, args ...any) (sql.Result, error) {
 }
 
 // 查询语句
-func (mysqlDB *MySQLDB) Query(query string, args ...any) (*sql.Rows, error) {
+func (mysqlDB *MySQLDB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	rows, err := mysqlDB.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 		ModelValue = ModelValue.Elem()
 	}
 
-	insertValues := make([]any, len(mysqlDB.fields))
+	insertValues := make([]interface{}, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Elem().IsValid() {
@@ -137,7 +137,7 @@ func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
 }
 
 // 查询语句
-func (mysqlDB *MySQLDB) Where(query string, args ...any) *MySQLDB {
+func (mysqlDB *MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
 	mysqlDB.where_sql = append(mysqlDB.where_sql, query)
 	mysqlDB.args = append(mysqlDB.args, args...)
 	return mysqlDB
@@ -370,7 +370,7 @@ func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 	// 字段
 	updateFields := make([]string, 0)
 	// 值
-	updateValues := make([]any, 0)
+	updateValues := make([]interface{}, 0)
 	for _, fieldName := range mysqlDB.fields {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Kind() == reflect.Ptr {

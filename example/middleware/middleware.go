@@ -16,19 +16,19 @@ func init() {
 }
 
 // 请求中间件
-func RequestMiddleWare(request *goi.Request) any {
+func RequestMiddleWare(request *goi.Request) interface{} {
 	// fmt.Println("请求中间件", request.Object.URL)
 	return nil
 }
 
 // 请求中间件
-func ViewMiddleWare(request *goi.Request) any {
+func ViewMiddleWare(request *goi.Request) interface{} {
 	// fmt.Println("请求中间件", request.Object.URL)
 	return nil
 }
 
 // 请求中间件
-func ResponseMiddleWare(request *goi.Request) any {
+func ResponseMiddleWare(request *goi.Request) interface{} {
 	// fmt.Println("请求中间件", request.Object.URL)
 	return nil
 }

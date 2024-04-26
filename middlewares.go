@@ -4,9 +4,9 @@ import (
 	"net/http"
 )
 
-type RequestMiddleware func(*Request) any                       // 请求中间件
-type ViewMiddleware func(*Request, HandlerFunc) any             // 视图中间件
-type ResponseMiddleware func(*Request, http.ResponseWriter) any // 响应中间件
+type RequestMiddleware func(*Request) interface{}                       // 请求中间件
+type ViewMiddleware func(*Request, HandlerFunc) interface{}             // 视图中间件
+type ResponseMiddleware func(*Request, http.ResponseWriter) interface{} // 响应中间件
 
 type metaMiddleWares struct {
 	processRequest  RequestMiddleware  // 请求中间件
@@ -32,8 +32,8 @@ func (middlewares *metaMiddleWares) BeforeResponse(processResponse ResponseMiddl
 // 创建中间件
 func newMiddleWares() *metaMiddleWares {
 	return &metaMiddleWares{
-		processRequest:  func(request *Request) any { return nil },
-		processView:     func(request *Request, handlerFunc HandlerFunc) any { return nil },
-		processResponse: func(request *Request, writer http.ResponseWriter) any { return nil },
+		processRequest:  func(request *Request) interface{} { return nil },
+		processView:     func(request *Request, handlerFunc HandlerFunc) interface{} { return nil },
+		processResponse: func(request *Request, writer http.ResponseWriter) interface{} { return nil },
 	}
 }

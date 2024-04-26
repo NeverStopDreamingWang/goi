@@ -23,7 +23,7 @@ type SQLite3DB struct {
 	limit_sql string
 	order_sql string
 	sql       string
-	args      []any
+	args []interface{}
 }
 
 // 连接 SQLite3
@@ -57,7 +57,7 @@ func (sqlite3DB *SQLite3DB) Close() error {
 }
 
 // 执行语句
-func (sqlite3DB *SQLite3DB) Execute(query string, args ...any) (sql.Result, error) {
+func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Result, error) {
 	// 开启事务
 	transaction, err := sqlite3DB.DB.Begin()
 	if err != nil {
@@ -84,7 +84,7 @@ func (sqlite3DB *SQLite3DB) Execute(query string, args ...any) (sql.Result, erro
 }
 
 // 查询语句
-func (sqlite3DB *SQLite3DB) Query(query string, args ...any) (*sql.Rows, error) {
+func (sqlite3DB *SQLite3DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	rows, err := sqlite3DB.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
@@ -116,7 +116,7 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, er
 		ModelValue = ModelValue.Elem()
 	}
 
-	insertValues := make([]any, len(sqlite3DB.fields))
+	insertValues := make([]interface{}, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Elem().IsValid() {
@@ -145,7 +145,7 @@ func (sqlite3DB *SQLite3DB) Fields(fields ...string) *SQLite3DB {
 }
 
 // 查询语句
-func (sqlite3DB *SQLite3DB) Where(query string, args ...any) *SQLite3DB {
+func (sqlite3DB *SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
 	sqlite3DB.where_sql = append(sqlite3DB.where_sql, query)
 	sqlite3DB.args = append(sqlite3DB.args, args...)
 	return sqlite3DB
@@ -379,7 +379,7 @@ func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, er
 	// 字段
 	updateFields := make([]string, 0)
 	// 值
-	updateValues := make([]any, 0)
+	updateValues := make([]interface{}, 0)
 	for _, fieldName := range sqlite3DB.fields {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Kind() == reflect.Ptr {

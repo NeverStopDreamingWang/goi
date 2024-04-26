@@ -10,9 +10,9 @@ import (
 )
 
 // 日志输出
-func LogPrintln(logger *goi.MetaLogger, log ...any) {
+func LogPrintln(logger *goi.MetaLogger, log ...interface{}) {
 	timeStr := fmt.Sprintf("[%v]", time.Now().In(Server.Settings.LOCATION).Format("2006-01-02 15:04:05"))
-	log = append([]any{timeStr}, log...)
+	log = append([]interface{}{timeStr}, log...)
 	logger.Logger.Println(log...)
 }
 

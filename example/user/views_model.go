@@ -6,15 +6,36 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
 	"net/http"
-	"strconv"
 	"time"
 )
 
 // 读取多条数据到 Model
-func TestModelList(request *goi.Request) any {
-	page, _ := strconv.Atoi(request.QueryParams.Get("page").(string))
-	pagesize, _ := strconv.Atoi(request.QueryParams.Get("pagesize").(string))
-
+func TestModelList(request *goi.Request) interface{} {
+	var page int
+	var pagesize int
+	var err error
+	err = request.QueryParams.Get("page", page)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	err = request.QueryParams.Get("pagesize", pagesize)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	defer mysqlObj.Close()
 	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
@@ -68,7 +89,7 @@ func TestModelList(request *goi.Request) any {
 		}
 	}
 
-	var user_data = map[string]any{
+	var user_data = map[string]interface{}{
 		"total":       total,
 		"page_number": page_number,
 		"user":        userSlice,
@@ -84,8 +105,20 @@ func TestModelList(request *goi.Request) any {
 }
 
 // 读取第一条数据到 Model
-func TestModelRetrieve(request *goi.Request) any {
-	user_id := request.PathParams.Get("user_id").(int)
+func TestModelRetrieve(request *goi.Request) interface{} {
+	var user_id int
+	var err error
+	err = request.PathParams.Get("user_id", user_id)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 
 	if user_id == 0 {
 		// 返回 goi.Response
@@ -142,7 +175,32 @@ func TestModelRetrieve(request *goi.Request) any {
 }
 
 // 添加一条数据到 Model
-func TestModelCreate(request *goi.Request) any {
+func TestModelCreate(request *goi.Request) interface{} {
+	var username string
+	var password string
+	var err error
+	err = request.BodyParams.Get("username", username)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	err = request.BodyParams.Get("password", password)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	defer mysqlObj.Close()
 	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
@@ -153,8 +211,6 @@ func TestModelCreate(request *goi.Request) any {
 			Data:   err.Error(),
 		}
 	}
-	username := request.BodyParams.Get("username").(string)
-	password := request.BodyParams.Get("password").(string)
 	create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	user := &UserModel{
@@ -217,10 +273,32 @@ func TestModelCreate(request *goi.Request) any {
 }
 
 // 修改 Model
-func TestModelUpdate(request *goi.Request) any {
-	user_id := request.PathParams.Get("user_id").(int)
-	username := request.BodyParams.Get("username").(string)
-
+func TestModelUpdate(request *goi.Request) interface{} {
+	var user_id int
+	var username string
+	var err error
+	err = request.PathParams.Get("user_id", user_id)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	err = request.BodyParams.Get("username", username)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	if user_id == 0 {
 		// 返回 goi.Response
 		return goi.Response{
@@ -319,8 +397,20 @@ func TestModelUpdate(request *goi.Request) any {
 }
 
 // 删除 Model
-func TestModelDelete(request *goi.Request) any {
-	user_id := request.PathParams.Get("user_id").(int)
+func TestModelDelete(request *goi.Request) interface{} {
+	var user_id int
+	var err error
+	err = request.PathParams.Get("user_id", user_id)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 
 	if user_id == 0 {
 		// 返回 goi.Response
