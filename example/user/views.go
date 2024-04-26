@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func UserTest(request *goi.Request) any {
+func UserTest(request *goi.Request) interface{} {
 
 	return goi.Response{
 		Status: http.StatusOK,
@@ -20,13 +20,37 @@ func UserTest(request *goi.Request) any {
 	}
 }
 
-func Testlogin(request *goi.Request) any {
-	username := request.BodyParams.Get("username")
-	password := request.BodyParams.Get("password")
+func Testlogin(request *goi.Request) interface{} {
+	var username string
+	var password string
+	var err error
+
+	err = request.BodyParams.Get("username", username)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	err = request.BodyParams.Get("password", password)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	fmt.Println("username", username)
 	fmt.Println("password", password)
 
-	header := map[string]any{
+	header := map[string]interface{}{
 		"alg": "SHA256",
 		"typ": "JWT",
 	}
@@ -41,7 +65,7 @@ func Testlogin(request *goi.Request) any {
 	expTime := twoHoursLater.Format("2006-01-02 15:04:05")
 	fmt.Println(expTime)
 
-	payloads := map[string]any{
+	payloads := map[string]interface{}{
 		"user_id":  1,
 		"username": "wjh123",
 		"exp":      expTime,
@@ -69,7 +93,7 @@ func Testlogin(request *goi.Request) any {
 	}
 }
 
-func TestAuth(request *goi.Request) any {
+func TestAuth(request *goi.Request) interface{} {
 	token := request.Object.Header.Get("Authorization")
 
 	payloads, err := jwt.CkeckToken(token, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")

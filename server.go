@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -30,7 +29,7 @@ func Version() string {
 }
 
 // HandlerFunc 定义 goi 使用的请求处理程序
-type HandlerFunc func(*Request) any
+type HandlerFunc func(*Request) interface{}
 
 // type HandlerFunc func(*http.Request)
 
@@ -220,48 +219,12 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	}
 	defer metaRecovery(requestContext, response) // 异常处理
 
-	// 解析 Query 参数
-	for name, values := range request.URL.Query() {
-		for _, value := range values {
-			paramType := reflect.TypeOf(value).String()
-			data := parseValue(paramType, value)
-			requestContext.QueryParams[name] = append(requestContext.QueryParams[name], data)
-		}
-	}
-
-	// 解析 Body 参数
-	err = request.ParseMultipartForm(32 << 20)
-	if err != nil {
-		panic(fmt.Sprintf("解析 Body 错误: %v\n", err))
-	}
-	for name, values := range request.Form {
-		for _, value := range values {
-			paramType := reflect.TypeOf(value).String()
-			data := parseValue(paramType, value)
-			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], data)
-		}
-	}
-
-	// 解析 json 数据
-	body, err := io.ReadAll(request.Body)
-	if err != nil {
-		panic(fmt.Sprintf("读取 Body 错误: %v\n", err))
-	}
-	if len(body) != 0 {
-		jsonData := make(map[string]any)
-		err = json.Unmarshal(body, &jsonData)
-		if err != nil {
-			panic(fmt.Sprintf("解析 json 错误: %v\n", err))
-		}
-		for name, value := range jsonData {
-			requestContext.BodyParams[name] = append(requestContext.BodyParams[name], value)
-		}
-	}
+	requestContext.parseRequestParams()
 
 	// 处理 HTTP 请求
 	StatusCode := http.StatusOK
 	var ResponseData []byte
-	var write any
+	var write interface{}
 
 	responseData := engine.HandlerHTTP(requestContext, response)
 
@@ -280,6 +243,12 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		)
 		engine.Log.Info(log)
 		return
+	}
+
+	// 判断 responseData 是否为指针类型，如果是，则解引用获取指向的值
+	responseDataValue := reflect.ValueOf(responseData)
+	if responseDataValue.Kind() == reflect.Ptr {
+		responseData = responseDataValue.Elem().Interface()
 	}
 
 	// 响应处理
@@ -327,7 +296,7 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 }
 
 // 处理 HTTP 请求
-func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter) (result any) {
+func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter) (result interface{}) {
 	// 处理请求前的中间件
 	result = engine.MiddleWares.processRequest(request)
 	if result != nil {

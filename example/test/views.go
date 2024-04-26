@@ -8,8 +8,8 @@ import (
 	"path"
 )
 
-func Test1(request *goi.Request) any {
-	resp := map[string]any{
+func Test1(request *goi.Request) interface{} {
+	resp := map[string]interface{}{
 		"status": http.StatusOK,
 		"msg":    "test1 OK",
 		"data":   "OK",
@@ -17,8 +17,8 @@ func Test1(request *goi.Request) any {
 	return resp
 }
 
-func Test2(request *goi.Request) any {
-	resp := map[string]any{
+func Test2(request *goi.Request) interface{} {
+	resp := map[string]interface{}{
 		"status": http.StatusOK,
 		"msg":    "test2 OK",
 		"data":   "OK",
@@ -26,14 +26,26 @@ func Test2(request *goi.Request) any {
 	return resp
 }
 
-func Test3(request *goi.Request) any {
+func Test3(request *goi.Request) interface{} {
 	return goi.Data{http.StatusOK, "test3 OK", "OK"}
 }
 
-func TestPathParamsInt(request *goi.Request) any {
+func TestPathParamsInt(request *goi.Request) interface{} {
 	// 路由传参 request.PathParams
-	// ids, _ := request.PathParams["id"] // []any
-	id := request.PathParams.Get("id").(int)
+	// ids, _ := request.PathParams["id"] // []interface{}
+	var id int
+	var err error
+	err = request.PathParams.Get("id", id)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 
 	if id == 0 {
 		// 返回 goi.Response
@@ -45,7 +57,7 @@ func TestPathParamsInt(request *goi.Request) any {
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", id, id)
 	fmt.Println(msg)
-	resp := map[string]any{
+	resp := map[string]interface{}{
 		"status": http.StatusOK,
 		"msg":    msg,
 		"data":   "OK",
@@ -53,9 +65,20 @@ func TestPathParamsInt(request *goi.Request) any {
 	return resp
 }
 
-func TestPathParamsStr(request *goi.Request) any {
-	name := request.PathParams.Get("name")
-
+func TestPathParamsStr(request *goi.Request) interface{} {
+	var name string
+	var err error
+	err = request.PathParams.Get("name", name)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return goi.Response{
@@ -64,9 +87,9 @@ func TestPathParamsStr(request *goi.Request) any {
 	}
 }
 
-func TestPathParamsStrs(request *goi.Request) any {
+func TestPathParamsStrs(request *goi.Request) interface{} {
 	// 多个值
-	nameSlice := request.PathParams["name"] // 返回一个 []any
+	nameSlice := request.PathParams["name"] // 返回一个 []interface{}
 	fmt.Printf("%v,%T\n", nameSlice, nameSlice)
 	name1 := nameSlice[0]
 	name2 := nameSlice[1]
@@ -79,9 +102,20 @@ func TestPathParamsStrs(request *goi.Request) any {
 }
 
 // 获取 Query 传参
-func TestQueryParams(request *goi.Request) any {
-	name := request.QueryParams.Get("name")
-
+func TestQueryParams(request *goi.Request) interface{} {
+	var name string
+	var err error
+	err = request.QueryParams.Get("name", name)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return goi.Response{
@@ -91,9 +125,21 @@ func TestQueryParams(request *goi.Request) any {
 }
 
 // 获取Body传参
-func TestBodyParams(request *goi.Request) any {
-	name := request.BodyParams["name"]
-
+func TestBodyParams(request *goi.Request) interface{} {
+	// name := request.BodyParams["name"]
+	var name string
+	var err error
+	err = request.BodyParams.Get("name", name)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return goi.Response{
@@ -102,8 +148,20 @@ func TestBodyParams(request *goi.Request) any {
 	}
 }
 
-func TestConverterParamsStrs(request *goi.Request) any {
-	name := request.PathParams.Get("name")
+func TestConverterParamsStrs(request *goi.Request) interface{} {
+	var name string
+	var err error
+	err = request.PathParams.Get("name", name)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
@@ -111,7 +169,7 @@ func TestConverterParamsStrs(request *goi.Request) any {
 }
 
 // 上下文
-func TestContext(request *goi.Request) any {
+func TestContext(request *goi.Request) interface{} {
 
 	// 请求上下文
 	// request.Object.Context() == request.Context
@@ -122,13 +180,25 @@ func TestContext(request *goi.Request) any {
 	requestID := request.Object.Context().Value("requestID")
 
 	// fmt.Println("PathParams", request.PathParams)
-	name := request.PathParams.Get("name")
+	var name string
+	var err error
+	err = request.PathParams.Get("name", name)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	msg := fmt.Sprintf("test %s %T", name, name)
 
 	type Student struct {
-		Requestid any    `json:"requestid"`
-		Name      string `json:"name"`
-		Age       int    `json:"age"`
+		Requestid interface{} `json:"requestid"`
+		Name      string      `json:"name"`
+		Age       int         `json:"age"`
 	}
 	student := &Student{
 		Requestid: requestID,
@@ -139,7 +209,7 @@ func TestContext(request *goi.Request) any {
 }
 
 // 返回文件
-func TestFile(request *goi.Request) any {
+func TestFile(request *goi.Request) interface{} {
 	absolutePath := path.Join(goi.Settings.BASE_DIR, "template/test.txt")
 	file, err := os.Open(absolutePath)
 	if err != nil {
@@ -154,7 +224,7 @@ func TestFile(request *goi.Request) any {
 }
 
 // 异常处理
-func TestPanic(request *goi.Request) any {
+func TestPanic(request *goi.Request) interface{} {
 
 	name := request.BodyParams["name"]
 

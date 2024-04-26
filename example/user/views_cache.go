@@ -4,44 +4,51 @@ import (
 	"fmt"
 	"github.com/NeverStopDreamingWang/goi"
 	"net/http"
-	"strconv"
 )
 
 // 设置一条数据到缓存
-func TestCacheSet(request *goi.Request) any {
-	Key := request.BodyParams.Get("key")
-	Value := request.BodyParams.Get("value")
-	Exp := request.BodyParams.Get("exp")
-	if Key == nil {
-		return goi.Response{
-			Status: http.StatusBadRequest,
-			Data:   "缺少参数 key",
-		}
-	}
-	if Value == nil {
-		return goi.Response{
-			Status: http.StatusBadRequest,
-			Data:   "缺少参数 value",
-		}
-	}
-
-	exp := "0"
-	if Exp != nil {
-		exp = Exp.(string)
-	}
-	expTime, err := strconv.Atoi(exp)
+func TestCacheSet(request *goi.Request) interface{} {
+	var key string
+	var value string
+	var exp int
+	var err error
+	err = request.BodyParams.Get("key", key)
 	if err != nil {
 		return goi.Response{
-			Status: http.StatusBadRequest,
-			Data:   "exp 参数错误！",
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
 		}
 	}
-	key := Key.(string)
-	value := Value.(string)
+	err = request.BodyParams.Get("value", value)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	err = request.BodyParams.Get("exp", exp)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	fmt.Printf("key: %v\n", key)
 	fmt.Printf("Value: %v\n", value)
-	fmt.Printf("exp: %v\n", expTime)
-	goi.Cache.Set(key, value, expTime)
+	fmt.Printf("exp: %v\n", exp)
+	goi.Cache.Set(key, value, exp)
 
 	return goi.Response{
 		Status: http.StatusOK,
@@ -54,8 +61,20 @@ func TestCacheSet(request *goi.Request) any {
 }
 
 // 通过 key 获取缓存
-func TestCacheGet(request *goi.Request) any {
-	key := request.BodyParams.Get("key").(string)
+func TestCacheGet(request *goi.Request) interface{} {
+	var key string
+	var err error
+	err = request.BodyParams.Get("key", key)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 
 	fmt.Printf("key: %v\n", key)
 	value, ok := goi.Cache.Get(key)
@@ -88,8 +107,20 @@ func TestCacheGet(request *goi.Request) any {
 }
 
 // 通过 key 删除缓存
-func TestCacheDel(request *goi.Request) any {
-	key := request.BodyParams.Get("key").(string)
+func TestCacheDel(request *goi.Request) interface{} {
+	var key string
+	var err error
+	err = request.BodyParams.Get("key", key)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 
 	fmt.Printf("key: %v\n", key)
 	goi.Cache.Del(key)

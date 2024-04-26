@@ -39,7 +39,7 @@ type metaSettings struct {
 	LOCATION     *time.Location          // 地区时区
 
 	// 自定义设置
-	mySettings map[string]any
+	mySettings map[string]interface{}
 }
 
 func newSettings() *metaSettings {
@@ -56,16 +56,16 @@ func newSettings() *metaSettings {
 		DATABASES:    make(map[string]MetaDataBase),
 		TIME_ZONE:    "Asia/Shanghai",
 		LOCATION:     time.Now().Location(),
-		mySettings:   make(map[string]any),
+		mySettings: make(map[string]interface{}),
 	}
 }
 
 // 设置自定义配置
-func (settings *metaSettings) Set(name string, value any) {
+func (settings *metaSettings) Set(name string, value interface{}) {
 	settings.mySettings[name] = value
 }
 
 // 获取自定义配置
-func (settings metaSettings) Get(name string) any {
+func (settings metaSettings) Get(name string) interface{} {
 	return settings.mySettings[name]
 }

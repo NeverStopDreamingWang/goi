@@ -23,12 +23,12 @@ type MySQLSettings struct {
 }
 
 // 设置自定义配置
-func (mysqlmodelsettings *MySQLSettings) Set(name string, value any) {
+func (mysqlmodelsettings *MySQLSettings) Set(name string, value interface{}) {
 	mysqlmodelsettings.MySettings[name] = value
 }
 
 // 获取自定义配置
-func (mysqlmodelsettings MySQLSettings) Get(name string) any {
+func (mysqlmodelsettings MySQLSettings) Get(name string) interface{} {
 	return mysqlmodelsettings.MySettings[name]
 }
 

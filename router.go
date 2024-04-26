@@ -276,7 +276,7 @@ func routerParse(UrlPath string) ([]routerParam, string) {
 }
 
 // 参数解析
-func parseValue(paramType string, paramValue string) any {
+func parseValue(paramType string, paramValue string) interface{} {
 	switch paramType {
 	case "int":
 		value, _ := strconv.Atoi(paramValue)

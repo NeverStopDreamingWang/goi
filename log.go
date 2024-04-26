@@ -22,16 +22,16 @@ const (
 
 // 日志
 type MetaLogger struct {
-	Name          string                               // 日志名称
-	Path          string                               // 日志输出路径
-	Level         []Level                              // 日志等级
-	Logger        *log.Logger                          // 日志对象
-	File          *os.File                             // 日志文件对象
-	CreateTime    time.Time                            // 日志创建时间
-	SPLIT_SIZE    int64                                // 日志切割大小，默认为 1G 1024 * 1024 * 1024
-	SPLIT_TIME    string                               // 日志切割大小，默认按天切割
-	NewLoggerFunc func() *MetaLogger                   // 自定义初始化日志
-	LoggerPrint   func(logger *MetaLogger, log ...any) // 自定义日志输出
+	Name          string                                       // 日志名称
+	Path          string                                       // 日志输出路径
+	Level         []Level                                      // 日志等级
+	Logger        *log.Logger                                  // 日志对象
+	File          *os.File                                     // 日志文件对象
+	CreateTime    time.Time                                    // 日志创建时间
+	SPLIT_SIZE    int64                                        // 日志切割大小，默认为 1G 1024 * 1024 * 1024
+	SPLIT_TIME    string                                       // 日志切割大小，默认按天切割
+	NewLoggerFunc func() *MetaLogger                           // 自定义初始化日志
+	LoggerPrint   func(logger *MetaLogger, log ...interface{}) // 自定义日志输出
 }
 
 type metaLog struct {
@@ -61,9 +61,9 @@ func (metaLog *metaLog) InitLogger() {
 			SPLIT_SIZE:    0,
 			SPLIT_TIME:    "",
 			NewLoggerFunc: nil,
-			LoggerPrint: func(logger *MetaLogger, log ...any) {
+			LoggerPrint: func(logger *MetaLogger, log ...interface{}) {
 				timeStr := fmt.Sprintf("[%v]", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05"))
-				log = append([]any{timeStr}, log...)
+				log = append([]interface{}{timeStr}, log...)
 				logger.Logger.Println(log...)
 			},
 		}
@@ -138,22 +138,22 @@ func (logger *MetaLogger) splitLogger() *MetaLogger {
 }
 
 // Info 日志
-func (metaLog *metaLog) Info(log ...any) {
+func (metaLog *metaLog) Info(log ...interface{}) {
 	metaLog.Log(INFO, log...)
 }
 
 // WARNING 日志
-func (metaLog *metaLog) Warning(log ...any) {
+func (metaLog *metaLog) Warning(log ...interface{}) {
 	metaLog.Log(WARNING, log...)
 }
 
 // ERROR 日志
-func (metaLog *metaLog) Error(log ...any) {
+func (metaLog *metaLog) Error(log ...interface{}) {
 	metaLog.Log(ERROR, log...)
 }
 
 // log 打印日志
-func (metaLog *metaLog) Log(level Level, log ...any) {
+func (metaLog *metaLog) Log(level Level, log ...interface{}) {
 	// 输出到所有符合的日志中
 	for i, logger := range metaLog.LOGGERS {
 		for _, loggerLever := range logger.Level {

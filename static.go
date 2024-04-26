@@ -9,14 +9,23 @@ import (
 )
 
 // 静态文件处理函数
-func metaStaticHandler(request *Request) any {
-	staticPath := request.PathParams.Get("staticPath").(string)
+func metaStaticHandler(request *Request) interface{} {
+	var staticPath string
+	var err error
+	err = request.PathParams.Get("staticPath", staticPath)
+	if err != nil {
+		return Response{
+			Status: http.StatusBadRequest,
+			Data:   "staticPath 参数错误!",
+		}
+
+	}
 
 	if staticPath[0] != '/' {
 		staticPath = filepath.Join(engine.Settings.BASE_DIR, staticPath)
 	}
 
-	if _, err := os.Stat(staticPath); os.IsNotExist(err) {
+	if _, err = os.Stat(staticPath); os.IsNotExist(err) {
 		return Response{
 			Status: http.StatusNotFound,
 			Data:   nil,

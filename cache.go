@@ -96,7 +96,7 @@ func (cache *metaCache) initCache() {
 }
 
 // Get 查找键的值
-func (cache *metaCache) Get(key string) (any, bool) {
+func (cache *metaCache) Get(key string) (interface{}, bool) {
 	if element, ok := cache.dict[key]; ok {
 		cacheItem := element.Value.(*cacheItems)
 
@@ -128,7 +128,7 @@ func (cache *metaCache) Get(key string) (any, bool) {
 }
 
 // Set 设置键值
-func (cache *metaCache) Set(key string, value any, expires int) {
+func (cache *metaCache) Set(key string, value interface{}, expires int) {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	err := encoder.Encode(value)

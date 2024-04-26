@@ -147,7 +147,7 @@ import (
 	"net/http"
 )
 
-func TestView(request *goi.Request) any {
+func TestView(request *goi.Request) interface{} {
 
 	return goi.Response{
 		Status: http.StatusOK,
