@@ -11,7 +11,17 @@
 
 **Windows**: `copy mypath\Go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe mypath\Go\bin\goi.exe`
 
+编译
+```cmd
+go build -o goi.exe
+```
+
 **Linux**: `cp mypath\go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi mypath\go\bin\goi`
+
+编译
+```cmd
+go build -o goi.exe
+```
 
 ```shel
 > goi
@@ -173,10 +183,33 @@ The commands are（命令如下）:
 ### 查询多条数据
 
 ```go
-func TestModelList(request *goi.Request) any {
-	page, _ := strconv.Atoi(request.QueryParams.Get("page").(string))
-	pagesize, _ := strconv.Atoi(request.QueryParams.Get("pagesize").(string))
-
+func TestModelList(request *goi.Request) interface{} {
+	func TestModelList(request *goi.Request) interface{} {
+	var page int
+	var pagesize int
+	var err error
+	err = request.QueryParams.Get("page", page)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	err = request.QueryParams.Get("pagesize", pagesize)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	defer mysqlObj.Close()
 	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
@@ -219,8 +252,20 @@ func TestModelList(request *goi.Request) any {
 ### 查询单条数据
 
 ```go
-func TestModelRetrieve(request *goi.Request) any {
-	user_id := request.PathParams.Get("user_id").(int)
+func TestModelRetrieve(request *goi.Request) interface{} {
+	var user_id int
+	var err error
+	err = request.PathParams.Get("user_id", user_id)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 
 	if user_id == 0 {
 		// 返回 goi.Response
@@ -244,12 +289,12 @@ func TestModelRetrieve(request *goi.Request) any {
 	// mysql 数据库
 	user := UserModel{}
 	mysqlObj.SetModel(UserModel{}) // 设置操作表
-err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(&user)
+	err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(&user)
 
 	// sqlite3 数据库
 	// user := UserSqliteModel{}
 	// SQLite3DB.SetModel(UserSqliteModel{})
-// err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).First(&user)
+	// err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).First(&user)
 
 	if err != nil {
 		return goi.Response{
@@ -264,7 +309,32 @@ err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(&user)
 ### 新增一条数据
 
 ```go
-func TestModelCreate(request *goi.Request) any {
+func TestModelCreate(request *goi.Request) interface{} {
+	var username string
+	var password string
+	var err error
+	err = request.BodyParams.Get("username", username)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	err = request.BodyParams.Get("password", password)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	defer mysqlObj.Close()
 	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
@@ -275,8 +345,6 @@ func TestModelCreate(request *goi.Request) any {
 			Data:   err.Error(),
 		}
 	}
-	username := request.BodyParams.Get("username").(string)
-	password := request.BodyParams.Get("password").(string)
 	create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	user := &UserModel{
@@ -305,7 +373,14 @@ func TestModelCreate(request *goi.Request) any {
 		}
 	}
 	id, err := result.LastInsertId()
-	
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusInternalServerError,
+			Data:   err.Error(),
+		}
+	}
+	fmt.Println("id", id)
+
 	user.Id = &id
 	...
 }
@@ -314,10 +389,32 @@ func TestModelCreate(request *goi.Request) any {
 ### 更新数据
 
 ```go
-func TestModelUpdate(request *goi.Request) any {
-	user_id := request.PathParams.Get("user_id").(int)
-	username := request.BodyParams.Get("username").(string)
-
+func TestModelUpdate(request *goi.Request) interface{} {
+	var user_id int
+	var username string
+	var err error
+	err = request.PathParams.Get("user_id", user_id)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	err = request.BodyParams.Get("username", username)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 	if user_id == 0 {
 		// 返回 goi.Response
 		return goi.Response{
@@ -381,8 +478,20 @@ func TestModelUpdate(request *goi.Request) any {
 ### 删除数据
 
 ```go
-func TestModelDelete(request *goi.Request) any {
-	user_id := request.PathParams.Get("user_id").(int)
+func TestModelDelete(request *goi.Request) interface{} {
+	var user_id int
+	var err error
+	err = request.PathParams.Get("user_id", user_id)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
 
 	if user_id == 0 {
 		// 返回 goi.Response
@@ -405,7 +514,7 @@ func TestModelDelete(request *goi.Request) any {
 	// mysql 数据库
 	mysqlObj.SetModel(UserModel{})
 	result, err := mysqlObj.Where("id=?", user_id).Delete()
-	
+
 	// sqlite3 数据库
 	// SQLite3DB.SetModel(UserSqliteModel{})
 	// result, err := SQLite3DB.Where("id=?", user_id).Delete()
@@ -458,12 +567,12 @@ func TestModelDelete(request *goi.Request) any {
 * 生成 Token
 
   ```go
-  header := map[string]any{
+  header := map[string]interface{}{
       "alg": "SHA256",
       "typ": "JWT",
   }
    
-  payloads := map[string]any{
+  payloads := map[string]interface{}{
       "user_id":  1,
       "username": "wjh123",
       "exp":      expTime,
@@ -482,6 +591,6 @@ func TestModelDelete(request *goi.Request) any {
   }
   ```
 
-##   
+##    
 
 [详细示例：example](./example)
