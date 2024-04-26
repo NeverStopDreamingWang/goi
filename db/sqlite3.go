@@ -23,7 +23,7 @@ type SQLite3DB struct {
 	limit_sql string
 	order_sql string
 	sql       string
-	args []interface{}
+	args      []interface{}
 }
 
 // 连接 SQLite3

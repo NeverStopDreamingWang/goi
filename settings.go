@@ -56,7 +56,7 @@ func newSettings() *metaSettings {
 		DATABASES:    make(map[string]MetaDataBase),
 		TIME_ZONE:    "Asia/Shanghai",
 		LOCATION:     time.Now().Location(),
-		mySettings: make(map[string]interface{}),
+		mySettings:   make(map[string]interface{}),
 	}
 }
 

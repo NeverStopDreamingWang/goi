@@ -146,7 +146,7 @@ func setFieldValue(field reflect.Value, fieldType reflect.Type, value interface{
 // 请求响应数据
 type Response struct {
 	Status int
-	Data interface{}
+	Data   interface{}
 }
 
 // 内置响应数据格式

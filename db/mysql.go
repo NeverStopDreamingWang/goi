@@ -21,7 +21,7 @@ type MySQLDB struct {
 	limit_sql string
 	order_sql string
 	sql       string
-	args []interface{}
+	args      []interface{}
 }
 
 // 连接 MySQL
