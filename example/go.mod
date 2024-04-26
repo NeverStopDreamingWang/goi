@@ -3,7 +3,7 @@ module example
 go 1.20
 
 require (
-	github.com/NeverStopDreamingWang/goi v1.2.1
+	github.com/NeverStopDreamingWang/goi v1.2.2
 )
 
 require (
