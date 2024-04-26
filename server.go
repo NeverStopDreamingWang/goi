@@ -15,7 +15,7 @@ import (
 )
 
 // Http 服务
-var version = "1.2.0"
+var version = "1.2.2"
 var engine *Engine
 var Settings *metaSettings
 var Cache *metaCache
