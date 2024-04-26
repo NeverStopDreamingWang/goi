@@ -122,10 +122,10 @@ import (
 
 func init() {
 	// 子路由
-	%sRouter := %s.Server.Router.Include("/%s")
+	%sRouter := %s.Server.Router.Include("/%s", "父路由")
 	{
 		// 注册一个路径
-		%sRouter.UrlPatterns("/test_views", goi.AsView{GET: TestView})
+		%sRouter.UrlPatterns("/test_views", "测试接口", goi.AsView{GET: TestView})
 	}
 }
 `
