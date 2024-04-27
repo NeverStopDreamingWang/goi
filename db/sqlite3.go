@@ -208,9 +208,9 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	var (
-		isPtr      bool
-		resultType reflect.Type
-		result     = reflect.ValueOf(queryResult)
+		isPtr    bool
+		ItemType reflect.Type
+		result   = reflect.ValueOf(queryResult)
 	)
 	if result.Kind() != reflect.Ptr {
 		return errors.New("queryResult 不是一个指向结构体的指针")
@@ -221,10 +221,10 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		return errors.New("queryResult 不是一个切片")
 	}
 
-	resultType = result.Type().Elem()
-	if resultType.Kind() == reflect.Ptr {
+	ItemType = result.Type().Elem() // 获取切片中的元素
+	if ItemType.Kind() == reflect.Ptr {
 		isPtr = true
-		resultType = resultType.Elem()
+		ItemType = ItemType.Elem()
 	}
 
 	queryFields := make([]string, len(sqlite3DB.fields))
@@ -254,7 +254,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	for rows.Next() {
 		values := make([]interface{}, len(sqlite3DB.fields))
 
-		item := reflect.New(resultType).Elem()
+		item := reflect.New(ItemType).Elem()
 
 		for i, fieldName := range sqlite3DB.fields {
 			values[i] = item.FieldByName(fieldName).Addr().Interface()
