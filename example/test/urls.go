@@ -14,6 +14,8 @@ func init() {
 
 		testRouter.UrlPatterns("/test2", "", goi.AsView{GET: Test2}) // 添加路由
 
+		testRouter.UrlPatterns("/test_phone/<phone:phone>", "", goi.AsView{GET: TestPhone}) // 测试路由转换器
+
 		// 创建一个三级子路由
 		test3Router := testRouter.Include("/test3", "测试3级路由")
 		{

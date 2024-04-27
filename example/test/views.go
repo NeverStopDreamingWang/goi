@@ -26,6 +26,29 @@ func Test2(request *goi.Request) interface{} {
 	return resp
 }
 
+// 测试手机号路由转换器
+func TestPhone(request *goi.Request) interface{} {
+	var phone string
+	var err error
+	err = request.PathParams.Get("phone", &phone)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	resp := map[string]interface{}{
+		"status": http.StatusOK,
+		"msg":    phone,
+		"data":   "OK",
+	}
+	return resp
+}
+
 func Test3(request *goi.Request) interface{} {
 	return goi.Data{http.StatusOK, "test3 OK", "OK"}
 }
