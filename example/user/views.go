@@ -20,35 +20,22 @@ func UserTest(request *goi.Request) interface{} {
 	}
 }
 
-func Testlogin(request *goi.Request) interface{} {
-	var username string
-	var password string
-	var err error
+// 参数验证
+type testloginParams struct {
+	Username string `name:"username" required:"string"`
+	Password string `name:"password" required:"string"`
+}
 
-	err = request.BodyParams.Get("username", username)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+func Testlogin(request *goi.Request) interface{} {
+	var params testloginParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
 	}
-	err = request.BodyParams.Get("password", password)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
-	fmt.Println("username", username)
-	fmt.Println("password", password)
+	fmt.Println("username", params.Username)
+	fmt.Println("password", params.Password)
 
 	header := map[string]interface{}{
 		"alg": "SHA256",

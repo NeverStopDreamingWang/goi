@@ -35,7 +35,7 @@ func TestPathParamsInt(request *goi.Request) interface{} {
 	// ids, _ := request.PathParams["id"] // []interface{}
 	var id int
 	var err error
-	err = request.PathParams.Get("id", id)
+	err = request.PathParams.Get("id", &id)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,
@@ -68,7 +68,7 @@ func TestPathParamsInt(request *goi.Request) interface{} {
 func TestPathParamsStr(request *goi.Request) interface{} {
 	var name string
 	var err error
-	err = request.PathParams.Get("name", name)
+	err = request.PathParams.Get("name", &name)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,
@@ -105,7 +105,7 @@ func TestPathParamsStrs(request *goi.Request) interface{} {
 func TestQueryParams(request *goi.Request) interface{} {
 	var name string
 	var err error
-	err = request.QueryParams.Get("name", name)
+	err = request.QueryParams.Get("name", &name)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,
@@ -129,7 +129,7 @@ func TestBodyParams(request *goi.Request) interface{} {
 	// name := request.BodyParams["name"]
 	var name string
 	var err error
-	err = request.BodyParams.Get("name", name)
+	err = request.BodyParams.Get("name", &name)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,
@@ -148,10 +148,52 @@ func TestBodyParams(request *goi.Request) interface{} {
 	}
 }
 
+// 参数验证
+type testParamsValidParams struct {
+	Username string            `name:"username" required:"string"`
+	Password string            `name:"password" required:"string"`
+	Age      string            `name:"age" required:"int"`
+	Phone    string            `name:"phone" required:"phone"`
+	Args     []string          `name:"args" optional:"slice"`
+	Kwargs   map[string]string `name:"kwargs" optional:"map"`
+}
+
+// required 必传参数
+// optional 可选
+
+func TestParamsValid(request *goi.Request) interface{} {
+	var params testParamsValidParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
+		// 自定义返回
+		// return goi.Response{
+		// 	Status: http.StatusOK,
+		// 	Data: goi.Data{
+		// 		Status: http.StatusBadRequest,
+		// 		Msg:    "参数错误",
+		// 		Data:   nil,
+		// 	},
+		// }
+	}
+	fmt.Println(params)
+	return goi.Response{
+		Status: http.StatusOK,
+		Data: goi.Data{
+			Status: http.StatusOK,
+			Msg:    "ok",
+			Data:   nil,
+		},
+	}
+}
+
 func TestConverterParamsStrs(request *goi.Request) interface{} {
 	var name string
 	var err error
-	err = request.PathParams.Get("name", name)
+	err = request.PathParams.Get("name", &name)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,
@@ -182,7 +224,7 @@ func TestContext(request *goi.Request) interface{} {
 	// fmt.Println("PathParams", request.PathParams)
 	var name string
 	var err error
-	err = request.PathParams.Get("name", name)
+	err = request.PathParams.Get("name", &name)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,

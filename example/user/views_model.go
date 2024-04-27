@@ -9,33 +9,23 @@ import (
 	"time"
 )
 
+// 参数验证
+type testModelListParams struct {
+	Page     int `name:"page" required:"int"`
+	Pagesize int `name:"pagesize" required:"int"`
+}
+
 // 读取多条数据到 Model
 func TestModelList(request *goi.Request) interface{} {
-	var page int
-	var pagesize int
-	var err error
-	err = request.QueryParams.Get("page", page)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testModelListParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
-	err = request.QueryParams.Get("pagesize", pagesize)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
+
 	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	defer mysqlObj.Close()
 	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
@@ -51,7 +41,7 @@ func TestModelList(request *goi.Request) interface{} {
 	var userSlice []UserModel
 	mysqlObj.SetModel(UserModel{}) // 设置操作表
 	mysqlObj.Fields("Id", "Username", "Password").Where("id>?", 1).OrderBy("-id")
-	total, page_number, err := mysqlObj.Page(page, pagesize)
+	total, page_number, err := mysqlObj.Page(params.Page, params.Pagesize)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -63,7 +53,15 @@ func TestModelList(request *goi.Request) interface{} {
 	// sqlite3 数据库
 	// var userSlice []UserSqliteModel
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// err = SQLite3DB.Fields("Id", "Username", "Password").Where("id>?", 1).Select(&userSlice)
+	// err = SQLite3DB.Fields("Id", "Username", "Password").Where("id>?", 1).OrderBy("-id")
+	// total, page_number, err := SQLite3DB.Page(params.Page, params.Pagesize)
+	// if err != nil {
+	// 	return goi.Response{
+	// 		Status: http.StatusInternalServerError,
+	// 		Data:   err.Error(),
+	// 	}
+	// }
+	// err = SQLite3DB.Select(&userSlice)
 
 	if err != nil {
 		return goi.Response{
@@ -104,23 +102,23 @@ func TestModelList(request *goi.Request) interface{} {
 	}
 }
 
+// 参数验证
+type testModelRetrieveParams struct {
+	User_id int `name:"user_id" required:"int"`
+}
+
 // 读取第一条数据到 Model
 func TestModelRetrieve(request *goi.Request) interface{} {
-	var user_id int
-	var err error
-	err = request.PathParams.Get("user_id", user_id)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testModelRetrieveParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
 
-	if user_id == 0 {
+	if params.User_id == 0 {
 		// 返回 goi.Response
 		return goi.Response{
 			Status: http.StatusNotFound, // Status 指定响应状态码
@@ -142,12 +140,12 @@ func TestModelRetrieve(request *goi.Request) interface{} {
 	// mysql 数据库
 	user := UserModel{}
 	mysqlObj.SetModel(UserModel{}) // 设置操作表
-	err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(&user)
+	err = mysqlObj.Fields("Id", "Username").Where("id=?", params.User_id).First(&user)
 
 	// sqlite3 数据库
 	// user := UserSqliteModel{}
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).First(&user)
+	// err = SQLite3DB.Fields("Id", "Username").Where("id=?", params.User_id).First(&user)
 
 	if err != nil {
 		return goi.Response{
@@ -174,33 +172,23 @@ func TestModelRetrieve(request *goi.Request) interface{} {
 	}
 }
 
+// 参数验证
+type testModelCreateParams struct {
+	Username string `name:"username" required:"string"`
+	Password string `name:"password" required:"string"`
+}
+
 // 添加一条数据到 Model
 func TestModelCreate(request *goi.Request) interface{} {
-	var username string
-	var password string
-	var err error
-	err = request.BodyParams.Get("username", username)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testModelCreateParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
-	err = request.BodyParams.Get("password", password)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
+
 	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	defer mysqlObj.Close()
 	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
@@ -214,8 +202,8 @@ func TestModelCreate(request *goi.Request) interface{} {
 	create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	user := &UserModel{
-		Username:    &username,
-		Password:    &password,
+		Username: &params.Username,
+		Password: &params.Password,
 		Create_time: &create_time,
 	}
 	mysqlObj.SetModel(UserModel{})
@@ -224,8 +212,8 @@ func TestModelCreate(request *goi.Request) interface{} {
 
 	// // sqlite3 数据库
 	// user := &UserSqliteModel{
-	// 	Username:    &username,
-	// 	Password:    &password,
+	// 	Username:    &params.Username,
+	// 	Password:    &params.Password,
 	// 	Create_time: &create_time,
 	// }
 	// SQLite3DB.SetModel(UserSqliteModel{})
@@ -272,34 +260,25 @@ func TestModelCreate(request *goi.Request) interface{} {
 	}
 }
 
+// 参数验证
+type testModelUpdateParams struct {
+	User_id  int    `name:"user_id" required:"int"`
+	Username string `name:"username" optional:"string"`
+	Password string `name:"password" optional:"string"`
+}
+
 // 修改 Model
 func TestModelUpdate(request *goi.Request) interface{} {
-	var user_id int
-	var username string
-	var err error
-	err = request.PathParams.Get("user_id", user_id)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testModelUpdateParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
-	err = request.BodyParams.Get("username", username)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
-	if user_id == 0 {
+
+	if params.User_id == 0 {
 		// 返回 goi.Response
 		return goi.Response{
 			Status: http.StatusNotFound, // Status 指定响应状态码
@@ -320,16 +299,34 @@ func TestModelUpdate(request *goi.Request) interface{} {
 	update_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	update_user := &UserModel{
-		Username:    &username,
+		Username: nil,
+		Password: nil,
 		Update_time: &update_time,
+	}
+	if params.Username != "" {
+		update_user.Username = &params.Username
+	}
+	if params.Password != "" {
+		update_user.Password = &params.Password
 	}
 	mysqlObj.SetModel(UserModel{})
 	// result, err := mysqlObj.Where("id=?", user_id).Update(update_user)
-	result, err := mysqlObj.Fields("Username").Where("id=?", user_id).Update(update_user) // 更新指定字段
+	result, err := mysqlObj.Fields("Username").Where("id=?", params.User_id).Update(update_user) // 更新指定字段
 
 	// sqlite3 数据库
+	// update_user := &UserSqliteModel{
+	// 	Username:    nil,
+	// 	Password:    nil,
+	// 	Update_time: &update_time,
+	// }
+	// if params.Username != ""{
+	// 	update_user.Username = &params.Username
+	// }
+	// if params.Password != ""{
+	// 	update_user.Password = &params.Password
+	// }
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// result, err := SQLite3DB.Where("id=?", user_id).Update(UserSqliteModel{Username: &username, Update_time: &update_time})
+	// result, err := SQLite3DB.Where("id=?", params.User_id).Update(update_user)
 
 	if err != nil {
 		return goi.Response{
@@ -359,11 +356,11 @@ func TestModelUpdate(request *goi.Request) interface{} {
 	// mysql 数据库
 	user := UserModel{}
 	mysqlObj.SetModel(UserModel{})
-	err = mysqlObj.Where("id=?", user_id).First(&user)
+	err = mysqlObj.Where("id=?", params.User_id).First(&user)
 	// sqlite3 数据库
 	// user := UserSqliteModel{}
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// err = SQLite3DB.Where("id=?", user_id).First(&user)
+	// err = SQLite3DB.Where("id=?", params.User_id).First(&user)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -400,7 +397,7 @@ func TestModelUpdate(request *goi.Request) interface{} {
 func TestModelDelete(request *goi.Request) interface{} {
 	var user_id int
 	var err error
-	err = request.PathParams.Get("user_id", user_id)
+	err = request.PathParams.Get("user_id", &user_id)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,

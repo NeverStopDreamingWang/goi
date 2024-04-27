@@ -6,49 +6,28 @@ import (
 	"net/http"
 )
 
+// 参数验证
+type testCacheSetParams struct {
+	Key   string `name:"key" required:"string"`
+	Value string `name:"value" required:"string"`
+	Exp   int    `name:"exp" required:"int"`
+}
+
 // 设置一条数据到缓存
 func TestCacheSet(request *goi.Request) interface{} {
-	var key string
-	var value string
-	var exp int
-	var err error
-	err = request.BodyParams.Get("key", key)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testCacheSetParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
-	err = request.BodyParams.Get("value", value)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
-	err = request.BodyParams.Get("exp", exp)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
-	fmt.Printf("key: %v\n", key)
-	fmt.Printf("Value: %v\n", value)
-	fmt.Printf("exp: %v\n", exp)
-	goi.Cache.Set(key, value, exp)
+
+	fmt.Printf("key: %v\n", params.Key)
+	fmt.Printf("Value: %v\n", params.Value)
+	fmt.Printf("exp: %v\n", params.Exp)
+	goi.Cache.Set(params.Key, params.Value, params.Exp)
 
 	return goi.Response{
 		Status: http.StatusOK,
@@ -60,24 +39,23 @@ func TestCacheSet(request *goi.Request) interface{} {
 	}
 }
 
+// 参数验证
+type cacheKeyParams struct {
+	Key string `name:"key" required:"string"`
+}
+
 // 通过 key 获取缓存
 func TestCacheGet(request *goi.Request) interface{} {
-	var key string
-	var err error
-	err = request.BodyParams.Get("key", key)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params cacheKeyParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
 	}
 
-	fmt.Printf("key: %v\n", key)
-	value, ok := goi.Cache.Get(key)
+	fmt.Printf("key: %v\n", params.Key)
+	value, ok := goi.Cache.Get(params.Key)
 	if !ok {
 		return goi.Response{
 			Status: http.StatusOK,
@@ -108,23 +86,17 @@ func TestCacheGet(request *goi.Request) interface{} {
 
 // 通过 key 删除缓存
 func TestCacheDel(request *goi.Request) interface{} {
-	var key string
-	var err error
-	err = request.BodyParams.Get("key", key)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params cacheKeyParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
 	}
 
-	fmt.Printf("key: %v\n", key)
-	goi.Cache.Del(key)
-	value, ok := goi.Cache.Get(key)
+	fmt.Printf("key: %v\n", params.Key)
+	goi.Cache.Del(params.Key)
+	value, ok := goi.Cache.Get(params.Key)
 
 	if !ok {
 		return goi.Response{

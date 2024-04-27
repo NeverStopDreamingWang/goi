@@ -35,7 +35,7 @@ func init() {
 		testRouter.UrlPatterns("/body_params", "Body 传参", goi.AsView{GET: TestBodyParams})
 
 		// 参数验证
-		testRouter.UrlPatterns("/params_valid", "参数验证", goi.AsView{POST: TestParasmValid})
+		testRouter.UrlPatterns("/params_valid", "参数验证", goi.AsView{POST: TestParamsValid})
 
 		// 使用自定义路由转换器获取参数
 		testRouter.UrlPatterns("/converter_params/<string:name>", "自定义路由转换器获取参数", goi.AsView{GET: TestConverterParamsStrs})
