@@ -23,16 +23,19 @@ func init() {
 		// Path 路由传参
 		testRouter.UrlPatterns("/path_params_int/<int:id>", "Path路由传参", goi.AsView{GET: TestPathParamsInt})
 		// 字符串
-		testRouter.UrlPatterns("/path_params_str/<str:name>", "路由字符串传参", goi.AsView{GET: TestPathParamsStr})
+		testRouter.UrlPatterns("/path_params_str/<string:name>", "路由字符串传参", goi.AsView{GET: TestPathParamsStr})
 
 		// 两个同名参数时
-		testRouter.UrlPatterns("/path_params_strs/<str:name>/<str:name>", "", goi.AsView{GET: TestPathParamsStrs})
+		testRouter.UrlPatterns("/path_params_strs/<string:name>/<string:name>", "", goi.AsView{GET: TestPathParamsStrs})
 
 		// Query 传参
 		testRouter.UrlPatterns("/query_params", "Query 传参", goi.AsView{GET: TestQueryParams})
 
 		// Body 传参
 		testRouter.UrlPatterns("/body_params", "Body 传参", goi.AsView{GET: TestBodyParams})
+
+		// 参数验证
+		testRouter.UrlPatterns("/params_valid", "参数验证", goi.AsView{POST: TestParasmValid})
 
 		// 使用自定义路由转换器获取参数
 		testRouter.UrlPatterns("/converter_params/<string:name>", "自定义路由转换器获取参数", goi.AsView{GET: TestConverterParamsStrs})

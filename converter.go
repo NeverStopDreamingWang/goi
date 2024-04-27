@@ -7,13 +7,13 @@ var pathConverter = `(.+)`
 var uuidConverter = `([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`
 
 var metaConverter = map[string]string{
-	"int":  intConverter,
-	"str":  stringConverter,
-	"slug": slugConverter,
-	"path": pathConverter,
-	"uuid": uuidConverter,
+	"int":    intConverter,
+	"string": stringConverter,
+	"slug":   slugConverter,
+	"path":   pathConverter,
+	"uuid":   uuidConverter,
 }
 
-func RegisterConverter(typeName string, converter string) {
-	metaConverter[typeName] = converter
+func RegisterConverter(name string, converter string) {
+	metaConverter[name] = converter
 }
