@@ -37,6 +37,7 @@ var MainAppFileList = []InitFile{
 	goMod,
 	settings,
 	converter,
+	validator,
 	logs,
 	ssl,
 }
@@ -264,8 +265,8 @@ var converter = InitFile{
 
 import "github.com/NeverStopDreamingWang/goi"
 
-func RegisterMyConverter() {
-	// 注册一个路由转换器
+func init() {
+	// 注册路由转换器
 	
 	// 手机号
 	goi.RegisterConverter("phone", %s)
@@ -273,6 +274,44 @@ func RegisterMyConverter() {
 }
 `
 		return fmt.Sprintf(content, projectName, "`(1[3456789]\\d{9})`")
+	},
+	Path: func() string {
+		return path.Join(baseDir, projectName, projectName)
+	},
+}
+
+// 验证器文件
+var validator = InitFile{
+	Name: "validator.go",
+	Content: func() string {
+		content := `package %s
+
+import (
+	"fmt"
+	"github.com/NeverStopDreamingWang/goi"
+	"net/http"
+	"regexp"
+)
+
+func init() {
+	// 注册验证器
+	
+	// 手机号
+	goi.RegisterValidator("phone", phoneValidate)
+}
+
+// phone 类型
+func phoneValidate(value string) goi.ValidationError {
+	var IntRe = %s
+	re := regexp.MustCompile(IntRe)
+	if re.MatchString(value) == false {
+		return goi.NewValidationError(fmt.Sprintf("参数错误：%v", value), http.StatusBadRequest)
+	}
+	return nil
+}
+
+`
+		return fmt.Sprintf(content, projectName, "`^(1[3456789]\\d{9})$`")
 	},
 	Path: func() string {
 		return path.Join(baseDir, projectName, projectName)
