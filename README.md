@@ -95,6 +95,168 @@ The commands are（命令如下）:
     * 按照日期格式：`Log.SplitTime = "2006-01-02"`
         * 例：`Log.SplitTime = "2006-01-02"` 设置日期格式
 
+## 缓存
+
+* 支持过期策略，默认惰性删除
+    * PERIODIC（定期删除：默认每隔 1s 就随机抽取一些设置了过期时间的 key，检查其是否过期）
+    * SCHEDULED（定时删除：某个设置了过期时间的 key，到期后立即删除）
+* 支持内存淘汰策略
+    * NOEVICTION（直接抛出错误）
+    * ALLKEYS_RANDOM（随机删除-所有键）
+    * ALLKEYS_LRU（删除最近最少使用-所有键）
+    * ALLKEYS_LFU（删除最近最不频繁使用-所有键）
+    * VOLATILE_RANDOM（随机删除-设置过期时间的键）
+    * VOLATILE_LRU（删除最近最少使用-设置过期时间的键）
+    * VOLATILE_LFU（删除最近最不频繁使用-设置过期时间的键）
+    * VOLATILE_TTL（删除即将过期的键-设置过期时间的键）
+
+## 内置 auth 密码生成与验证
+
+```go
+func TestAuth(t *testing.T) {
+	// 原始密码
+	password := "goi123456"
+
+	// 生成密码的哈希值
+	hashedPassword, err := MakePassword(password, bcrypt.DefaultCost)
+	if err != nil {
+		fmt.Println("密码加密失败:", err)
+		return
+	}
+
+	// 输出加密后的密码
+	fmt.Println("加密后的密码:", hashedPassword)
+
+	// 验证密码
+	isValid := CheckPassword(password, hashedPassword)
+	if isValid {
+		fmt.Println("密码验证成功")
+	} else {
+		fmt.Println("密码验证失败")
+	}
+}
+```
+
+## 内置 Converter 路由转换器
+注册路由转换器
+
+```go
+func init() {
+	// 注册路由转换器
+
+	// 手机号
+	goi.RegisterConverter("phone", `(1[3456789]\d{9})`)
+}
+
+```
+
+使用
+
+```go
+func init() {
+	// 创建一个子路由
+	testRouter := example.Server.Router.Include("/test", "测试路由")
+    {
+        // 注册一个路径
+        testRouter.UrlPatterns("/test_phone/<phone:phone>", "", goi.AsView{GET: TestPhone}) // 测试路由转换器
+    }
+}
+
+// 测试手机号路由转换器
+func TestPhone(request *goi.Request) interface{} {
+	var phone string
+	var err error
+	err = request.PathParams.Get("phone", &phone)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status: http.StatusBadRequest,
+				Msg:    "参数错误",
+				Data:   nil,
+			},
+		}
+	}
+	resp := map[string]interface{}{
+		"status": http.StatusOK,
+		"msg":    phone,
+		"data":   "OK",
+	}
+	return resp
+}
+
+```
+
+## 内置 Validator 参数验证器
+
+注册参数验证器
+
+```go
+func init() {
+	// 注册验证器
+
+	// 手机号
+	goi.RegisterValidator("phone", phoneValidate)
+}
+
+// phone 类型
+func phoneValidate(value string) goi.ValidationError {
+	var IntRe = `^(1[3456789]\d{9})$`
+	re := regexp.MustCompile(IntRe)
+	if re.MatchString(value) == false {
+		return goi.NewValidationError(fmt.Sprintf("参数错误：%v", value), http.StatusBadRequest)
+	}
+	return nil
+}
+```
+
+使用
+
+```go
+// 参数验证
+type testParamsValidParams struct {
+	Username string            `name:"username" required:"string"`
+	Password string            `name:"password" required:"string"`
+	Age      string            `name:"age" required:"int"`
+	Phone    string            `name:"phone" required:"phone"`
+	Args     []string          `name:"args" optional:"slice"`
+	Kwargs   map[string]string `name:"kwargs" optional:"map"`
+}
+
+// required 必传参数
+// optional 可选
+
+func TestParamsValid(request *goi.Request) interface{} {
+	var params testParamsValidParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
+		// 自定义返回
+		// return goi.Response{
+		// 	Status: http.StatusOK,
+		// 	Data: goi.Data{
+		// 		Status: http.StatusBadRequest,
+		// 		Msg:    "参数错误",
+		// 		Data:   nil,
+		// 	},
+		// }
+	}
+	fmt.Println(params)
+	return goi.Response{
+		Status: http.StatusOK,
+		Data: goi.Data{
+			Status: http.StatusOK,
+			Msg:    "ok",
+			Data:   nil,
+		},
+	}
+}
+
+```
+
 ## ORM 模型
 
 支持：MySQL、SQLite3
@@ -183,33 +345,23 @@ The commands are（命令如下）:
 ### 查询多条数据
 
 ```go
+// 参数验证
+type testModelListParams struct {
+	Page     int `name:"page" required:"int"`
+	Pagesize int `name:"pagesize" required:"int"`
+}
+
+// 读取多条数据到 Model
 func TestModelList(request *goi.Request) interface{} {
-	func TestModelList(request *goi.Request) interface{} {
-	var page int
-	var pagesize int
-	var err error
-	err = request.QueryParams.Get("page", page)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testModelListParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
-	err = request.QueryParams.Get("pagesize", pagesize)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
+
 	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	defer mysqlObj.Close()
 	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
@@ -225,7 +377,7 @@ func TestModelList(request *goi.Request) interface{} {
 	var userSlice []UserModel
 	mysqlObj.SetModel(UserModel{}) // 设置操作表
 	mysqlObj.Fields("Id", "Username", "Password").Where("id>?", 1).OrderBy("-id")
-	total, page_number, err := mysqlObj.Page(page, pagesize)
+	total, page_number, err := mysqlObj.Page(params.Page, params.Pagesize)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,
@@ -237,7 +389,15 @@ func TestModelList(request *goi.Request) interface{} {
 	// sqlite3 数据库
 	// var userSlice []UserSqliteModel
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// err = SQLite3DB.Fields("Id", "Username", "Password").Where("id>?", 1).Select(&userSlice)
+	// err = SQLite3DB.Fields("Id", "Username", "Password").Where("id>?", 1).OrderBy("-id")
+	// total, page_number, err := SQLite3DB.Page(params.Page, params.Pagesize)
+	// if err != nil {
+	// 	return goi.Response{
+	// 		Status: http.StatusInternalServerError,
+	// 		Data:   err.Error(),
+	// 	}
+	// }
+	// err = SQLite3DB.Select(&userSlice)
 
 	if err != nil {
 		return goi.Response{
@@ -252,22 +412,23 @@ func TestModelList(request *goi.Request) interface{} {
 ### 查询单条数据
 
 ```go
+// 参数验证
+type testModelRetrieveParams struct {
+	User_id int `name:"user_id" required:"int"`
+}
+
+// 读取第一条数据到 Model
 func TestModelRetrieve(request *goi.Request) interface{} {
-	var user_id int
-	var err error
-	err = request.PathParams.Get("user_id", user_id)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testModelRetrieveParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
 
-	if user_id == 0 {
+	if params.User_id == 0 {
 		// 返回 goi.Response
 		return goi.Response{
 			Status: http.StatusNotFound, // Status 指定响应状态码
@@ -289,12 +450,12 @@ func TestModelRetrieve(request *goi.Request) interface{} {
 	// mysql 数据库
 	user := UserModel{}
 	mysqlObj.SetModel(UserModel{}) // 设置操作表
-	err = mysqlObj.Fields("Id", "Username").Where("id=?", user_id).First(&user)
+	err = mysqlObj.Fields("Id", "Username").Where("id=?", params.User_id).First(&user)
 
 	// sqlite3 数据库
 	// user := UserSqliteModel{}
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// err = SQLite3DB.Fields("Id", "Username").Where("id=?", user_id).First(&user)
+	// err = SQLite3DB.Fields("Id", "Username").Where("id=?", params.User_id).First(&user)
 
 	if err != nil {
 		return goi.Response{
@@ -309,32 +470,23 @@ func TestModelRetrieve(request *goi.Request) interface{} {
 ### 新增一条数据
 
 ```go
+// 参数验证
+type testModelCreateParams struct {
+	Username string `name:"username" required:"string"`
+	Password string `name:"password" required:"string"`
+}
+
+// 添加一条数据到 Model
 func TestModelCreate(request *goi.Request) interface{} {
-	var username string
-	var password string
-	var err error
-	err = request.BodyParams.Get("username", username)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testModelCreateParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
-	err = request.BodyParams.Get("password", password)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
+
 	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
 	defer mysqlObj.Close()
 	// SQLite3DB, err := db.SQLite3Connect("sqlite_1")
@@ -348,8 +500,8 @@ func TestModelCreate(request *goi.Request) interface{} {
 	create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	user := &UserModel{
-		Username:    &username,
-		Password:    &password,
+		Username:    &params.Username,
+		Password:    &params.Password,
 		Create_time: &create_time,
 	}
 	mysqlObj.SetModel(UserModel{})
@@ -358,8 +510,8 @@ func TestModelCreate(request *goi.Request) interface{} {
 
 	// // sqlite3 数据库
 	// user := &UserSqliteModel{
-	// 	Username:    &username,
-	// 	Password:    &password,
+	// 	Username:    &params.Username,
+	// 	Password:    &params.Password,
 	// 	Create_time: &create_time,
 	// }
 	// SQLite3DB.SetModel(UserSqliteModel{})
@@ -389,33 +541,25 @@ func TestModelCreate(request *goi.Request) interface{} {
 ### 更新数据
 
 ```go
+// 参数验证
+type testModelUpdateParams struct {
+	User_id  int    `name:"user_id" required:"int"`
+	Username string `name:"username" optional:"string"`
+	Password string `name:"password" optional:"string"`
+}
+
+// 修改 Model
 func TestModelUpdate(request *goi.Request) interface{} {
-	var user_id int
-	var username string
-	var err error
-	err = request.PathParams.Get("user_id", user_id)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var params testModelUpdateParams
+	var validationErr goi.ValidationError
+	validationErr = request.BodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
 	}
-	err = request.BodyParams.Get("username", username)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
-			},
-		}
-	}
-	if user_id == 0 {
+
+	if params.User_id == 0 {
 		// 返回 goi.Response
 		return goi.Response{
 			Status: http.StatusNotFound, // Status 指定响应状态码
@@ -436,16 +580,34 @@ func TestModelUpdate(request *goi.Request) interface{} {
 	update_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	update_user := &UserModel{
-		Username:    &username,
+		Username:    nil,
+		Password:    nil,
 		Update_time: &update_time,
+	}
+	if params.Username != ""{
+		update_user.Username = &params.Username
+	}
+	if params.Password != ""{
+		update_user.Password = &params.Password
 	}
 	mysqlObj.SetModel(UserModel{})
 	// result, err := mysqlObj.Where("id=?", user_id).Update(update_user)
-	result, err := mysqlObj.Fields("Username").Where("id=?", user_id).Update(update_user) // 更新指定字段
+	result, err := mysqlObj.Fields("Username").Where("id=?", params.User_id).Update(update_user) // 更新指定字段
 
 	// sqlite3 数据库
+	// update_user := &UserSqliteModel{
+	// 	Username:    nil,
+	// 	Password:    nil,
+	// 	Update_time: &update_time,
+	// }
+	// if params.Username != ""{
+	// 	update_user.Username = &params.Username
+	// }
+	// if params.Password != ""{
+	// 	update_user.Password = &params.Password
+	// }
 	// SQLite3DB.SetModel(UserSqliteModel{})
-	// result, err := SQLite3DB.Where("id=?", user_id).Update(UserSqliteModel{Username: &username, Update_time: &update_time})
+	// result, err := SQLite3DB.Where("id=?", params.User_id).Update(update_user)
 
 	if err != nil {
 		return goi.Response{
@@ -478,10 +640,11 @@ func TestModelUpdate(request *goi.Request) interface{} {
 ### 删除数据
 
 ```go
+// 删除 Model
 func TestModelDelete(request *goi.Request) interface{} {
 	var user_id int
 	var err error
-	err = request.PathParams.Get("user_id", user_id)
+	err = request.PathParams.Get("user_id", &user_id)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,
@@ -547,49 +710,34 @@ func TestModelDelete(request *goi.Request) interface{} {
 }
 ```
 
-## 缓存
-
-* 支持过期策略，默认惰性删除
-    * PERIODIC（定期删除：默认每隔 1s 就随机抽取一些设置了过期时间的 key，检查其是否过期）
-    * SCHEDULED（定时删除：某个设置了过期时间的 key，到期后立即删除）
-* 支持内存淘汰策略
-    * NOEVICTION（直接抛出错误）
-    * ALLKEYS_RANDOM（随机删除-所有键）
-    * ALLKEYS_LRU（删除最近最少使用-所有键）
-    * ALLKEYS_LFU（删除最近最不频繁使用-所有键）
-    * VOLATILE_RANDOM（随机删除-设置过期时间的键）
-    * VOLATILE_LRU（删除最近最少使用-设置过期时间的键）
-    * VOLATILE_LFU（删除最近最不频繁使用-设置过期时间的键）
-    * VOLATILE_TTL（删除即将过期的键-设置过期时间的键）
-
 ## 内置 JWT Token
 
 * 生成 Token
 
-  ```go
-  header := map[string]interface{}{
-      "alg": "SHA256",
-      "typ": "JWT",
-  }
-   
-  payloads := map[string]interface{}{
-      "user_id":  1,
-      "username": "wjh123",
-      "exp":      expTime,
-  }
-  token, err := jwt.NewJWT(header, payloads, "xxxxxx")
-  ```
+```go
+header := map[string]interface{}{
+  "alg": "SHA256",
+  "typ": "JWT",
+}
+
+payloads := map[string]interface{}{
+  "user_id":  1,
+  "username": "wjh123",
+  "exp":      expTime,
+}
+token, err := jwt.NewJWT(header, payloads, "xxxxxx")
+```
 
 * 验证 Token
 
-  ```go
-  payloads, err := jwt.CkeckToken(token, "xxxxxx")
-  if jwt.JwtDecodeError(err) { // token 解码错误！
-     pass
-  }else if jwt.JwtExpiredSignatureError(err) { // token 已过期
-     pass
-  }
-  ```
+```go
+payloads, err := jwt.CkeckToken(token, "xxxxxx")
+if jwt.JwtDecodeError(err) { // token 解码错误！
+ pass
+}else if jwt.JwtExpiredSignatureError(err) { // token 已过期
+ pass
+}
+```
 
 ##    
 
