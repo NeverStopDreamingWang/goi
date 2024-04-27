@@ -2,12 +2,10 @@ package goi
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"net/http"
 	"path"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -203,19 +201,19 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 		var reString string
 		if len(params) == 0 { // 无参数直接匹配
 			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
-				reString = Uri + "$"
+				reString = "^" + Uri + "$"
 			} else if strings.HasSuffix(Uri, "/") == false {
-				reString = Uri + "/"
+				reString = "^" + Uri + "/"
 			} else {
-				reString = Uri
+				reString = "^" + Uri
 			}
 		} else {
 			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
-				reString = converterPattern + "$"
+				reString = "^" + converterPattern + "$"
 			} else if strings.HasSuffix(Uri, "/") == false {
-				reString = converterPattern + "/"
+				reString = "^" + converterPattern + "/"
 			} else {
-				reString = converterPattern
+				reString = "^" + converterPattern
 			}
 		}
 		re = regexp.MustCompile(reString)
@@ -227,8 +225,7 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 		paramsSlice = paramsSlice[1:]
 		for i := 0; i < len(params); i++ {
 			param := params[i]
-			value := parseValue(param.paramType, paramsSlice[i])
-			PathParams[param.paramName] = append(PathParams[param.paramName], value) // 添加参数
+			PathParams[param.paramName] = append(PathParams[param.paramName], paramsSlice[i]) // 添加参数
 		}
 		if Irouter.viewSet.dir != "" { // 静态路由映射
 			fileName := path.Clean("/" + requestPattern[len(Uri):])
@@ -273,18 +270,4 @@ func routerParse(UrlPath string) ([]routerParam, string) {
 		}
 	}
 	return params, converterPattern
-}
-
-// 参数解析
-func parseValue(paramType string, paramValue string) interface{} {
-	switch paramType {
-	case "int":
-		value, _ := strconv.Atoi(paramValue)
-		return value
-	case "uuid":
-		value, _ := uuid.Parse(paramValue)
-		return value
-	default:
-		return paramValue
-	}
 }
