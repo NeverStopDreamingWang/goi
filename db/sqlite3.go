@@ -366,9 +366,6 @@ func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, er
 	if sqlite3DB.model == nil {
 		return nil, errors.New("请先设置 SetModel 表")
 	}
-	if sqlite3DB.sql == "" {
-		return nil, errors.New("请先设置 Where 条件")
-	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
