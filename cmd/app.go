@@ -25,14 +25,15 @@ var AppFileList = []InitFile{
 	serializer,
 	urls,
 	views,
+	utils,
 }
 
 // 创建应用
 func GoiCreateApp(cmd *cobra.Command, args []string) error {
 	appName = args[0]
-
+	
 	projectName = filepath.Base(baseDir)
-
+	
 	for _, itemFile := range AppFileList {
 		itemPath := itemFile.Path()
 		_, err := os.Stat(itemPath)
@@ -42,50 +43,49 @@ func GoiCreateApp(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-
+		
 		// 创建文件
 		filePath := path.Join(itemPath, itemFile.Name)
 		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
-
+		
 		Content := itemFile.Content()
 		_, err = file.WriteString(Content)
 		if err != nil {
 			return err
 		}
 	}
-
+	
 	return nil
 }
 
-// ORM
+// model
 var models = InitFile{
 	Name: "models.go",
 	Content: func() string {
 		content := `package %s
 
 import (
-	"github.com/NeverStopDreamingWang/goi/migrate"
-	"github.com/NeverStopDreamingWang/goi/model"
+	// "github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/db"
+	// "github.com/NeverStopDreamingWang/goi/model"
 )
 
 func init() {
 	// MySQL 数据库
-	MySQLMigrations := model.MySQLMakeMigrations{
-		DATABASES: []string{"default"},
-		MODELS: []model.MySQLModel{
-			
-		},
+	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
+	if err != nil {
+		panic(err)
 	}
-	migrate.MySQLMigrate(MySQLMigrations)
-
+	defer mysqlObj.Close()
+	// mysqlObj.Migrate(TestModel{})
+	
 	// sqlite 数据库
-	SQLite3Migrations := model.SQLite3MakeMigrations{
-		DATABASES: []string{"sqlite_1"},
-		MODELS: []model.SQLite3Model{
-			
-		},
+	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
+	if err != nil {
+		panic(err)
 	}
-	migrate.SQLite3Migrate(SQLite3Migrations)
+	defer SQLite3DB.Close()
+	// SQLite3DB.Migrate(TestSqliteModel{})
 }
 `
 		return fmt.Sprintf(content, appName)
@@ -158,6 +158,20 @@ func TestView(request *goi.Request) interface{} {
 		},
 	}
 }
+`
+		return fmt.Sprintf(content, appName)
+	},
+	Path: func() string {
+		return path.Join(baseDir, appName)
+	},
+}
+
+// 工具
+var utils = InitFile{
+	Name: "utils.go",
+	Content: func() string {
+		content := `package %s
+
 `
 		return fmt.Sprintf(content, appName)
 	},
