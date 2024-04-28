@@ -67,7 +67,6 @@ var models = InitFile{
 import (
 	// "github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	// "github.com/NeverStopDreamingWang/goi/model"
 )
 
 func init() {
