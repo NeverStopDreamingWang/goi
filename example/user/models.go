@@ -33,7 +33,7 @@ type UserModel struct {
 	Password    *string `field_name:"password" field_type:"VARCHAR(255) DEFAULT NULL COMMENT '密码'" json:"password"`
 	Create_time *string `field_name:"create_time" field_type:"DATETIME DEFAULT NULL COMMENT '更新时间'" json:"create_time"`
 	Update_time *string `field_name:"update_time" field_type:"DATETIME DEFAULT NULL COMMENT '创建时间'" json:"update_time"`
-	Test        *string `field_name:"test_txt" field_type:"VARCHAR(255)" json:"txt"` // 更新表字段
+	// Test        *string `field_name:"test_txt" field_type:"VARCHAR(255)" json:"test_txt"` // 更新表字段
 }
 
 // 设置表配置
@@ -81,7 +81,7 @@ type UserSqliteModel struct {
 	Password    *string `field_name:"password" field_type:"TEXT" json:"password"`
 	Create_time *string `field_name:"create_time" field_type:"TEXT NOT NULL" json:"create_time"`
 	Update_time *string `field_name:"update_time" field_type:"TEXT" json:"update_time"`
-	Test        *string `field_name:"test_txt" field_type:"TEXT" json:"txt"` // 更新表字段
+	// Test        *string `field_name:"test_txt" field_type:"TEXT" json:"test_txt"` // 更新表字段
 }
 
 // 设置表配置
