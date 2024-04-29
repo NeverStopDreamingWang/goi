@@ -11,8 +11,8 @@ import (
 var CreateApp = &cobra.Command{
 	Use:   "create-app",
 	Short: "创建应用",
-	RunE:  GoiCreateApp,
 	Args:  cobra.ExactArgs(1),
+	RunE:  GoiCreateApp,
 }
 
 func init() {

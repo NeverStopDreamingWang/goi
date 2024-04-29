@@ -15,8 +15,8 @@ import (
 var CreateProject = &cobra.Command{
 	Use:   "create-project",
 	Short: "创建项目",
-	RunE:  GoiCreateProject,
 	Args:  cobra.ExactArgs(1),
+	RunE:  GoiCreateProject,
 }
 
 func init() {
@@ -45,7 +45,7 @@ var MainAppFileList = []InitFile{
 // 创建项目
 func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	projectName = args[0]
-
+	
 	// 生成 AES 密钥
 	secretKeyBytes := make([]byte, 32)
 	err := crypto.GenerateAES(secretKeyBytes)
@@ -54,7 +54,7 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	}
 	// 将随机字节转换为Base64编码的字符串
 	secretKey = base64.StdEncoding.EncodeToString(secretKeyBytes)
-
+	
 	// 生成 RSA 密钥
 	var privateKeyBytes, publicKeyBytes []byte
 	err = crypto.GenerateRSA(2048, &privateKeyBytes, &publicKeyBytes)
@@ -63,7 +63,7 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	}
 	privateKey = string(privateKeyBytes)
 	publicKey = string(publicKeyBytes)
-
+	
 	for _, itemFile := range MainAppFileList {
 		itemPath := itemFile.Path()
 		_, err = os.Stat(itemPath)
@@ -73,18 +73,18 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-
+		
 		// 创建文件
 		filePath := path.Join(itemPath, itemFile.Name)
 		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
-
+		
 		Content := itemFile.Content()
 		_, err = file.WriteString(Content)
 		if err != nil {
 			return err
 		}
 	}
-
+	
 	return nil
 }
 
@@ -135,7 +135,7 @@ require (
 `
 		var version string
 		versionStr := runtime.Version()
-
+		
 		regexpStr := `(\d+.\d+)`
 		re := regexp.MustCompile(regexpStr)
 		result := re.FindAllStringSubmatch(versionStr, -1)
