@@ -1,10 +1,11 @@
 package main
 
 import (
-	"example/example"
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
 	"reflect"
+
+	"example/example"
+	"github.com/NeverStopDreamingWang/goi"
 
 	// 注册app
 	_ "example/test"

@@ -3,10 +3,11 @@ package user
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/db"
 	"net/http"
 	"time"
+
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/db"
 )
 
 // 参数验证
@@ -202,8 +203,8 @@ func TestModelCreate(request *goi.Request) interface{} {
 	create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	user := &UserModel{
-		Username: &params.Username,
-		Password: &params.Password,
+		Username:    &params.Username,
+		Password:    &params.Password,
 		Create_time: &create_time,
 	}
 	mysqlObj.SetModel(UserModel{})
@@ -299,8 +300,8 @@ func TestModelUpdate(request *goi.Request) interface{} {
 	update_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	update_user := &UserModel{
-		Username: nil,
-		Password: nil,
+		Username:    nil,
+		Password:    nil,
 		Update_time: &update_time,
 	}
 	if params.Username != "" {

@@ -2,11 +2,12 @@ package example
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
 	"log"
 	"os"
 	"path"
 	"time"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 // 日志输出

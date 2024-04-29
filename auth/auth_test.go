@@ -2,8 +2,9 @@ package auth
 
 import (
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"testing"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // 调试

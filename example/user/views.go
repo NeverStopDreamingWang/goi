@@ -2,10 +2,11 @@ package user
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/jwt"
 	"net/http"
 	"time"
+
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/jwt"
 )
 
 func UserTest(request *goi.Request) interface{} {

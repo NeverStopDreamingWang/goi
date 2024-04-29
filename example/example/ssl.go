@@ -5,11 +5,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
 	"math/big"
 	"os"
 	"path"
 	"time"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {

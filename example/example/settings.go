@@ -1,9 +1,10 @@
 package example
 
 import (
-	"github.com/NeverStopDreamingWang/goi"
 	"os"
 	"path"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 // Http 服务
@@ -39,7 +40,7 @@ func init() {
 
 	// 设置 SSL
 	Server.Settings.SSL = goi.MetaSSL{
-		STATUS:    false,      // SSL 开关
+		STATUS:    false,  // SSL 开关
 		TYPE:      "自签证书", // 证书类型
 		CERT_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/example.crt"),
 		KEY_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/example.key"),

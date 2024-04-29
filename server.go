@@ -64,21 +64,21 @@ func NewHttpServer() *Engine {
 // 启动 http 服务
 func (engine *Engine) RunServer() {
 	var err error
-	
+
 	// 初始化时区
 	location, err := time.LoadLocation(engine.Settings.TIME_ZONE)
 	if err != nil {
 		panic(fmt.Sprintf("初始化时区错误: %v\n", err))
 	}
 	engine.Settings.LOCATION = location
-	
+
 	// 初始化日志
 	engine.Log.InitLogger()
-	
+
 	engine.Log.Log(meta, "---start---")
 	engine.Log.Log(meta, fmt.Sprintf("启动时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
 	engine.Log.Log(meta, fmt.Sprintf("goi 版本: %v", version))
-	
+
 	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
 	for _, logger := range engine.Log.LOGGERS {
 		log := fmt.Sprintf("- [%v]", logger.Name)
@@ -90,18 +90,18 @@ func (engine *Engine) RunServer() {
 		}
 		engine.Log.Log(meta, log)
 	}
-	
+
 	engine.Log.Log(meta, fmt.Sprintf("当前时区: %v", engine.Settings.TIME_ZONE))
-	
+
 	// 初始化缓存
 	engine.Cache.initCache()
-	
+
 	startTime := time.Now().In(Settings.LOCATION)
 	engine.startTime = &startTime
-	
+
 	// 注册关闭信号
 	signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
-	
+
 	go func() {
 		// 等待关闭信号
 		sig, _ := <-exitChan
@@ -113,7 +113,7 @@ func (engine *Engine) RunServer() {
 			engine.Log.Log(meta, "无效操作！")
 		}
 	}()
-	
+
 	engine.server = http.Server{
 		Addr:    fmt.Sprintf("%v:%v", engine.Settings.BIND_ADDRESS, engine.Settings.PORT),
 		Handler: engine,
@@ -138,7 +138,7 @@ func (engine *Engine) RunServer() {
 		engine.server.TLSConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
 		}
-		
+
 		engine.Log.Log(meta, fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
 		if engine.Settings.Domain != "" {
 			engine.Log.Log(meta, fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.Domain, engine.Settings.PORT, engine.Settings.NET_WORK))
@@ -174,7 +174,7 @@ func (engine *Engine) StopServer() error {
 func (engine *Engine) RunTime() time.Duration {
 	// 获取当前时间并设置时区
 	currentTime := time.Now().In(Settings.LOCATION)
-	
+
 	// 计算时间间隔
 	return currentTime.Sub(*engine.startTime)
 }
@@ -187,7 +187,7 @@ func (engine *Engine) RunTimeStr() string {
 	minutes := int(elapsed.Minutes()) % 60
 	hours := int(elapsed.Hours()) % 24
 	days := int(elapsed.Hours() / 24)
-	
+
 	elapsedStr := fmt.Sprintf("%02d秒", seconds)
 	if minutes > 0 {
 		elapsedStr = fmt.Sprintf("%02d分", minutes) + elapsedStr
@@ -206,7 +206,7 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	requestID := time.Now().In(engine.Settings.LOCATION)
 	ctx := context.WithValue(request.Context(), "requestID", requestID)
 	request = request.WithContext(ctx)
-	
+
 	var log string
 	var err error
 	// 初始化请求
@@ -218,16 +218,16 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		BodyParams:  make(metaValues),
 	}
 	defer metaRecovery(requestContext, response) // 异常处理
-	
+
 	requestContext.parseRequestParams()
-	
+
 	// 处理 HTTP 请求
 	StatusCode := http.StatusOK
 	var ResponseData []byte
 	var write interface{}
-	
+
 	responseData := engine.HandlerHTTP(requestContext, response)
-	
+
 	// 文件处理
 	fileObject, isFile := responseData.(*os.File)
 	if isFile {
@@ -244,20 +244,20 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 		engine.Log.Info(log)
 		return
 	}
-	
+
 	// 判断 responseData 是否为指针类型，如果是，则解引用获取指向的值
 	responseDataValue := reflect.ValueOf(responseData)
 	if responseDataValue.Kind() == reflect.Ptr {
 		responseData = responseDataValue.Elem().Interface()
 	}
-	
+
 	// 响应处理
 	responseObject, isResponse := responseData.(Response)
 	if isResponse {
 		StatusCode = responseObject.Status
 		responseData = responseObject.Data
 	}
-	
+
 	switch value := responseData.(type) {
 	case nil:
 		ResponseData, err = json.Marshal(value)
@@ -302,13 +302,13 @@ func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter
 	if result != nil {
 		return result
 	}
-	
+
 	// 路由处理
 	handlerFunc, err := engine.Router.routerHandlers(request)
 	if err != "" {
 		return Response{Status: http.StatusNotFound, Data: err}
 	}
-	
+
 	// 视图前的中间件
 	result = engine.MiddleWares.processView(request, handlerFunc)
 	if result != nil {
@@ -316,7 +316,7 @@ func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter
 	}
 	// 视图处理
 	viewResponse := handlerFunc(request)
-	
+
 	// 返回响应前的中间件
 	result = engine.MiddleWares.processResponse(request, response)
 	if result != nil {

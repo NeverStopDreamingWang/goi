@@ -2,9 +2,10 @@ package example
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
 	"net/http"
 	"regexp"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {

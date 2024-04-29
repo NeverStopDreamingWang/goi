@@ -2,8 +2,9 @@ package user
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
 	"net/http"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 // 参数验证

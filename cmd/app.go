@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/spf13/cobra"
 )
 
 var CreateApp = &cobra.Command{
@@ -31,9 +32,9 @@ var AppFileList = []InitFile{
 // 创建应用
 func GoiCreateApp(cmd *cobra.Command, args []string) error {
 	appName = args[0]
-	
+
 	projectName = filepath.Base(baseDir)
-	
+
 	for _, itemFile := range AppFileList {
 		itemPath := itemFile.Path()
 		_, err := os.Stat(itemPath)
@@ -43,18 +44,18 @@ func GoiCreateApp(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		
+
 		// 创建文件
 		filePath := path.Join(itemPath, itemFile.Name)
 		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
-		
+
 		Content := itemFile.Content()
 		_, err = file.WriteString(Content)
 		if err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 

@@ -4,14 +4,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/model"
-	_ "github.com/mattn/go-sqlite3"
 	"math"
 	"os"
 	"path"
 	"reflect"
 	"strings"
+
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/model"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type SQLite3DB struct {
@@ -32,7 +33,7 @@ func SQLite3Connect(UseDataBases ...string) (*SQLite3DB, error) {
 	if len(UseDataBases) == 0 { // 使用默认数据库
 		UseDataBases = append(UseDataBases, "default")
 	}
-	
+
 	for _, name := range UseDataBases {
 		database, ok := goi.Settings.DATABASES[name]
 		if ok == true && strings.ToLower(database.ENGINE) == "sqlite3" {
@@ -94,7 +95,7 @@ func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Resu
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 执行SQL语句
 	result, err := transaction.Exec(query, args...)
 	if err != nil {
@@ -104,13 +105,13 @@ func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Resu
 		}
 		return result, err
 	}
-	
+
 	// 提交事务
 	err = transaction.Commit()
 	if err != nil {
 		return result, err
 	}
-	
+
 	return result, err
 }
 
@@ -127,7 +128,7 @@ func (sqlite3DB *SQLite3DB) Query(query string, args ...interface{}) (*sql.Rows,
 func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
 	var err error
 	modelSettings := model.ModelSet()
-	
+
 	row := sqlite3DB.DB.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name =?;", modelSettings.TABLE_NAME)
 	if row.Err() != nil {
 		panic(fmt.Sprintf("SQLite3 [%v] 数据库 查询错误错误: %v", sqlite3DB.name, row.Err()))
@@ -137,7 +138,7 @@ func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
 	if err != nil {
 		panic(fmt.Sprintf("SQLite3 [%v] 数据库 查询错误错误: %v", sqlite3DB.name, err))
 	}
-	
+
 	modelType := reflect.TypeOf(model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
@@ -155,7 +156,7 @@ func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
 		fieldSqlSlice[i] = fmt.Sprintf("  `%v` %v", fieldName, fieldType)
 	}
 	createSql := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", modelSettings.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
-	
+
 	if count == 0 { // 创建表
 		if modelSettings.MigrationsHandler.BeforeFunc != nil { // 迁移之前处理
 			goi.Log.Info("迁移之前处理...")
@@ -164,13 +165,13 @@ func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
 				panic(fmt.Sprintf("迁移之前处理错误: %v", err))
 			}
 		}
-		
+
 		goi.Log.Info(fmt.Sprintf("正在迁移 SQLite3: %v 数据库: %v 表: %v ...", sqlite3DB.name, sqlite3DB.metaDatabase.NAME, modelSettings.TABLE_NAME))
 		_, err = sqlite3DB.Execute(createSql)
 		if err != nil {
 			panic(fmt.Sprintf("迁移错误: %v", err))
 		}
-		
+
 		if modelSettings.MigrationsHandler.AfterFunc != nil { // 迁移之后处理
 			goi.Log.Info("迁移之后处理...")
 			err = modelSettings.MigrationsHandler.AfterFunc()
@@ -178,7 +179,7 @@ func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
 				panic(fmt.Sprintf("迁移之后处理错误: %v", err))
 			}
 		}
-		
+
 	} else { // 自动更新表
 		var rows *sql.Rows
 		rows, err = sqlite3DB.Query("SELECT sql FROM sqlite_master WHERE type='table' AND name=?;", modelSettings.TABLE_NAME)
@@ -197,21 +198,21 @@ func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
 		}
 		if createSql != old_createSql { // 创建表语句不一样
 			goi.Log.Info(fmt.Sprintf("正在更新 SQLite3: %v 数据库: %v 表: %v ", sqlite3DB.name, sqlite3DB.metaDatabase.NAME, modelSettings.TABLE_NAME))
-			
+
 			oldTableName := fmt.Sprintf("%v_%v", modelSettings.TABLE_NAME, goi.Version())
 			goi.Log.Info(fmt.Sprintf("- 重命名旧表：%v...", oldTableName))
-			
+
 			_, err = sqlite3DB.Execute(fmt.Sprintf("ALTER TABLE `%v` RENAME TO `%v`;", modelSettings.TABLE_NAME, oldTableName))
 			if err != nil {
 				panic(fmt.Sprintf("重命名旧表错误: %v", err))
 			}
-			
+
 			goi.Log.Info(fmt.Sprintf("- 创建新表：%v...", modelSettings.TABLE_NAME))
 			_, err = sqlite3DB.Execute(createSql)
 			if err != nil {
 				panic(fmt.Sprintf("创建新表错误: %v", err))
 			}
-			
+
 			TabelFieldSlice := make([]string, 0)
 			rows, err = sqlite3DB.Query(fmt.Sprintf("PRAGMA table_info(`%v`);", oldTableName))
 			if err != nil {
@@ -237,7 +238,7 @@ func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
 			if err = rows.Close(); err != nil {
 				panic(fmt.Sprintf("关闭 Rows 错误: %v", err))
 			}
-			
+
 			goi.Log.Info("- 迁移数据...")
 			migrateFieldSql := strings.Join(TabelFieldSlice, ",")
 			migrateSql := fmt.Sprintf("INSERT INTO `%v` (%v) SELECT %v FROM `%v`;", modelSettings.TABLE_NAME, migrateFieldSql, migrateFieldSql, oldTableName)
@@ -267,12 +268,12 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, er
 		return nil, errors.New("请先设置 SetModel")
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
-	
+
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
 	}
-	
+
 	insertValues := make([]interface{}, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
 		field := ModelValue.FieldByName(fieldName)
@@ -282,15 +283,15 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, er
 			insertValues[i] = field.Interface()
 		}
 	}
-	
+
 	fieldsSQL := strings.Join(sqlite3DB.fields, "`,`")
-	
+
 	tempValues := make([]string, len(sqlite3DB.fields))
 	for i := 0; i < len(sqlite3DB.fields); i++ {
 		tempValues[i] = "?"
 	}
 	valuesSQL := strings.Join(tempValues, ",")
-	
+
 	sqlite3DB.sql = fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
 	return sqlite3DB.Execute(sqlite3DB.sql, insertValues...)
 }
@@ -316,7 +317,7 @@ func (sqlite3DB *SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 		if order == "" {
 			continue
 		}
-		
+
 		var sequence string
 		var orderSQL string
 		if order[0] == '-' {
@@ -363,7 +364,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		return errors.New("请先设置 SetModel")
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
-	
+
 	var (
 		isPtr    bool
 		ItemType reflect.Type
@@ -373,23 +374,23 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		return errors.New("queryResult 不是一个指向结构体的指针")
 	}
 	result = result.Elem()
-	
+
 	if kind := result.Kind(); kind != reflect.Slice {
 		return errors.New("queryResult 不是一个切片")
 	}
-	
+
 	ItemType = result.Type().Elem() // 获取切片中的元素
 	if ItemType.Kind() == reflect.Ptr {
 		isPtr = true
 		ItemType = ItemType.Elem()
 	}
-	
+
 	queryFields := make([]string, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
 	fieldsSQl := strings.Join(queryFields, "`,`")
-	
+
 	sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
@@ -407,16 +408,16 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	} else if rows.Err() != nil {
 		return rows.Err()
 	}
-	
+
 	for rows.Next() {
 		values := make([]interface{}, len(sqlite3DB.fields))
-		
+
 		item := reflect.New(ItemType).Elem()
-		
+
 		for i, fieldName := range sqlite3DB.fields {
 			values[i] = item.FieldByName(fieldName).Addr().Interface()
 		}
-		
+
 		err = rows.Scan(values...)
 		if err != nil {
 			return err
@@ -442,23 +443,23 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		return errors.New("请先设置 SetModel")
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
-	
+
 	result := reflect.ValueOf(queryResult)
 	if result.Kind() != reflect.Ptr {
 		return errors.New("queryResult 不是一个指向结构体的指针")
 	}
 	result = result.Elem()
-	
+
 	if kind := result.Kind(); kind != reflect.Struct {
 		return errors.New("queryResult 不是一个结构体")
 	}
-	
+
 	queryFields := make([]string, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
 	fieldsSQl := strings.Join(queryFields, "`,`")
-	
+
 	sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
@@ -475,12 +476,12 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	} else if row.Err() != nil {
 		return row.Err()
 	}
-	
+
 	values := make([]interface{}, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
 		values[i] = result.FieldByName(fieldName).Addr().Interface()
 	}
-	
+
 	err := row.Scan(values...)
 	if err != nil {
 		return err
@@ -494,7 +495,7 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 		return 0, errors.New("请先设置 SetModel")
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
-	
+
 	sqlite3DB.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
@@ -505,7 +506,7 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 	} else if row.Err() != nil {
 		return 0, row.Err()
 	}
-	
+
 	var count int
 	err := row.Scan(&count)
 	if err != nil {
@@ -524,12 +525,12 @@ func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, er
 		return nil, errors.New("请先设置 SetModel 表")
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
-	
+
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
 	}
-	
+
 	// 字段
 	updateFields := make([]string, 0)
 	// 值
@@ -546,7 +547,7 @@ func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, er
 		}
 	}
 	fieldsSQl := strings.Join(updateFields, ",")
-	
+
 	sqlite3DB.sql = fmt.Sprintf("UPDATE `%v` SET %v", TableName, fieldsSQl)
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
