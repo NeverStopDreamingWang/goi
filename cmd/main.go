@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var baseDir, _ = os.Getwd()

@@ -4,12 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/model"
-	_ "github.com/go-sql-driver/mysql"
 	"math"
 	"reflect"
 	"strings"
+
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/model"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type MySQLDB struct {
@@ -30,7 +31,7 @@ func MySQLConnect(UseDataBases ...string) (*MySQLDB, error) {
 	if len(UseDataBases) == 0 { // 使用默认数据库
 		UseDataBases = append(UseDataBases, "default")
 	}
-	
+
 	for _, name := range UseDataBases {
 		database, ok := goi.Settings.DATABASES[name]
 		if ok == true && strings.ToLower(database.ENGINE) == "mysql" {
@@ -85,7 +86,7 @@ func (mysqlDB *MySQLDB) Execute(query string, args ...interface{}) (sql.Result, 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 执行SQL语句
 	result, err := transaction.Exec(query, args...)
 	if err != nil {
@@ -95,13 +96,13 @@ func (mysqlDB *MySQLDB) Execute(query string, args ...interface{}) (sql.Result, 
 		}
 		return result, err
 	}
-	
+
 	// 提交事务
 	err = transaction.Commit()
 	if err != nil {
 		return result, err
 	}
-	
+
 	return result, err
 }
 
@@ -118,7 +119,7 @@ func (mysqlDB *MySQLDB) Query(query string, args ...interface{}) (*sql.Rows, err
 func (mysqlDB *MySQLDB) Migrate(model model.MySQLModel) {
 	var err error
 	modelSettings := model.ModelSet()
-	
+
 	row := mysqlDB.DB.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=? AND table_name=?;", mysqlDB.metaDatabase.NAME, modelSettings.TABLE_NAME)
 	if row.Err() != nil {
 		panic(fmt.Sprintf("MySQL [%v] 数据库 查询错误错误: %v", mysqlDB.name, row.Err()))
@@ -128,7 +129,7 @@ func (mysqlDB *MySQLDB) Migrate(model model.MySQLModel) {
 	if err != nil {
 		panic(fmt.Sprintf("MySQL [%v] 数据库 查询错误错误: %v", mysqlDB.name, err))
 	}
-	
+
 	modelType := reflect.TypeOf(model)
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
@@ -185,7 +186,7 @@ func (mysqlDB *MySQLDB) Migrate(model model.MySQLModel) {
 	if modelSettings.COMMENT != "" { // 设置表注释
 		createSql += fmt.Sprintf(" COMMENT='%v'", modelSettings.COMMENT)
 	}
-	
+
 	if count == 0 { // 创建表
 		if modelSettings.MigrationsHandler.BeforeFunc != nil { // 迁移之前处理
 			goi.Log.Info("迁移之前处理...")
@@ -194,13 +195,13 @@ func (mysqlDB *MySQLDB) Migrate(model model.MySQLModel) {
 				panic(fmt.Sprintf("迁移之前处理错误: %v", err))
 			}
 		}
-		
+
 		goi.Log.Info(fmt.Sprintf("正在迁移 MySQL: %v 数据库: %v 表: %v ...", mysqlDB.name, mysqlDB.metaDatabase.NAME, modelSettings.TABLE_NAME))
 		_, err = mysqlDB.Execute(createSql)
 		if err != nil {
 			panic(fmt.Sprintf("迁移错误: %v", err))
 		}
-		
+
 		if modelSettings.MigrationsHandler.AfterFunc != nil { // 迁移之后处理
 			goi.Log.Info("迁移之后处理...")
 			err = modelSettings.MigrationsHandler.AfterFunc()
@@ -208,7 +209,7 @@ func (mysqlDB *MySQLDB) Migrate(model model.MySQLModel) {
 				panic(fmt.Sprintf("迁移之后处理错误: %v", err))
 			}
 		}
-		
+
 	}
 }
 
@@ -230,12 +231,12 @@ func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 		return nil, errors.New("请先设置 SetModel")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
-	
+
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
 	}
-	
+
 	insertValues := make([]interface{}, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		field := ModelValue.FieldByName(fieldName)
@@ -245,17 +246,17 @@ func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 			insertValues[i] = field.Interface()
 		}
 	}
-	
+
 	fieldsSQL := strings.Join(mysqlDB.fields, "`,`")
-	
+
 	tempValues := make([]string, len(mysqlDB.fields))
 	for i := 0; i < len(mysqlDB.fields); i++ {
 		tempValues[i] = "?"
 	}
 	valuesSQL := strings.Join(tempValues, ",")
-	
+
 	mysqlDB.sql = fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
-	
+
 	return mysqlDB.Execute(mysqlDB.sql, insertValues...)
 }
 
@@ -280,7 +281,7 @@ func (mysqlDB *MySQLDB) OrderBy(orders ...string) *MySQLDB {
 		if order == "" {
 			continue
 		}
-		
+
 		var sequence string
 		var orderSQL string
 		if order[0] == '-' {
@@ -327,7 +328,7 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		return errors.New("请先设置 SetModel")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
-	
+
 	var (
 		isPtr    bool
 		ItemType reflect.Type
@@ -337,23 +338,23 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		return errors.New("queryResult 不是一个指向结构体的指针")
 	}
 	result = result.Elem()
-	
+
 	if kind := result.Kind(); kind != reflect.Slice {
 		return errors.New("queryResult 不是一个切片")
 	}
-	
+
 	ItemType = result.Type().Elem() // 获取切片中的元素
 	if ItemType.Kind() == reflect.Ptr {
 		isPtr = true
 		ItemType = ItemType.Elem()
 	}
-	
+
 	queryFields := make([]string, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
 	fieldsSQl := strings.Join(queryFields, "`,`")
-	
+
 	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
 	if len(mysqlDB.where_sql) > 0 {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
@@ -364,7 +365,7 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 	if mysqlDB.limit_sql != "" {
 		mysqlDB.sql += mysqlDB.limit_sql
 	}
-	
+
 	rows, err := mysqlDB.DB.Query(mysqlDB.sql, mysqlDB.args...)
 	defer rows.Close()
 	if err != nil {
@@ -372,16 +373,16 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 	} else if rows.Err() != nil {
 		return rows.Err()
 	}
-	
+
 	for rows.Next() {
 		values := make([]interface{}, len(mysqlDB.fields))
-		
+
 		item := reflect.New(ItemType).Elem()
-		
+
 		for i, fieldName := range mysqlDB.fields {
 			values[i] = item.FieldByName(fieldName).Addr().Interface()
 		}
-		
+
 		err = rows.Scan(values...)
 		if err != nil {
 			return err
@@ -407,23 +408,23 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		return errors.New("请先设置 SetModel")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
-	
+
 	result := reflect.ValueOf(queryResult)
 	if result.Kind() != reflect.Ptr {
 		return errors.New("queryResult 不是一个指向结构体的指针")
 	}
 	result = result.Elem()
-	
+
 	if kind := result.Kind(); kind != reflect.Struct {
 		return errors.New("queryResult 不是一个结构体")
 	}
-	
+
 	queryFields := make([]string, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		queryFields[i] = strings.ToLower(fieldName)
 	}
 	fieldsSQl := strings.Join(queryFields, "`,`")
-	
+
 	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
 	if len(mysqlDB.where_sql) > 0 {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
@@ -440,12 +441,12 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	} else if row.Err() != nil {
 		return row.Err()
 	}
-	
+
 	values := make([]interface{}, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
 		values[i] = result.FieldByName(fieldName).Addr().Interface()
 	}
-	
+
 	err := row.Scan(values...)
 	if err != nil {
 		return err
@@ -459,19 +460,19 @@ func (mysqlDB *MySQLDB) Count() (int, error) {
 		return 0, errors.New("请先设置 SetModel")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
-	
+
 	mysqlDB.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
 	if len(mysqlDB.where_sql) > 0 {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
 	}
-	
+
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 	if row == nil {
 		return 0, nil
 	} else if row.Err() != nil {
 		return 0, row.Err()
 	}
-	
+
 	var count int
 	err := row.Scan(&count)
 	if err != nil {
@@ -490,12 +491,12 @@ func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 		return nil, errors.New("请先设置 SetModel 表")
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
-	
+
 	ModelValue := reflect.ValueOf(ModelData)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
 	}
-	
+
 	// 字段
 	updateFields := make([]string, 0)
 	// 值
@@ -512,12 +513,12 @@ func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 		}
 	}
 	fieldsSQl := strings.Join(updateFields, ",")
-	
+
 	mysqlDB.sql = fmt.Sprintf("UPDATE `%v` SET %v", TableName, fieldsSQl)
 	if len(mysqlDB.where_sql) > 0 {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
 	}
-	
+
 	updateValues = append(updateValues, mysqlDB.args...)
 	return mysqlDB.Execute(mysqlDB.sql, updateValues...)
 }
@@ -536,6 +537,6 @@ func (mysqlDB *MySQLDB) Delete() (sql.Result, error) {
 	if len(mysqlDB.where_sql) > 0 {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
 	}
-	
+
 	return mysqlDB.Execute(mysqlDB.sql, mysqlDB.args...)
 }

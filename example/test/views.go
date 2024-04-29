@@ -2,10 +2,11 @@ package test
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
 	"net/http"
 	"os"
 	"path"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 func Test1(request *goi.Request) interface{} {
