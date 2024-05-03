@@ -81,7 +81,7 @@ func (values metaValues) ParseParams(paramsDest interface{}) ValidationError {
 
 	// 如果参数不是指针或者不是结构体类型，则返回错误
 	if paramsValue.Kind() != reflect.Ptr {
-		return NewValidationError("参数必须是结构体指针类型", http.StatusInternalServerError)
+		return NewValidationError("参数必须是指针类型", http.StatusInternalServerError)
 	}
 	paramsValue = paramsValue.Elem()
 	if paramsValue.Kind() != reflect.Struct {
