@@ -1,6 +1,9 @@
 package goi
 
 import (
+	"errors"
+	"fmt"
+	"reflect"
 	"time"
 )
 
@@ -61,11 +64,49 @@ func newSettings() *metaSettings {
 }
 
 // 设置自定义配置
-func (settings *metaSettings) Set(name string, value interface{}) {
-	settings.mySettings[name] = value
+func (settings *metaSettings) Set(key string, value interface{}) {
+	settings.mySettings[key] = value
 }
 
 // 获取自定义配置
-func (settings metaSettings) Get(name string) interface{} {
-	return settings.mySettings[name]
+func (settings metaSettings) Get(key string, dest interface{}) error {
+	// 获取目标变量的反射值
+	destValue := reflect.ValueOf(dest)
+	// 检查目标变量是否为指针类型
+	if destValue.Kind() != reflect.Ptr {
+		return errors.New("参数必须是指针类型")
+	}
+	destValue = destValue.Elem()
+	// 检查目标变量的可设置性
+	if !destValue.CanSet() {
+		return errors.New("目标变量不可设置")
+	}
+
+	value, ok := settings.mySettings[key]
+	if ok == false {
+		return errors.New(fmt.Sprintf("%s 不存在", key))
+	}
+	// 获取值的类型
+	valueType := reflect.TypeOf(value)
+
+	destKind := destValue.Type().Kind()
+	valueKind := valueType.Kind()
+	if destKind != valueKind {
+		return errors.New(fmt.Sprintf("无法将 %s 类型的值赋给 %s 类型的 dest 变量", valueKind.String(), destKind.String()))
+	}
+	switch valueKind {
+	case reflect.String:
+		destValue.SetString(reflect.ValueOf(value).String())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		destValue.SetInt(reflect.ValueOf(value).Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		destValue.SetUint(reflect.ValueOf(value).Uint())
+	case reflect.Float32, reflect.Float64:
+		destValue.SetFloat(reflect.ValueOf(value).Float())
+	case reflect.Slice, reflect.Map:
+		destValue.Set(reflect.ValueOf(value))
+	default:
+		return errors.New("不支持的目标变量类型")
+	}
+	return nil
 }
