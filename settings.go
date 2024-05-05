@@ -95,6 +95,8 @@ func (settings metaSettings) Get(key string, dest interface{}) error {
 		return errors.New(fmt.Sprintf("无法将 %s 类型的值赋给 %s 类型的 dest 变量", valueKind.String(), destKind.String()))
 	}
 	switch valueKind {
+	case reflect.Bool:
+		destValue.SetBool(reflect.ValueOf(value).Bool())
 	case reflect.String:
 		destValue.SetString(reflect.ValueOf(value).String())
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
