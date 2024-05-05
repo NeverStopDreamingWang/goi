@@ -176,10 +176,12 @@ func init() {
 	Server.Settings.BASE_DIR, _ = os.Getwd()
 	// 设置网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
-	// 运行地址
+	// 监听地址
 	Server.Settings.BIND_ADDRESS = "0.0.0.0"
 	// 端口
 	Server.Settings.PORT = 8080
+	// 绑定域名
+	Server.Settings.BindDomain = ""
 
 	// 项目 AES 密钥
 	Server.Settings.SECRET_KEY = "%s"
