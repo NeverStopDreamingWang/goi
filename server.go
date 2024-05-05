@@ -140,14 +140,14 @@ func (engine *Engine) RunServer() {
 		}
 
 		engine.Log.Log(meta, fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
-		if engine.Settings.Domain != "" {
-			engine.Log.Log(meta, fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.Domain, engine.Settings.PORT, engine.Settings.NET_WORK))
+		if engine.Settings.BIND_DOMAIN != "" {
+			engine.Log.Log(meta, fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK))
 		}
 		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
 	} else {
 		engine.Log.Log(meta, fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
-		if engine.Settings.Domain != "" {
-			engine.Log.Log(meta, fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.Domain, engine.Settings.PORT, engine.Settings.NET_WORK))
+		if engine.Settings.BIND_DOMAIN != "" {
+			engine.Log.Log(meta, fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK))
 		}
 		err = engine.server.Serve(ln)
 	}
