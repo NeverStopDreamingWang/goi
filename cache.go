@@ -96,35 +96,31 @@ func (cache *metaCache) initCache() {
 }
 
 // Get 查找键的值
-func (cache *metaCache) Get(key string) (interface{}, bool) {
+func (cache *metaCache) Get(key string, value interface{}) error {
 	if element, ok := cache.dict[key]; ok {
 		cacheItem := element.Value.(*cacheItems)
 
 		nowTime := time.Now().In(Settings.LOCATION)                         // 获取当前时间
 		if cacheItem.expires.IsZero() || cacheItem.expires.After(nowTime) { // 判断是否过期
 			cacheItem.mutex.Lock()
-			// 创建存储类型的新实例
-			value := reflect.New(cacheItem.valueType).Interface()
-
-			reader := bytes.NewReader(cacheItem.byteValue)
-			decoder := gob.NewDecoder(reader)
-
 			cacheItem.lru = nowTime
 			cacheItem.lfu = LFULogIncr(cacheItem.lfu)
 			cacheItem.mutex.Unlock()
 
 			// 将字节解码回原始值类型
+			reader := bytes.NewReader(cacheItem.byteValue)
+			decoder := gob.NewDecoder(reader)
 			err := decoder.Decode(value)
 			if err != nil {
-				return nil, false
+				return err
 			}
-			return value, true
+			return nil
 		}
 		// 缓存过期删除
 		cache.DelExp(key)
-		return nil, false
+		return nil
 	}
-	return nil, false
+	return nil
 }
 
 // Set 设置键值
