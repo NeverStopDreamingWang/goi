@@ -48,7 +48,7 @@ func (values metaValues) Get(key string, dest interface{}) error {
 	destType := destValue.Type()
 	// 检查是否为可分配值
 	if !destValue.CanSet() {
-		return NewValidationError("dest 不可赋值的值", http.StatusInternalServerError)
+		return errors.New("dest 不可赋值的值")
 	}
 	// 尝试将值转换为目标变量的类型并赋值给目标变量
 	switch destType.Kind() {
