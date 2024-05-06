@@ -228,6 +228,9 @@ Kwargs   map[string]string `name:"kwargs" optional:"map"`
 
 // required 必传参数
 // optional 可选
+// 支持
+// int *int []*int []... map[string]*int map[...]...
+// ...
 
 func TestParamsValid(request *goi.Request) interface{} {
 var params testParamsValidParams

@@ -45,24 +45,29 @@ func (values metaValues) Get(key string, dest interface{}) error {
 		return errors.New("目标变量必须是指针类型")
 	}
 	destValue = destValue.Elem()
+	destType := destValue.Type()
+	// 检查是否为可分配值
+	if !destValue.CanSet() {
+		return NewValidationError("dest 不可赋值的值", http.StatusInternalServerError)
+	}
 	// 尝试将值转换为目标变量的类型并赋值给目标变量
-	switch destValue.Type().Kind() {
+	switch destType.Kind() {
 	case reflect.String:
 		destValue.SetString(value[0])
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		intValue, err := strconv.ParseInt(value[0], 10, destValue.Elem().Type().Bits())
+		intValue, err := strconv.ParseInt(value[0], 10, destType.Bits())
 		if err != nil {
 			return err
 		}
 		destValue.SetInt(intValue)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		uintValue, err := strconv.ParseUint(value[0], 10, destValue.Elem().Type().Bits())
+		uintValue, err := strconv.ParseUint(value[0], 10, destType.Bits())
 		if err != nil {
 			return err
 		}
 		destValue.SetUint(uintValue)
 	case reflect.Float32, reflect.Float64:
-		floatValue, err := strconv.ParseFloat(value[0], destValue.Elem().Type().Bits())
+		floatValue, err := strconv.ParseFloat(value[0], destType.Bits())
 		if err != nil {
 			return err
 		}
@@ -132,26 +137,37 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 	var validationErr ValidationError
 	// 检查字段是否为指针类型
 	if field.Kind() == reflect.Ptr {
+		// 检查字段值是否是零值
+		if field.IsNil() {
+			// 如果字段值是零值，则创建一个新的指针对象并设置为该字段的值
+			field.Set(reflect.New(field.Type().Elem()))
+		}
 		field = field.Elem()
 	}
+	// 检查是否为可分配值
+	if !field.CanSet() {
+		return NewValidationError("dest 不可赋值的值", http.StatusInternalServerError)
+	}
+
+	fieldType := field.Type()
 	// 尝试将值转换为目标变量的类型并赋值给目标变量
-	switch field.Type().Kind() {
+	switch fieldType.Kind() {
 	case reflect.String:
 		field.SetString(value)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		intValue, err := strconv.ParseInt(value, 10, field.Elem().Type().Bits())
+		intValue, err := strconv.ParseInt(value, 10, fieldType.Bits())
 		if err != nil {
 			return NewValidationError(err.Error(), http.StatusInternalServerError)
 		}
 		field.SetInt(intValue)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		uintValue, err := strconv.ParseUint(value, 10, field.Elem().Type().Bits())
+		uintValue, err := strconv.ParseUint(value, 10, fieldType.Bits())
 		if err != nil {
 			return NewValidationError(err.Error(), http.StatusInternalServerError)
 		}
 		field.SetUint(uintValue)
 	case reflect.Float32, reflect.Float64:
-		floatValue, err := strconv.ParseFloat(value, field.Elem().Type().Bits())
+		floatValue, err := strconv.ParseFloat(value, fieldType.Bits())
 		if err != nil {
 			return NewValidationError(err.Error(), http.StatusInternalServerError)
 		}
@@ -163,9 +179,9 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 			return NewValidationError(err.Error(), http.StatusBadRequest)
 		}
 		// 获取切片元素的类型
-		elementType := field.Type().Elem()
+		elementType := fieldType.Elem()
 		// 创建一个新的切片，长度为0，容量为0
-		sliceValue := reflect.MakeSlice(field.Type(), 0, len(jsonData))
+		sliceValue := reflect.MakeSlice(fieldType, 0, len(jsonData))
 		for _, itemValue := range jsonData {
 			elemValue := reflect.New(elementType).Elem()
 			stringItemValue, ok := itemValue.(string)
@@ -188,8 +204,8 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 		}
 
 		// 获取映射键和值的类型
-		keyType := field.Type().Key()
-		valueType := field.Type().Elem()
+		keyType := fieldType.Key()
+		valueType := fieldType.Elem()
 
 		// 创建一个新的映射
 		mapValue := reflect.MakeMap(field.Type())
