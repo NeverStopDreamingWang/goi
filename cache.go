@@ -95,6 +95,12 @@ func (cache *metaCache) initCache() {
 	}
 }
 
+// Has 检查值是否存在
+func (cache metaCache) Has(key string) bool {
+	_, ok := cache.dict[key]
+	return ok
+}
+
 // Get 查找键的值
 func (cache *metaCache) Get(key string, value interface{}) error {
 	if element, ok := cache.dict[key]; ok {
