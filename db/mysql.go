@@ -387,7 +387,7 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		if err != nil {
 			return err
 		}
-		if isPtr {
+		if isPtr == true {
 			result.Set(reflect.Append(result, item.Addr()))
 		} else {
 			result.Set(reflect.Append(result, item))
