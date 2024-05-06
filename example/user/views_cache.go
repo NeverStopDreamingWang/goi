@@ -56,8 +56,9 @@ func TestCacheGet(request *goi.Request) interface{} {
 	}
 
 	fmt.Printf("key: %v\n", params.Key)
-	value, ok := goi.Cache.Get(params.Key)
-	if !ok {
+	var value string
+	err := goi.Cache.Get(params.Key, &value)
+	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
@@ -68,7 +69,7 @@ func TestCacheGet(request *goi.Request) interface{} {
 		}
 	}
 
-	fmt.Printf("value: %v\n", *value.(*string))
+	fmt.Printf("value: %v\n", value)
 	// if err != nil {
 	// 	return goi.Response{
 	// 		Status: http.StatusInternalServerError,
@@ -97,7 +98,7 @@ func TestCacheDel(request *goi.Request) interface{} {
 
 	fmt.Printf("key: %v\n", params.Key)
 	goi.Cache.Del(params.Key)
-	value, ok := goi.Cache.Get(params.Key)
+	ok := goi.Cache.Has(params.Key)
 
 	if !ok {
 		return goi.Response{
@@ -109,7 +110,7 @@ func TestCacheDel(request *goi.Request) interface{} {
 			},
 		}
 	}
-	fmt.Printf("删除失败 value: %v\n", *value.(*string))
+	fmt.Println("删除失败!")
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
