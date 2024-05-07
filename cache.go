@@ -130,12 +130,12 @@ func (cache *metaCache) Get(key string, value interface{}) error {
 }
 
 // Set 设置键值
-func (cache *metaCache) Set(key string, value interface{}, expires int) {
+func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	err := encoder.Encode(value)
 	if err != nil {
-		return
+		return err
 	}
 	var expiresTime time.Time
 	if expires > 0 {
@@ -172,6 +172,7 @@ func (cache *metaCache) Set(key string, value interface{}, expires int) {
 	for cache.MAX_SIZE != 0 && cache.MAX_SIZE < cache.used_size {
 		cache.cacheEvict()
 	}
+	return nil
 }
 
 // Del 删除键值
