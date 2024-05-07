@@ -96,9 +96,9 @@ func TestModelList(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status: http.StatusOK,
-			Msg:    "ok",
-			Data:   user_data,
+			Status:  http.StatusOK,
+			Message: "ok",
+			Data:    user_data,
 		},
 	}
 }
@@ -346,9 +346,9 @@ func TestModelUpdate(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusInternalServerError,
-				Msg:    "修改失败！",
-				Data:   nil,
+				Status:  http.StatusInternalServerError,
+				Message: "修改失败！",
+				Data:    nil,
 			},
 		}
 	}
@@ -403,9 +403,9 @@ func TestModelDelete(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
+				Status:  http.StatusBadRequest,
+				Message: "参数错误",
+				Data:    nil,
 			},
 		}
 	}
@@ -453,9 +453,9 @@ func TestModelDelete(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusOK,
-				Msg:    "已删除！",
-				Data:   nil,
+				Status:  http.StatusOK,
+				Message: "已删除！",
+				Data:    nil,
 			},
 		}
 	}
@@ -464,9 +464,9 @@ func TestModelDelete(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status: http.StatusOK,
-			Msg:    "删除成功！",
-			Data:   nil,
+			Status:  http.StatusOK,
+			Message: "删除成功！",
+			Data:    nil,
 		},
 	}
 }
