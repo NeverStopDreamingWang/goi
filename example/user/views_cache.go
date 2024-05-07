@@ -28,7 +28,17 @@ func TestCacheSet(request *goi.Request) interface{} {
 	fmt.Printf("key: %v\n", params.Key)
 	fmt.Printf("Value: %v\n", params.Value)
 	fmt.Printf("exp: %v\n", params.Exp)
-	goi.Cache.Set(params.Key, params.Value, params.Exp)
+	err := goi.Cache.Set(params.Key, params.Value, params.Exp)
+	if err != nil {
+		return goi.Response{
+			Status: http.StatusOK,
+			Data: goi.Data{
+				Status:  http.StatusInternalServerError,
+				Message: "设置缓存错误！",
+				Data:    nil,
+			},
+		}
+	}
 
 	return goi.Response{
 		Status: http.StatusOK,
