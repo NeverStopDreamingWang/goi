@@ -36,9 +36,9 @@ func TestPhone(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
+				Status:  http.StatusBadRequest,
+				Message: "参数错误",
+				Data:    nil,
 			},
 		}
 	}
@@ -64,9 +64,9 @@ func TestPathParamsInt(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
+				Status:  http.StatusBadRequest,
+				Message: "参数错误",
+				Data:    nil,
 			},
 		}
 	}
@@ -97,9 +97,9 @@ func TestPathParamsStr(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
+				Status:  http.StatusBadRequest,
+				Message: "参数错误",
+				Data:    nil,
 			},
 		}
 	}
@@ -134,9 +134,9 @@ func TestQueryParams(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
+				Status:  http.StatusBadRequest,
+				Message: "参数错误",
+				Data:    nil,
 			},
 		}
 	}
@@ -158,9 +158,9 @@ func TestBodyParams(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
+				Status:  http.StatusBadRequest,
+				Message: "参数错误",
+				Data:    nil,
 			},
 		}
 	}
@@ -201,7 +201,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		// 	Status: http.StatusOK,
 		// 	Data: goi.Data{
 		// 		Status: http.StatusBadRequest,
-		// 		Msg:    "参数错误",
+		// 		Message:    "参数错误",
 		// 		Data:   nil,
 		// 	},
 		// }
@@ -210,9 +210,9 @@ func TestParamsValid(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status: http.StatusOK,
-			Msg:    "ok",
-			Data:   nil,
+			Status:  http.StatusOK,
+			Message: "ok",
+			Data:    nil,
 		},
 	}
 }
@@ -225,9 +225,9 @@ func TestConverterParamsStrs(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
+				Status:  http.StatusBadRequest,
+				Message: "参数错误",
+				Data:    nil,
 			},
 		}
 	}
@@ -256,9 +256,9 @@ func TestContext(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Msg:    "参数错误",
-				Data:   nil,
+				Status:  http.StatusBadRequest,
+				Message: "参数错误",
+				Data:    nil,
 			},
 		}
 	}

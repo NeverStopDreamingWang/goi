@@ -33,9 +33,9 @@ func TestCacheSet(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status: http.StatusOK,
-			Msg:    "设置成功！",
-			Data:   nil,
+			Status:  http.StatusOK,
+			Message: "设置成功！",
+			Data:    nil,
 		},
 	}
 }
@@ -62,9 +62,9 @@ func TestCacheGet(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusOK,
-				Msg:    "key 值不存在！",
-				Data:   nil,
+				Status:  http.StatusOK,
+				Message: "key 值不存在！",
+				Data:    nil,
 			},
 		}
 	}
@@ -79,9 +79,9 @@ func TestCacheGet(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status: http.StatusOK,
-			Msg:    "ok",
-			Data:   value,
+			Status:  http.StatusOK,
+			Message: "ok",
+			Data:    value,
 		},
 	}
 }
@@ -104,9 +104,9 @@ func TestCacheDel(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status: http.StatusOK,
-				Msg:    "删除成功！",
-				Data:   nil,
+				Status:  http.StatusOK,
+				Message: "删除成功！",
+				Data:    nil,
 			},
 		}
 	}
@@ -114,9 +114,9 @@ func TestCacheDel(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status: http.StatusOK,
-			Msg:    "删除失败！",
-			Data:   nil,
+			Status:  http.StatusOK,
+			Message: "删除失败！",
+			Data:    nil,
 		},
 	}
 }
