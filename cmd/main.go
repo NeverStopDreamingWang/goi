@@ -42,7 +42,7 @@ var GoiCmd = &cobra.Command{
 
 func main() {
 	if err := GoiCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

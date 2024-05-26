@@ -39,7 +39,7 @@ func GoiCreateApp(cmd *cobra.Command, args []string) error {
 		itemPath := itemFile.Path()
 		_, err := os.Stat(itemPath)
 		if os.IsNotExist(err) {
-			err = os.MkdirAll(itemPath, 0755)
+			err = os.MkdirAll(itemPath, 0666)
 			if err != nil {
 				return err
 			}
@@ -47,7 +47,7 @@ func GoiCreateApp(cmd *cobra.Command, args []string) error {
 
 		// 创建文件
 		filePath := path.Join(itemPath, itemFile.Name)
-		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
+		file, err := os.Create(filePath)
 
 		Content := itemFile.Content()
 		_, err = file.WriteString(Content)
@@ -127,10 +127,17 @@ func init() {
 	{
 		// 注册一个路径
 		%sRouter.UrlPatterns("/test_views", "测试接口", goi.AsView{GET: TestView})
+
+		// 请求传参
+		%sRouter.UrlPatterns("/params/<string:name>", "传参", goi.AsView{GET: TestParams})
+
+		// 参数验证
+		%sRouter.UrlPatterns("/params_valid", "参数验证", goi.AsView{POST: TestParamsValid})
+
 	}
 }
 `
-		return fmt.Sprintf(content, appName, projectName, projectName, appName, projectName, appName, appName)
+		return fmt.Sprintf(content, appName, projectName, projectName, appName, projectName, appName, appName, appName, appName)
 	},
 	Path: func() string {
 		return path.Join(baseDir, appName)
@@ -144,8 +151,10 @@ var views = InitFile{
 		content := `package %s
 
 import (
-	"github.com/NeverStopDreamingWang/goi"
+	"fmt"
 	"net/http"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 func TestView(request *goi.Request) interface{} {
@@ -154,11 +163,77 @@ func TestView(request *goi.Request) interface{} {
 		Status: http.StatusOK,
 		Data: goi.Data{
 			Status: http.StatusOK,
-			Msg:    "ok",
+			Message:    "ok",
 			Data:   nil,
 		},
 	}
 }
+
+// 请求传参
+func TestParams(request *goi.Request) interface{} {
+	var name string
+	var validationErr goi.ValidationError
+	validationErr = request.PathParams.Get("name", &name) // 路由传参
+	// validationErr = request.QueryParams.Get("name", &name) // Query 传参
+	// validationErr = request.BodyParams.Get("name", &name) // Body 传参
+	if validationErr != nil {
+		return validationErr.Response()
+	}
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
+	fmt.Println(msg)
+	return goi.Response{
+		Status: http.StatusCreated,               // 返回指定响应状态码 404
+		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
+	}
+}
+
+// 参数验证
+type testParamsValidParams struct {
+	Username string            ` + "`" + `name:"username" required:"string"` + "`" + `
+	Password string            ` + "`" + `name:"password" required:"string"` + "`" + `
+	Age      string            ` + "`" + `name:"age" required:"int"` + "`" + `
+	Phone    string            ` + "`" + `name:"phone" required:"phone"` + "`" + `
+	Args     []string          ` + "`" + `name:"args" optional:"slice"` + "`" + `
+	Kwargs   map[string]string ` + "`" + `name:"kwargs" optional:"map"` + "`" + `
+}
+
+// required 必传参数
+// optional 可选
+// 支持
+// int *int []*int []... map[string]*int map[...]...
+// ...
+
+func TestParamsValid(request *goi.Request) interface{} {
+	var params testParamsValidParams
+	var validationErr goi.ValidationError
+	// validationErr = request.PathParams.ParseParams(&params) // 路由传参
+	// validationErr = request.QueryParams.ParseParams(&params) // Query 传参
+	validationErr = request.BodyParams.ParseParams(&params) // Body 传参
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
+
+		// 自定义返回
+		// return goi.Response{
+		// 	Status: http.StatusOK,
+		// 	Data: goi.Data{
+		// 		Status: http.StatusBadRequest,
+		// 		Message:    "参数错误",
+		// 		Data:   nil,
+		// 	},
+		// }
+	}
+	fmt.Println(params)
+	return goi.Response{
+		Status: http.StatusOK,
+		Data: goi.Data{
+			Status:  http.StatusOK,
+			Message: "ok",
+			Data:    nil,
+		},
+	}
+}
+
 `
 		return fmt.Sprintf(content, appName)
 	},
