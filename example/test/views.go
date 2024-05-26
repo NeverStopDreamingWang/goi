@@ -18,151 +18,19 @@ func Test1(request *goi.Request) interface{} {
 	return resp
 }
 
-func Test2(request *goi.Request) interface{} {
-	resp := map[string]interface{}{
-		"status": http.StatusOK,
-		"msg":    "test2 OK",
-		"data":   "OK",
-	}
-	return resp
-}
-
-// 测试手机号路由转换器
-func TestPhone(request *goi.Request) interface{} {
-	var phone string
-	var err error
-	err = request.PathParams.Get("phone", &phone)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status:  http.StatusBadRequest,
-				Message: "参数错误",
-				Data:    nil,
-			},
-		}
-	}
-	resp := map[string]interface{}{
-		"status": http.StatusOK,
-		"msg":    phone,
-		"data":   "OK",
-	}
-	return resp
-}
-
 func Test3(request *goi.Request) interface{} {
 	return goi.Data{http.StatusOK, "test3 OK", "OK"}
 }
 
-func TestPathParamsInt(request *goi.Request) interface{} {
-	// 路由传参 request.PathParams
-	// ids, _ := request.PathParams["id"] // []interface{}
-	var id int
-	var err error
-	err = request.PathParams.Get("id", &id)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status:  http.StatusBadRequest,
-				Message: "参数错误",
-				Data:    nil,
-			},
-		}
-	}
-
-	if id == 0 {
-		// 返回 goi.Response
-		return goi.Response{
-			Status: http.StatusNotFound, // Status 指定响应状态码
-			Data:   nil,
-		}
-	}
-
-	msg := fmt.Sprintf("参数: %v 参数类型:  %T", id, id)
-	fmt.Println(msg)
-	resp := map[string]interface{}{
-		"status": http.StatusOK,
-		"msg":    msg,
-		"data":   "OK",
-	}
-	return resp
-}
-
-func TestPathParamsStr(request *goi.Request) interface{} {
+// 请求传参
+func TestParams(request *goi.Request) interface{} {
 	var name string
-	var err error
-	err = request.PathParams.Get("name", &name)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status:  http.StatusBadRequest,
-				Message: "参数错误",
-				Data:    nil,
-			},
-		}
-	}
-	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
-	fmt.Println(msg)
-	return goi.Response{
-		Status: http.StatusCreated,               // 返回指定响应状态码 404
-		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
-	}
-}
-
-func TestPathParamsStrs(request *goi.Request) interface{} {
-	// 多个值
-	nameSlice := request.PathParams["name"] // 返回一个 []interface{}
-	fmt.Printf("%v,%T\n", nameSlice, nameSlice)
-	name1 := nameSlice[0]
-	name2 := nameSlice[1]
-
-	msg1 := fmt.Sprintf("参数: %v 参数类型:  %T\n", name1, name1)
-	msg2 := fmt.Sprintf("参数: %v 参数类型:  %T\n", name2, name2)
-	fmt.Println(msg1)
-	fmt.Println(msg2)
-	return goi.Data{http.StatusOK, "ok", []string{msg1, msg2}}
-}
-
-// 获取 Query 传参
-func TestQueryParams(request *goi.Request) interface{} {
-	var name string
-	var err error
-	err = request.QueryParams.Get("name", &name)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status:  http.StatusBadRequest,
-				Message: "参数错误",
-				Data:    nil,
-			},
-		}
-	}
-	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
-	fmt.Println(msg)
-	return goi.Response{
-		Status: http.StatusCreated,               // 返回指定响应状态码 404
-		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
-	}
-}
-
-// 获取Body传参
-func TestBodyParams(request *goi.Request) interface{} {
-	// name := request.BodyParams["name"]
-	var name string
-	var err error
-	err = request.BodyParams.Get("name", &name)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status:  http.StatusBadRequest,
-				Message: "参数错误",
-				Data:    nil,
-			},
-		}
+	var validationErr goi.ValidationError
+	validationErr = request.PathParams.Get("name", &name) // 路由传参
+	// validationErr = request.QueryParams.Get("name", &name) // Query 传参
+	// validationErr = request.BodyParams.Get("name", &name) // Body 传参
+	if validationErr != nil {
+		return validationErr.Response()
 	}
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
@@ -191,7 +59,9 @@ type testParamsValidParams struct {
 func TestParamsValid(request *goi.Request) interface{} {
 	var params testParamsValidParams
 	var validationErr goi.ValidationError
-	validationErr = request.BodyParams.ParseParams(&params)
+	// validationErr = request.PathParams.ParseParams(&params) // 路由传参
+	// validationErr = request.QueryParams.ParseParams(&params) // Query 传参
+	validationErr = request.BodyParams.ParseParams(&params) // Body 传参
 	if validationErr != nil {
 		// 验证器返回
 		return validationErr.Response()
@@ -217,19 +87,43 @@ func TestParamsValid(request *goi.Request) interface{} {
 	}
 }
 
+// 测试手机号路由转换器
+func TestPhone(request *goi.Request) interface{} {
+	var phone string
+	var validationErr goi.ValidationError
+	validationErr = request.PathParams.Get("phone", &phone)
+	if validationErr != nil {
+		return validationErr.Response()
+	}
+	resp := map[string]interface{}{
+		"status": http.StatusOK,
+		"msg":    phone,
+		"data":   "OK",
+	}
+	return resp
+}
+
+// 两个同名参数时
+func TestPathParamsStrs(request *goi.Request) interface{} {
+	// 多个值
+	nameSlice := request.PathParams["name"] // 返回一个 []interface{}
+	fmt.Printf("%v,%T\n", nameSlice, nameSlice)
+	name1 := nameSlice[0]
+	name2 := nameSlice[1]
+
+	msg1 := fmt.Sprintf("参数: %v 参数类型:  %T\n", name1, name1)
+	msg2 := fmt.Sprintf("参数: %v 参数类型:  %T\n", name2, name2)
+	fmt.Println(msg1)
+	fmt.Println(msg2)
+	return goi.Data{http.StatusOK, "ok", []string{msg1, msg2}}
+}
+
 func TestConverterParamsStrs(request *goi.Request) interface{} {
 	var name string
-	var err error
-	err = request.PathParams.Get("name", &name)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status:  http.StatusBadRequest,
-				Message: "参数错误",
-				Data:    nil,
-			},
-		}
+	var validationErr goi.ValidationError
+	validationErr = request.PathParams.Get("name", &name)
+	if validationErr != nil {
+		return validationErr.Response()
 	}
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
@@ -250,17 +144,10 @@ func TestContext(request *goi.Request) interface{} {
 
 	// fmt.Println("PathParams", request.PathParams)
 	var name string
-	var err error
-	err = request.PathParams.Get("name", &name)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status:  http.StatusBadRequest,
-				Message: "参数错误",
-				Data:    nil,
-			},
-		}
+	var validationErr goi.ValidationError
+	validationErr = request.PathParams.Get("name", &name)
+	if validationErr != nil {
+		return validationErr.Response()
 	}
 	msg := fmt.Sprintf("test %s %T", name, name)
 

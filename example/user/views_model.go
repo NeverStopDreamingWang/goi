@@ -397,17 +397,11 @@ func TestModelUpdate(request *goi.Request) interface{} {
 // 删除 Model
 func TestModelDelete(request *goi.Request) interface{} {
 	var user_id int
+	var validationErr goi.ValidationError
 	var err error
-	err = request.PathParams.Get("user_id", &user_id)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status:  http.StatusBadRequest,
-				Message: "参数错误",
-				Data:    nil,
-			},
-		}
+	validationErr = request.PathParams.Get("user_id", &user_id)
+	if validationErr != nil {
+		return validationErr.Response()
 	}
 
 	if user_id == 0 {

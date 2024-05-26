@@ -12,32 +12,23 @@ func init() {
 		// 注册一个路径
 		testRouter.UrlPatterns("/test1", "测试路由1", goi.AsView{GET: Test1})
 
-		testRouter.UrlPatterns("/test2", "", goi.AsView{GET: Test2}) // 添加路由
-
-		testRouter.UrlPatterns("/test_phone/<phone:phone>", "", goi.AsView{GET: TestPhone}) // 测试路由转换器
-
 		// 创建一个三级子路由
 		test3Router := testRouter.Include("/test3", "测试3级路由")
 		{
 			test3Router.UrlPatterns("/test3", "", goi.AsView{GET: Test3}) // 嵌套子路由
 		}
 
-		// Path 路由传参
-		testRouter.UrlPatterns("/path_params_int/<int:id>", "Path路由传参", goi.AsView{GET: TestPathParamsInt})
-		// 字符串
-		testRouter.UrlPatterns("/path_params_str/<string:name>", "路由字符串传参", goi.AsView{GET: TestPathParamsStr})
-
-		// 两个同名参数时
-		testRouter.UrlPatterns("/path_params_strs/<string:name>/<string:name>", "", goi.AsView{GET: TestPathParamsStrs})
-
-		// Query 传参
-		testRouter.UrlPatterns("/query_params", "Query 传参", goi.AsView{GET: TestQueryParams})
-
-		// Body 传参
-		testRouter.UrlPatterns("/body_params", "Body 传参", goi.AsView{GET: TestBodyParams})
+		// 请求传参
+		testRouter.UrlPatterns("/params/<string:name>", "传参", goi.AsView{GET: TestParams})
 
 		// 参数验证
 		testRouter.UrlPatterns("/params_valid", "参数验证", goi.AsView{POST: TestParamsValid})
+
+		// 测试路由转换器
+		testRouter.UrlPatterns("/test_phone/<phone:phone>", "", goi.AsView{GET: TestPhone})
+
+		// 两个同名参数时
+		testRouter.UrlPatterns("/path_params_strs/<string:name>/<string:name>", "", goi.AsView{GET: TestPathParamsStrs})
 
 		// 使用自定义路由转换器获取参数
 		testRouter.UrlPatterns("/converter_params/<string:name>", "自定义路由转换器获取参数", goi.AsView{GET: TestConverterParamsStrs})
