@@ -2,7 +2,6 @@ package goi
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -33,47 +32,24 @@ func (values metaValues) Has(key string) bool {
 }
 
 // 根据键获取一个值, 获取不到返回 nil
-func (values metaValues) Get(key string, dest interface{}) error {
-	value := values[key]
-	if len(value) == 0 {
-		return errors.New(fmt.Sprintf("'%v' not found", key))
+func (values metaValues) Get(key string, dest interface{}) ValidationError {
+	var validationErr ValidationError
+	value_list, ok := values[key]
+	if ok == false {
+		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("'%v' 缺少必填参数", key))
 	}
 	// 获取目标变量的反射值
 	destValue := reflect.ValueOf(dest)
 	// 检查目标变量是否为指针类型
 	if destValue.Kind() != reflect.Ptr {
-		return errors.New("目标变量必须是指针类型")
+		return NewValidationError(http.StatusInternalServerError, "参数必须是指针类型")
 	}
-	destValue = destValue.Elem()
-	destType := destValue.Type()
-	// 检查是否为可分配值
-	if !destValue.CanSet() {
-		return errors.New("dest 不可赋值的值")
-	}
-	// 尝试将值转换为目标变量的类型并赋值给目标变量
-	switch destType.Kind() {
-	case reflect.String:
-		destValue.SetString(value[0])
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		intValue, err := strconv.ParseInt(value[0], 10, destType.Bits())
-		if err != nil {
-			return err
+	for _, value := range value_list {
+		// 设置到参数结构体中
+		validationErr = values.setFieldValue(destValue, value)
+		if validationErr != nil {
+			return validationErr
 		}
-		destValue.SetInt(intValue)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		uintValue, err := strconv.ParseUint(value[0], 10, destType.Bits())
-		if err != nil {
-			return err
-		}
-		destValue.SetUint(uintValue)
-	case reflect.Float32, reflect.Float64:
-		floatValue, err := strconv.ParseFloat(value[0], destType.Bits())
-		if err != nil {
-			return err
-		}
-		destValue.SetFloat(floatValue)
-	default:
-		return errors.New("不支持的目标变量类型")
 	}
 	return nil
 }
@@ -86,11 +62,11 @@ func (values metaValues) ParseParams(paramsDest interface{}) ValidationError {
 
 	// 如果参数不是指针或者不是结构体类型，则返回错误
 	if paramsValue.Kind() != reflect.Ptr {
-		return NewValidationError("参数必须是指针类型", http.StatusInternalServerError)
+		return NewValidationError(http.StatusInternalServerError, "参数必须是指针类型")
 	}
 	paramsValue = paramsValue.Elem()
 	if paramsValue.Kind() != reflect.Struct {
-		return NewValidationError("参数必须是结构体指针类型", http.StatusInternalServerError)
+		return NewValidationError(http.StatusInternalServerError, "参数必须是结构体指针类型")
 	}
 
 	paramsType := paramsValue.Type()
@@ -108,16 +84,14 @@ func (values metaValues) ParseParams(paramsDest interface{}) ValidationError {
 		}
 
 		value_list, ok := values[fieldName]
-		if validator_name = field.Tag.Get("required"); validator_name != "" {
-			if ok == false {
-				return NewValidationError(fmt.Sprintf("%v 缺少必填参数！", fieldName), http.StatusBadRequest)
-			}
+		if validator_name = field.Tag.Get("required"); validator_name != "" && ok == false {
+			return NewValidationError(http.StatusBadRequest, fmt.Sprintf("'%v' 缺少必填参数！", fieldName))
 		} else if validator_name = field.Tag.Get("optional"); validator_name == "" {
-			return NewValidationError(fmt.Sprintf("%v 字段标签 required 与 optional 必须存在一个！", fieldName), http.StatusInternalServerError)
+			return NewValidationError(http.StatusInternalServerError, fmt.Sprintf("'%v' 字段标签 required 与 optional 必须存在一个！", fieldName))
 		}
 
 		for _, value := range value_list {
-			validationErr = metaValidate(validator_name, value)
+			validationErr = validateValue(validator_name, value)
 			if validationErr != nil {
 				return validationErr
 			}
@@ -146,7 +120,7 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 	}
 	// 检查是否为可分配值
 	if !field.CanSet() {
-		return NewValidationError("dest 不可赋值的值", http.StatusInternalServerError)
+		return NewValidationError(http.StatusInternalServerError, "dest 不可赋值的值")
 	}
 
 	fieldType := field.Type()
@@ -157,26 +131,26 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		intValue, err := strconv.ParseInt(value, 10, fieldType.Bits())
 		if err != nil {
-			return NewValidationError(err.Error(), http.StatusInternalServerError)
+			return NewValidationError(http.StatusInternalServerError, err.Error())
 		}
 		field.SetInt(intValue)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		uintValue, err := strconv.ParseUint(value, 10, fieldType.Bits())
 		if err != nil {
-			return NewValidationError(err.Error(), http.StatusInternalServerError)
+			return NewValidationError(http.StatusInternalServerError, err.Error())
 		}
 		field.SetUint(uintValue)
 	case reflect.Float32, reflect.Float64:
 		floatValue, err := strconv.ParseFloat(value, fieldType.Bits())
 		if err != nil {
-			return NewValidationError(err.Error(), http.StatusInternalServerError)
+			return NewValidationError(http.StatusInternalServerError, err.Error())
 		}
 		field.SetFloat(floatValue)
 	case reflect.Slice:
 		jsonData := make([]interface{}, 0, 0)
 		err := json.Unmarshal([]byte(value), &jsonData)
 		if err != nil {
-			return NewValidationError(err.Error(), http.StatusBadRequest)
+			return NewValidationError(http.StatusBadRequest, err.Error())
 		}
 		// 获取切片元素的类型
 		elementType := fieldType.Elem()
@@ -200,7 +174,7 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 		jsonData := make(map[string]interface{})
 		err := json.Unmarshal([]byte(value), &jsonData)
 		if err != nil {
-			return NewValidationError(err.Error(), http.StatusBadRequest)
+			return NewValidationError(http.StatusBadRequest, err.Error())
 		}
 
 		// 获取映射键和值的类型
@@ -230,7 +204,7 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 		}
 		field.Set(mapValue)
 	default:
-		return NewValidationError("不支持的目标变量类型", http.StatusBadRequest)
+		return NewValidationError(http.StatusBadRequest, "不支持的目标变量类型")
 	}
 	return nil
 }
