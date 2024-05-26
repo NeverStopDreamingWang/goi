@@ -90,6 +90,9 @@ func init() {
 	// Server.Log.Warning() = goi.Log.Warning()
 	// Server.Log.Error() = goi.Log.Error()
 
+	// 设置验证器错误，不指定则使用默认
+	Server.Validator.VALIDATION_ERROR = &exampleValidationError{}
+
 	// 设置自定义配置
 	// redis配置
 	Server.Settings.Set("REDIS_HOST", "127.0.0.1")

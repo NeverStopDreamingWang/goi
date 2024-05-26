@@ -168,17 +168,10 @@ func init() {
 // 测试手机号路由转换器
 func TestPhone(request *goi.Request) interface{} {
 	var phone string
-	var err error
-	err = request.PathParams.Get("phone", &phone)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Message:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var validationErr goi.ValidationError
+	validationErr = request.PathParams.Get("phone", &phone)
+	if validationErr != nil {
+		return validationErr.Response()
 	}
 	resp := map[string]interface{}{
 		"status": http.StatusOK,
@@ -197,9 +190,8 @@ func TestPhone(request *goi.Request) interface{} {
 ```go
 func init() {
 	// 注册验证器
-
 	// 手机号
-	goi.RegisterValidator("phone", phoneValidate)
+	goi.RegisterValidate("phone", phoneValidate)
 }
 
 // phone 类型
@@ -207,7 +199,7 @@ func phoneValidate(value string) goi.ValidationError {
 	var IntRe = `^(1[3456789]\d{9})$`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return goi.NewValidationError(fmt.Sprintf("参数错误：%v", value), http.StatusBadRequest)
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
 	}
 	return nil
 }
@@ -235,7 +227,9 @@ type testParamsValidParams struct {
 func TestParamsValid(request *goi.Request) interface{} {
 	var params testParamsValidParams
 	var validationErr goi.ValidationError
-	validationErr = request.BodyParams.ParseParams(&params)
+	// validationErr = request.PathParams.ParseParams(&params) // 路由传参
+	// validationErr = request.QueryParams.ParseParams(&params) // Query 传参
+	validationErr = request.BodyParams.ParseParams(&params) // Body 传参
 	if validationErr != nil {
 		// 验证器返回
 		return validationErr.Response()
@@ -254,9 +248,9 @@ func TestParamsValid(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status: http.StatusOK,
-			Message:    "ok",
-			Data:   nil,
+			Status:  http.StatusOK,
+			Message: "ok",
+			Data:    nil,
 		},
 	}
 }
@@ -649,17 +643,10 @@ func TestModelUpdate(request *goi.Request) interface{} {
 // 删除 Model
 func TestModelDelete(request *goi.Request) interface{} {
 	var user_id int
-	var err error
-	err = request.PathParams.Get("user_id", &user_id)
-	if err != nil {
-		return goi.Response{
-			Status: http.StatusOK,
-			Data: goi.Data{
-				Status: http.StatusBadRequest,
-				Message:    "参数错误",
-				Data:   nil,
-			},
-		}
+	var validationErr goi.ValidationError
+	validationErr = request.PathParams.Get("user_id", &user_id)
+	if validationErr != nil {
+		return validationErr.Response()
 	}
 
 	if user_id == 0 {
