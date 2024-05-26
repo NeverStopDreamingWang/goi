@@ -69,7 +69,7 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 		itemPath := itemFile.Path()
 		_, err = os.Stat(itemPath)
 		if os.IsNotExist(err) {
-			err = os.MkdirAll(itemPath, 0755)
+			err = os.MkdirAll(itemPath, 0666)
 			if err != nil {
 				return err
 			}
@@ -77,7 +77,7 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 
 		// 创建文件
 		filePath := path.Join(itemPath, itemFile.Name)
-		file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0755)
+		file, err := os.Create(filePath)
 
 		Content := itemFile.Content()
 		_, err = file.WriteString(Content)
@@ -123,15 +123,14 @@ var goMod = InitFile{
 
 go %s
 
-require (
-	github.com/NeverStopDreamingWang/goi v%s
-	github.com/mattn/go-sqlite3 v1.14.17 // indirectgo.sum
-)
+require github.com/NeverStopDreamingWang/goi %s
 
 require (
-	github.com/go-sql-driver/mysql v1.7.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/go-sql-driver/mysql v1.8.1 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 )
+
 
 `
 		var version string
@@ -159,6 +158,7 @@ var settings = InitFile{
 import (
 	"os"
 	"path"
+
 	"github.com/NeverStopDreamingWang/goi"
 )
 
@@ -187,10 +187,10 @@ func init() {
 	Server.Settings.SECRET_KEY = "%s"
 
 	// 项目 RSA 私钥
-	Server.Settings.PRIVATE_KEY = %s
+	Server.Settings.PRIVATE_KEY = ` + "`%s`" + `
 
 	// 项目 RSA 公钥
-	Server.Settings.PUBLIC_KEY = %s
+	Server.Settings.PUBLIC_KEY = ` + "`%s`" + `
 
 	// 设置 SSL
 	Server.Settings.SSL = goi.MetaSSL{
@@ -243,7 +243,9 @@ func init() {
 	// Server.Log.Info() = goi.Log.Info()
 	// Server.Log.Warning() = goi.Log.Warning()
 	// Server.Log.Error() = goi.Log.Error()
-
+	
+	// 设置验证器错误，不指定则使用默认
+	Server.Validator.VALIDATION_ERROR = &validationError{}
 	
 	// 设置自定义配置
 	// redis配置
@@ -253,7 +255,7 @@ func init() {
 	Server.Settings.Set("REDIS_DB", 0)
 }
 `
-		return fmt.Sprintf(content, projectName, secretKey, "`"+privateKey+"`", "`"+publicKey+"`", projectName, projectName)
+		return fmt.Sprintf(content, projectName, secretKey, privateKey, publicKey, projectName, projectName)
 	},
 	Path: func() string {
 		return path.Join(baseDir, projectName, projectName)
@@ -291,16 +293,16 @@ var validator = InitFile{
 
 import (
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
 	"net/http"
 	"regexp"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {
 	// 注册验证器
-	
 	// 手机号
-	goi.RegisterValidator("phone", phoneValidate)
+	goi.RegisterValidate("phone", phoneValidate)
 }
 
 // phone 类型
@@ -308,9 +310,36 @@ func phoneValidate(value string) goi.ValidationError {
 	var IntRe = %s
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return goi.NewValidationError(fmt.Sprintf("参数错误：%v", value), http.StatusBadRequest)
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
 	}
 	return nil
+}
+
+// 自定义参数验证错误
+type validationError struct {
+	Status  int
+	Message string
+}
+
+// 创建参数验证错误方法
+func (validationErr *validationError) NewValidationError(status int, message string, args ...interface{}) goi.ValidationError {
+	validationError := &validationError{
+		Status:  status,
+		Message: message,
+	}
+	return validationError
+}
+
+// 参数验证错误响应格式
+func (validationErr *validationError) Response() goi.Response {
+	return goi.Response{
+		Status: http.StatusOK,
+		Data: goi.Data{
+			Status:  validationErr.Status,
+			Message: validationErr.Message,
+			Data:    nil,
+		},
+	}
 }
 
 `
@@ -328,11 +357,12 @@ var logs = InitFile{
 		content := `package %s
 
 import (
-	"os"
 	"fmt"
 	"log"
+	"os"
 	"path"
 	"time"
+
 	"github.com/NeverStopDreamingWang/goi"
 )
 

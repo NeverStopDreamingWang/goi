@@ -20,6 +20,7 @@ var engine *Engine
 var Settings *metaSettings
 var Cache *metaCache
 var Log *metaLog
+var Validator *metaValidator
 
 var exitChan = make(chan os.Signal, 1)
 
@@ -42,6 +43,7 @@ type Engine struct {
 	Settings    *metaSettings
 	Cache       *metaCache
 	Log         *metaLog
+	Validator   *metaValidator
 }
 
 // 创建一个 Http 服务
@@ -49,6 +51,7 @@ func NewHttpServer() *Engine {
 	Settings = newSettings()
 	Cache = newCache()
 	Log = newLog()
+	Validator = newValidator()
 	engine = &Engine{
 		startTime:   nil,
 		server:      http.Server{},
@@ -57,6 +60,7 @@ func NewHttpServer() *Engine {
 		Settings:    Settings,
 		Cache:       Cache,
 		Log:         Log,
+		Validator:   Validator,
 	}
 	return engine
 }
