@@ -64,33 +64,13 @@ func newRouter() *metaRouter {
 
 // 判断路由是否被注册
 func (router metaRouter) isUrl(UrlPath string) {
-	var re *regexp.Regexp
 	for _, itemRouter := range router.includeRouter {
 		if itemRouter.uri == UrlPath {
 			panic(fmt.Sprintf("路由已存在: %s\n", UrlPath))
 		}
-		params, converterPattern := routerParse(itemRouter.uri)
-		var reString string
-		if len(params) == 0 { // 无参数直接匹配
-			if len(itemRouter.includeRouter) == 0 && itemRouter.viewSet.file == "" && itemRouter.viewSet.dir == "" {
-				reString = itemRouter.uri + "$"
-			} else if strings.HasSuffix(itemRouter.uri, "/") == false {
-				reString = itemRouter.uri + "/"
-			} else {
-				reString = itemRouter.uri
-			}
-		} else {
-			if len(itemRouter.includeRouter) == 0 && itemRouter.viewSet.file == "" && itemRouter.viewSet.dir == "" {
-				reString = converterPattern + "$"
-			} else if strings.HasSuffix(itemRouter.uri, "/") == false {
-				reString = converterPattern + "/"
-			} else {
-				reString = converterPattern
-			}
-		}
-		re = regexp.MustCompile(reString)
-
-		if len(re.FindStringSubmatch(UrlPath)) != 0 {
+		_, itemConverterPattern := routerParse(itemRouter.uri)
+		_, converterPattern := routerParse(UrlPath)
+		if itemConverterPattern == converterPattern {
 			panic(fmt.Sprintf("%s 冲突路由: %s\n", UrlPath, itemRouter.uri))
 		}
 	}
