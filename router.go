@@ -55,15 +55,15 @@ type routerParam struct {
 // 创建路由
 func newRouter() *metaRouter {
 	return &metaRouter{
-		uri:           "/",
-		desc:          "根路由",
+		uri:           "",
+		desc:          "根",
 		viewSet:       AsView{},
 		includeRouter: make([]*metaRouter, 0, 0),
 	}
 }
 
 // 判断路由是否被注册
-func (router *metaRouter) isUrl(UrlPath string) {
+func (router metaRouter) isUrl(UrlPath string) {
 	var re *regexp.Regexp
 	for _, itemRouter := range router.includeRouter {
 		if itemRouter.uri == UrlPath {
@@ -151,7 +151,7 @@ func (router *metaRouter) StaticDirPatterns(UrlPath string, desc string, DirPath
 }
 
 // Next 方法用于遍历每个路径并获取路由信息
-func (router *metaRouter) Next(ParentRouter string, routerChan chan<- RouteInfo) {
+func (router metaRouter) Next(ParentRouter string, routerChan chan<- RouteInfo) {
 	// 遍历子路由
 	for _, itemRouter := range router.includeRouter {
 		// 发送路由的信息到通道
@@ -170,9 +170,9 @@ func (router *metaRouter) Next(ParentRouter string, routerChan chan<- RouteInfo)
 }
 
 // 路由器处理程序
-func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerFunc, err string) {
+func (router metaRouter) routerHandlers(request *Request) (handlerFunc HandlerFunc, err string) {
 
-	view_methods, isPattern := routeResolution(request.Object.URL.Path, router.includeRouter, request.PathParams)
+	view_methods, isPattern := router.routeResolution(request.Object.URL.Path, request.PathParams)
 	if isPattern == false {
 		err = fmt.Sprintf("URL NOT FOUND: %s", request.Object.URL.Path)
 		return nil, err
@@ -209,52 +209,55 @@ func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerF
 }
 
 // 路由解析
-func routeResolution(UrlPath string, includeRouter []*metaRouter, PathParams metaValues) (AsView, bool) {
+func (router metaRouter) routeResolution(UrlPath string, PathParams metaValues) (AsView, bool) {
 	var re *regexp.Regexp
-	for _, itemRouter := range includeRouter {
-		params, converterPattern := routerParse(itemRouter.uri)
-		var reString string
-		if len(params) == 0 { // 无参数直接匹配
-			if len(itemRouter.includeRouter) == 0 && itemRouter.viewSet.file == "" && itemRouter.viewSet.dir == "" {
-				reString = "^" + itemRouter.uri + "$"
-			} else if strings.HasSuffix(itemRouter.uri, "/") == false {
-				reString = "^" + itemRouter.uri + "/"
-			} else {
-				reString = "^" + itemRouter.uri
-			}
+	params, converterPattern := routerParse(router.uri)
+	var reString string
+	if len(params) == 0 { // 无参数直接匹配
+		if len(router.includeRouter) == 0 && router.viewSet.file == "" && router.viewSet.dir == "" {
+			reString = "^" + router.uri + "$"
+		} else if strings.HasSuffix(router.uri, "/") == false {
+			reString = "^" + router.uri + "/"
 		} else {
-			if len(itemRouter.includeRouter) == 0 && itemRouter.viewSet.file == "" && itemRouter.viewSet.dir == "" {
-				reString = "^" + converterPattern + "$"
-			} else if strings.HasSuffix(itemRouter.uri, "/") == false {
-				reString = "^" + converterPattern + "/"
-			} else {
-				reString = "^" + converterPattern
-			}
+			reString = "^" + router.uri
 		}
-		re = regexp.MustCompile(reString)
+	} else {
+		if len(router.includeRouter) == 0 && router.viewSet.file == "" && router.viewSet.dir == "" {
+			reString = "^" + converterPattern + "$"
+		} else if strings.HasSuffix(router.uri, "/") == false {
+			reString = "^" + converterPattern + "/"
+		} else {
+			reString = "^" + converterPattern
+		}
+	}
+	re = regexp.MustCompile(reString)
 
-		paramsSlice := re.FindStringSubmatch(UrlPath)
-		if len(paramsSlice)-1 != len(params) || len(paramsSlice) == 0 {
-			continue
-		}
-		paramsSlice = paramsSlice[1:]
-		for i := 0; i < len(params); i++ {
-			param := params[i]
-			PathParams[param.paramName] = append(PathParams[param.paramName], paramsSlice[i]) // 添加参数
-		}
-		if itemRouter.viewSet.dir != "" { // 静态路由映射
-			fileName := path.Clean("/" + UrlPath[len(itemRouter.uri):])
-			dir := string(itemRouter.viewSet.dir)
-			filePath := filepath.Join(dir, fileName)
-			PathParams["static_path"] = append(PathParams["static"], filePath)
-			return itemRouter.viewSet, true
-		} else if itemRouter.viewSet.file != "" {
-			PathParams["static_path"] = append(PathParams["static"], itemRouter.viewSet.file)
-			return itemRouter.viewSet, true
-		} else if len(itemRouter.includeRouter) == 0 { // API
-			return itemRouter.viewSet, true
-		} else { // 子路由
-			return routeResolution(UrlPath[len(itemRouter.uri):], itemRouter.includeRouter, PathParams)
+	paramsSlice := re.FindStringSubmatch(UrlPath)
+	if len(paramsSlice)-1 != len(params) || len(paramsSlice) == 0 {
+		return AsView{}, false
+	}
+	paramsSlice = paramsSlice[1:]
+	for i := 0; i < len(params); i++ {
+		param := params[i]
+		PathParams[param.paramName] = append(PathParams[param.paramName], paramsSlice[i]) // 添加参数
+	}
+	if router.viewSet.file != "" {
+		PathParams["static_path"] = append(PathParams["static"], router.viewSet.file)
+		return router.viewSet, true
+	} else if router.viewSet.dir != "" { // 静态路由映射
+		fileName := path.Clean("/" + UrlPath[len(router.uri):])
+		dir := string(router.viewSet.dir)
+		filePath := filepath.Join(dir, fileName)
+		PathParams["static_path"] = append(PathParams["static"], filePath)
+		return router.viewSet, true
+	} else if len(router.includeRouter) == 0 { // API
+		return router.viewSet, true
+	}
+	// 子路由
+	for _, itemRouter := range router.includeRouter {
+		view_methods, isPattern := itemRouter.routeResolution(UrlPath[len(itemRouter.uri):], PathParams)
+		if isPattern == true {
+			return view_methods, isPattern
 		}
 	}
 	return AsView{}, false
