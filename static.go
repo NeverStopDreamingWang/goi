@@ -11,16 +11,12 @@ import (
 // 静态文件处理函数
 func metaStaticHandler(request *Request) interface{} {
 	var staticPath string
+	var validationErr ValidationError
 	var err error
-	err = request.PathParams.Get("staticPath", staticPath)
-	if err != nil {
-		return Response{
-			Status: http.StatusBadRequest,
-			Data:   "staticPath 参数错误!",
-		}
-
+	validationErr = request.PathParams.Get("static_path", &staticPath)
+	if validationErr != nil {
+		return validationErr.Response()
 	}
-
 	if staticPath[0] != '/' {
 		staticPath = filepath.Join(Settings.BASE_DIR, staticPath)
 	}
@@ -33,7 +29,7 @@ func metaStaticHandler(request *Request) interface{} {
 	}
 	file, err := os.Open(staticPath)
 	if err != nil {
-		file.Close()
+		_ = file.Close()
 		return Response{
 			Status: http.StatusInternalServerError,
 			Data:   "读取文件失败！",
