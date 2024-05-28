@@ -236,10 +236,10 @@ func routeResolution(UrlPath string, includeRouter map[string]*metaRouter, PathP
 			fileName := path.Clean("/" + UrlPath[len(Uri):])
 			dir := string(Irouter.viewSet.dir)
 			filePath := filepath.Join(dir, fileName)
-			PathParams["staticPath"] = append(PathParams["static"], filePath)
+			PathParams["static_path"] = append(PathParams["static"], filePath)
 			return Irouter.viewSet, true
 		} else if Irouter.viewSet.file != "" {
-			PathParams["staticPath"] = append(PathParams["static"], Irouter.viewSet.file)
+			PathParams["static_path"] = append(PathParams["static"], Irouter.viewSet.file)
 			return Irouter.viewSet, true
 		} else if len(Irouter.includeRouter) == 0 { // API
 			return Irouter.viewSet, true
