@@ -13,9 +13,9 @@ func init() {
 		testRouter.UrlPatterns("/test1", "测试路由1", goi.AsView{GET: Test1})
 
 		// 创建一个三级子路由
-		test3Router := testRouter.Include("/test3", "测试3级路由")
+		test3Router := testRouter.Include("/test2", "测试2级路由")
 		{
-			test3Router.UrlPatterns("/test3", "", goi.AsView{GET: Test3}) // 嵌套子路由
+			test3Router.UrlPatterns("/test2", "", goi.AsView{GET: Test3}) // 嵌套子路由
 		}
 
 		// 请求传参
