@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+// HandlerFunc 定义 goi 使用的请求处理程序
+type HandlerFunc func(request *Request) interface{}
+
+// type HandlerFunc func(*http.Request)
+
 // 路由视图
 type AsView struct {
 	GET     HandlerFunc
@@ -194,13 +199,13 @@ func (router *metaRouter) routerHandlers(request *Request) (handlerFunc HandlerF
 }
 
 // 路由解析
-func routeResolution(requestPattern string, includeRouter map[string]*metaRouter, PathParams metaValues) (AsView, bool) {
+func routeResolution(UrlPath string, includeRouter map[string]*metaRouter, PathParams metaValues) (AsView, bool) {
 	var re *regexp.Regexp
 	for Uri, Irouter := range includeRouter {
 		params, converterPattern := routerParse(Uri)
 		var reString string
 		if len(params) == 0 { // 无参数直接匹配
-			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
+			if len(Irouter.includeRouter) == 0 && Irouter.viewSet.file == "" && Irouter.viewSet.dir == "" {
 				reString = "^" + Uri + "$"
 			} else if strings.HasSuffix(Uri, "/") == false {
 				reString = "^" + Uri + "/"
@@ -208,7 +213,7 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 				reString = "^" + Uri
 			}
 		} else {
-			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
+			if len(Irouter.includeRouter) == 0 && Irouter.viewSet.file == "" && Irouter.viewSet.dir == "" {
 				reString = "^" + converterPattern + "$"
 			} else if strings.HasSuffix(Uri, "/") == false {
 				reString = "^" + converterPattern + "/"
@@ -218,7 +223,7 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 		}
 		re = regexp.MustCompile(reString)
 
-		paramsSlice := re.FindStringSubmatch(requestPattern)
+		paramsSlice := re.FindStringSubmatch(UrlPath)
 		if len(paramsSlice)-1 != len(params) || len(paramsSlice) == 0 {
 			continue
 		}
@@ -228,7 +233,7 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 			PathParams[param.paramName] = append(PathParams[param.paramName], paramsSlice[i]) // 添加参数
 		}
 		if Irouter.viewSet.dir != "" { // 静态路由映射
-			fileName := path.Clean("/" + requestPattern[len(Uri):])
+			fileName := path.Clean("/" + UrlPath[len(Uri):])
 			dir := string(Irouter.viewSet.dir)
 			filePath := filepath.Join(dir, fileName)
 			PathParams["staticPath"] = append(PathParams["static"], filePath)
@@ -239,7 +244,7 @@ func routeResolution(requestPattern string, includeRouter map[string]*metaRouter
 		} else if len(Irouter.includeRouter) == 0 { // API
 			return Irouter.viewSet, true
 		} else { // 子路由
-			return routeResolution(requestPattern[len(Uri):], Irouter.includeRouter, PathParams)
+			return routeResolution(UrlPath[len(Uri):], Irouter.includeRouter, PathParams)
 		}
 	}
 	return AsView{}, false
