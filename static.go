@@ -22,7 +22,7 @@ func metaStaticHandler(request *Request) interface{} {
 	}
 
 	if staticPath[0] != '/' {
-		staticPath = filepath.Join(engine.Settings.BASE_DIR, staticPath)
+		staticPath = filepath.Join(Settings.BASE_DIR, staticPath)
 	}
 
 	if _, err = os.Stat(staticPath); os.IsNotExist(err) {
@@ -58,6 +58,6 @@ func metaResponseStatic(file *os.File, request *Request, response http.ResponseW
 		response.WriteHeader(http.StatusNotFound)
 		return 0, []byte("不是一个文件")
 	}
-	http.ServeContent(response, request.Object, fileInfo.Name(), time.Now().In(engine.Settings.LOCATION), file)
+	http.ServeContent(response, request.Object, fileInfo.Name(), time.Now().In(Settings.LOCATION), file)
 	return fileInfo.Size(), nil
 }

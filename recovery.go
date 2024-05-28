@@ -35,6 +35,6 @@ func metaRecovery(request *Request, response http.ResponseWriter) {
 			http.StatusInternalServerError,
 			trace(message),
 		)
-		engine.Log.Error(log)
+		Log.Error(log)
 	}
 }
