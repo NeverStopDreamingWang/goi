@@ -169,7 +169,7 @@ func TestFile(request *goi.Request) interface{} {
 	absolutePath := path.Join(goi.Settings.BASE_DIR, "template/test.txt")
 	file, err := os.Open(absolutePath)
 	if err != nil {
-		file.Close()
+		_ = file.Close()
 		return goi.Response{
 			Status: http.StatusInternalServerError,
 			Data:   "读取文件失败！",
