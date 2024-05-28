@@ -75,11 +75,12 @@ func (router *metaRouter) isUrl(UrlPath string) {
 				reString = Uri + "$"
 			} else if strings.HasSuffix(Uri, "/") == false {
 				reString = Uri + "/"
+			if len(Irouter.includeRouter) == 0 && Irouter.viewSet.file == "" && Irouter.viewSet.dir == "" {
 			} else {
 				reString = Uri
 			}
 		} else {
-			if len(Irouter.includeRouter) == 0 || Irouter.viewSet.file != "" {
+			if len(Irouter.includeRouter) == 0 && Irouter.viewSet.file == "" && Irouter.viewSet.dir == "" {
 				reString = converterPattern + "$"
 			} else if strings.HasSuffix(Uri, "/") == false {
 				reString = converterPattern + "/"
