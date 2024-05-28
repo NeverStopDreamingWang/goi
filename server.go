@@ -29,11 +29,6 @@ func Version() string {
 	return version
 }
 
-// HandlerFunc 定义 goi 使用的请求处理程序
-type HandlerFunc func(*Request) interface{}
-
-// type HandlerFunc func(*http.Request)
-
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
 	startTime   *time.Time
@@ -70,7 +65,7 @@ func (engine *Engine) RunServer() {
 	var err error
 
 	// 初始化时区
-	location, err := time.LoadLocation(engine.Settings.TIME_ZONE)
+	location, err := time.LoadLocation(Settings.TIME_ZONE)
 	if err != nil {
 		panic(fmt.Sprintf("初始化时区错误: %v\n", err))
 	}

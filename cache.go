@@ -86,9 +86,9 @@ func newCache() *metaCache {
 
 // 初始化缓存
 func (cache *metaCache) initCache() {
-	engine.Log.Log(meta, fmt.Sprintf("缓存大小: %v", formatBytes(engine.Cache.MAX_SIZE)))
-	engine.Log.Log(meta, fmt.Sprintf("- 淘汰策略: %v", evictPolicyNames[engine.Cache.EVICT_POLICY]))
-	engine.Log.Log(meta, fmt.Sprintf("- 过期策略: %v", expirationPolicyNames[engine.Cache.EXPIRATION_POLICY]))
+	Log.Log(meta, fmt.Sprintf("缓存大小: %v", formatBytes(Cache.MAX_SIZE)))
+	Log.Log(meta, fmt.Sprintf("- 淘汰策略: %v", evictPolicyNames[Cache.EVICT_POLICY]))
+	Log.Log(meta, fmt.Sprintf("- 过期策略: %v", expirationPolicyNames[Cache.EXPIRATION_POLICY]))
 
 	if cache.EXPIRATION_POLICY == PERIODIC {
 		go cache.cachePeriodicDeleteExpires()
