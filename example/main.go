@@ -24,12 +24,12 @@ func routerInfo() {
 	var routerInfoChan = make(chan goi.RouteInfo)
 	go func() {
 		defer close(routerInfoChan)
-		example.Server.Router.Next("/", routerInfoChan)
+		example.Server.Router.Next(routerInfoChan)
 	}()
 
 	fmt.Println("Router List:")
 	for RouterInfo := range routerInfoChan {
-		fmt.Println(fmt.Sprintf("  Uri:%v,Desc:%v,IsParent:%v,ParentRouter:%v", RouterInfo.Uri, RouterInfo.Desc, RouterInfo.IsParent, RouterInfo.ParentRouter))
+		fmt.Println(fmt.Sprintf("  Path:%v,Desc:%v,IsParent:%v,ParentRouter:%v", RouterInfo.Path, RouterInfo.Desc, RouterInfo.IsParent, RouterInfo.ParentRouter))
 		fmt.Println("    ViewSet:")
 		// ViewSet
 		ViewSetValue := reflect.ValueOf(RouterInfo.ViewSet)
