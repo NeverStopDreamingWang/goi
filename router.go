@@ -252,7 +252,7 @@ func routerParse(path string) ([]routerParam, string) {
 		if len(paramsSlice) == 3 {
 			converter, ok := metaConverter[paramsSlice[1]]
 			if ok == false {
-				continue
+				panic(fmt.Sprintf("路由转换器不存在: %s", paramsSlice[1]))
 			}
 			re = regexp.MustCompile(paramsSlice[0])
 			path = re.ReplaceAllString(path, converter)
