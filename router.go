@@ -235,7 +235,7 @@ func (router metaRouter) routeResolution(Path string, PathParams metaValues) (As
 	}
 	// 子路由
 	for _, itemRouter := range router.includeRouter {
-		view_methods, isPattern := itemRouter.routeResolution(Path[len(itemRouter.path):], PathParams)
+		view_methods, isPattern := itemRouter.routeResolution(Path[len(router.path):], PathParams)
 		if isPattern == true {
 			return view_methods, isPattern
 		}
