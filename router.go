@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -108,7 +107,7 @@ func (router *metaRouter) StaticFilePatterns(path string, desc string, FilePath 
 	includeRouter := &metaRouter{
 		path:          path,
 		desc:          desc,
-		viewSet:       AsView{GET: metaStaticHandler, file: FilePath},
+		viewSet:       AsView{GET: metaStaticFileHandler, file: FilePath},
 		includeRouter: nil,
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
@@ -124,7 +123,7 @@ func (router *metaRouter) StaticDirPatterns(path string, desc string, DirPath ht
 	includeRouter := &metaRouter{
 		path:          path,
 		desc:          desc,
-		viewSet:       AsView{GET: metaStaticHandler, dir: DirPath},
+		viewSet:       AsView{GET: metaStaticDirHandler, dir: DirPath},
 		includeRouter: nil,
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
@@ -152,30 +151,30 @@ func (router metaRouter) Next(routerChan chan<- RouteInfo) {
 // 路由器处理程序
 func (router metaRouter) routerHandlers(request *Request) (handlerFunc HandlerFunc, err string) {
 
-	view_methods, isPattern := router.routeResolution(request.Object.URL.Path, request.PathParams)
+	viewSet, isPattern := router.routeResolution(request.Object.URL.Path, request.PathParams)
 	if isPattern == false {
 		err = fmt.Sprintf("URL NOT FOUND: %s", request.Object.URL.Path)
 		return nil, err
 	}
 	switch request.Object.Method {
 	case "GET":
-		handlerFunc = view_methods.GET
+		handlerFunc = viewSet.GET
 	case "HEAD":
-		handlerFunc = view_methods.HEAD
+		handlerFunc = viewSet.HEAD
 	case "POST":
-		handlerFunc = view_methods.POST
+		handlerFunc = viewSet.POST
 	case "PUT":
-		handlerFunc = view_methods.PUT
+		handlerFunc = viewSet.PUT
 	case "PATCH":
-		handlerFunc = view_methods.PATCH
+		handlerFunc = viewSet.PATCH
 	case "DELETE":
-		handlerFunc = view_methods.DELETE
+		handlerFunc = viewSet.DELETE
 	case "CONNECT":
-		handlerFunc = view_methods.CONNECT
+		handlerFunc = viewSet.CONNECT
 	case "OPTIONS":
-		handlerFunc = view_methods.OPTIONS
+		handlerFunc = viewSet.OPTIONS
 	case "TRACE":
-		handlerFunc = view_methods.TRACE
+		handlerFunc = viewSet.TRACE
 	default:
 		err = fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method)
 		return nil, err
@@ -222,22 +221,21 @@ func (router metaRouter) routeResolution(Path string, PathParams metaValues) (As
 		PathParams[param.paramName] = append(PathParams[param.paramName], paramsSlice[i]) // 添加参数
 	}
 	if router.viewSet.file != "" {
-		PathParams["static_path"] = append(PathParams["static"], router.viewSet.file)
+		PathParams["static_file"] = append(PathParams["static_file"], router.viewSet.file)
 		return router.viewSet, true
 	} else if router.viewSet.dir != "" { // 静态路由映射
+		PathParams["static_dir"] = append(PathParams["static_dir"], string(router.viewSet.dir))
 		fileName := path.Clean("/" + Path[len(router.path):])
-		dir := string(router.viewSet.dir)
-		filePath := filepath.Join(dir, fileName)
-		PathParams["static_path"] = append(PathParams["static"], filePath)
+		PathParams["path"] = append(PathParams["path"], fileName)
 		return router.viewSet, true
 	} else if len(router.includeRouter) == 0 { // API
 		return router.viewSet, true
 	}
 	// 子路由
 	for _, itemRouter := range router.includeRouter {
-		view_methods, isPattern := itemRouter.routeResolution(Path[len(router.path):], PathParams)
+		viewSet, isPattern := itemRouter.routeResolution(Path[len(router.path):], PathParams)
 		if isPattern == true {
-			return view_methods, isPattern
+			return viewSet, isPattern
 		}
 	}
 	return AsView{}, false

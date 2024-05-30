@@ -9,25 +9,67 @@ import (
 )
 
 // 静态文件处理函数
-func metaStaticHandler(request *Request) interface{} {
-	var staticPath string
+func metaStaticFileHandler(request *Request) interface{} {
+	var staticFile string
 	var validationErr ValidationError
 	var err error
-	validationErr = request.PathParams.Get("static_path", &staticPath)
+	validationErr = request.PathParams.Get("static_file", &staticFile)
 	if validationErr != nil {
 		return validationErr.Response()
 	}
-	if staticPath[0] != '/' {
-		staticPath = filepath.Join(Settings.BASE_DIR, staticPath)
+	if staticFile[0] != '/' {
+		staticFile = filepath.Join(Settings.BASE_DIR, staticFile)
 	}
 
-	if _, err = os.Stat(staticPath); os.IsNotExist(err) {
+	if _, err = os.Stat(staticFile); os.IsNotExist(err) {
 		return Response{
 			Status: http.StatusNotFound,
-			Data:   nil,
+			Data:   "文件不存在！",
 		}
 	}
-	file, err := os.Open(staticPath)
+	file, err := os.Open(staticFile)
+	if err != nil {
+		_ = file.Close()
+		return Response{
+			Status: http.StatusInternalServerError,
+			Data:   "读取文件失败！",
+		}
+	}
+	return file
+}
+
+// 静态目录映射处理函数
+func metaStaticDirHandler(request *Request) interface{} {
+	const indexPage = "/index.html"
+	var staticFile string
+	var staticDir string
+	var path string
+	var validationErr ValidationError
+	var err error
+	validationErr = request.PathParams.Get("static_dir", &staticDir)
+	if validationErr != nil {
+		return validationErr.Response()
+	}
+	validationErr = request.PathParams.Get("path", &path)
+	if validationErr != nil {
+		return validationErr.Response()
+	}
+	if staticDir[0] != '/' {
+		staticDir = filepath.Join(Settings.BASE_DIR, staticDir)
+	}
+
+	if path == "/" {
+		path = indexPage
+	}
+	staticFile = filepath.Join(staticDir, path)
+
+	if _, err = os.Stat(staticFile); os.IsNotExist(err) {
+		return Response{
+			Status: http.StatusNotFound,
+			Data:   "文件不存在！",
+		}
+	}
+	file, err := os.Open(staticFile)
 	if err != nil {
 		_ = file.Close()
 		return Response{
