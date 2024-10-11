@@ -309,7 +309,7 @@ func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter
 	}
 
 	// 视图前的中间件
-	result = engine.MiddleWares.processView(request, handlerFunc)
+	result = engine.MiddleWares.processView(request)
 	if result != nil {
 		return result
 	}
