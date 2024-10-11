@@ -3,6 +3,7 @@ package goi
 import (
 	"context"
 	"crypto/tls"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -201,53 +202,68 @@ func (engine *Engine) RunTimeStr() string {
 }
 
 // 实现 ServeHTTP 接口
-func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestID := time.Now().In(engine.Settings.LOCATION)
-	ctx := context.WithValue(request.Context(), "requestID", requestID)
-	request = request.WithContext(ctx)
+	ctx := context.WithValue(r.Context(), "requestID", requestID)
+	r = r.WithContext(ctx)
 
 	var log string
 	var err error
 	// 初始化请求
-	requestContext := &Request{
-		Object:      request,
-		Context:     request.Context(),
+	request := &Request{
+		Object:      r,
+		Context:     ctx,
 		PathParams:  make(metaValues),
 		QueryParams: make(metaValues),
 		BodyParams:  make(metaValues),
 	}
-	defer metaRecovery(requestContext, response) // 异常处理
+	// 创建自定义响应写入器
+	response := &customResponseWriter{
+		ResponseWriter: w,
+	}
 
-	requestContext.parseRequestParams()
+	defer metaRecovery(request, response) // 异常处理
+
+	request.parseRequestParams()
 
 	// 处理 HTTP 请求
 	StatusCode := http.StatusOK
 	var ResponseData []byte
-	var write interface{}
 
-	responseData := engine.HandlerHTTP(requestContext, response)
+	responseData := engine.HandlerHTTP(request, response)
 
-	// 文件处理
-	fileObject, isFile := responseData.(*os.File)
-	if isFile {
-		// 返回文件内容
-		write, ResponseData = metaResponseStatic(fileObject, requestContext, response)
-		log = fmt.Sprintf("- %v - %v %v %v byte status %v %v",
-			request.Host,
-			request.Method,
-			request.URL.Path,
-			write,
-			request.Proto,
-			StatusCode,
+	defer func() {
+		log = fmt.Sprintf("- %v - %v %v => generated %v byte status (%v %v)",
+			request.Object.Host,
+			request.Object.Method,
+			request.Object.URL.Path,
+			response.Bytes,
+			request.Object.Proto,
+			response.StatusCode,
 		)
 		engine.Log.Info(log)
-		return
-	}
+	}()
 
 	// 判断 responseData 是否为指针类型，如果是，则解引用获取指向的值
 	responseDataValue := reflect.ValueOf(responseData)
 	if responseDataValue.Kind() == reflect.Ptr {
 		responseData = responseDataValue.Elem().Interface()
+	}
+
+	// 文件处理
+	fileObject, isFile := responseData.(os.File)
+	if isFile {
+		// 返回文件内容
+		metaResponseStatic(fileObject, request, response)
+		return
+	}
+
+	// 文件系统处理
+	fs, isFileFs := responseData.(embed.FS)
+	if isFileFs {
+		staticServer := http.FileServer(http.FS(fs))
+		staticServer.ServeHTTP(response, request.Object)
+		return
 	}
 
 	// 响应处理
@@ -279,33 +295,69 @@ func (engine *Engine) ServeHTTP(response http.ResponseWriter, request *http.Requ
 	}
 	// 返回响应
 	response.WriteHeader(StatusCode)
-	write, err = response.Write(ResponseData)
+	_, err = response.Write(ResponseData)
 	if err != nil {
 		panic(fmt.Sprintf("响应错误: %v\n", err))
 	}
-	log = fmt.Sprintf("- %v - %v %v %v byte status %v %v",
-		request.Host,
-		request.Method,
-		request.URL.Path,
-		write,
-		request.Proto,
-		StatusCode,
-	)
-	engine.Log.Info(log)
 }
 
 // 处理 HTTP 请求
 func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter) (result interface{}) {
+	viewSet, isPattern := engine.Router.routeResolution(request.Object.URL.Path, request.PathParams)
+	if isPattern == false {
+		return Response{
+			Status: http.StatusNotFound,
+			Data:   fmt.Sprintf("URL NOT FOUND: %s", request.Object.URL.Path),
+		}
+	}
+	var handlerFunc HandlerFunc
+	switch request.Object.Method {
+	case "GET":
+		handlerFunc = viewSet.GET
+	case "HEAD":
+		handlerFunc = viewSet.HEAD
+	case "POST":
+		handlerFunc = viewSet.POST
+	case "PUT":
+		handlerFunc = viewSet.PUT
+	case "PATCH":
+		handlerFunc = viewSet.PATCH
+	case "DELETE":
+		handlerFunc = viewSet.DELETE
+	case "CONNECT":
+		handlerFunc = viewSet.CONNECT
+	case "OPTIONS":
+		handlerFunc = viewSet.OPTIONS
+	case "TRACE":
+		handlerFunc = viewSet.TRACE
+	default:
+		return Response{
+			Status: http.StatusNotFound,
+			Data:   fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method),
+		}
+	}
+
+	if viewSet.file != "" {
+		return metaStaticFileHandler(viewSet.file, request)
+	} else if viewSet.dir != "" {
+		return metaStaticDirHandler(viewSet.dir, request)
+	} else if viewSet.fileFs != nil {
+		return *viewSet.fileFs
+	} else if viewSet.dirFs != nil {
+		return *viewSet.dirFs
+	}
+
+	if handlerFunc == nil {
+		return Response{
+			Status: http.StatusNotFound,
+			Data:   fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method),
+		}
+	}
+
 	// 处理请求前的中间件
 	result = engine.MiddleWares.processRequest(request)
 	if result != nil {
 		return result
-	}
-
-	// 路由处理
-	handlerFunc, err := engine.Router.routerHandlers(request)
-	if err != "" {
-		return Response{Status: http.StatusNotFound, Data: err}
 	}
 
 	// 视图前的中间件
@@ -313,6 +365,7 @@ func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter
 	if result != nil {
 		return result
 	}
+
 	// 视图处理
 	viewResponse := handlerFunc(request)
 
