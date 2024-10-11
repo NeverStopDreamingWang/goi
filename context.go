@@ -65,6 +65,26 @@ func (request *Request) parseRequestParams() {
 	}
 }
 
+// 自定义响应
+type customResponseWriter struct {
+	http.ResponseWriter
+	StatusCode int
+	Bytes      int64
+}
+
+// 重写 WriteHeader 方法
+func (w *customResponseWriter) WriteHeader(code int) {
+	w.StatusCode = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+// 重写 Write 方法
+func (w *customResponseWriter) Write(b []byte) (int, error) {
+	bytesWritten, err := w.ResponseWriter.Write(b)
+	w.Bytes += int64(bytesWritten)
+	return bytesWritten, err
+}
+
 // 请求响应数据
 type Response struct {
 	Status int

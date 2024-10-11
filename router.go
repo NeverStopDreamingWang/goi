@@ -1,6 +1,7 @@
 package goi
 
 import (
+	"embed"
 	"fmt"
 	"net/http"
 	"path"
@@ -26,6 +27,8 @@ type AsView struct {
 	TRACE   HandlerFunc
 	file    string   // 文件
 	dir     http.Dir // 文件夹
+	fileFs *embed.FS
+	dirFs  *embed.FS
 }
 
 // 路由表
@@ -107,7 +110,7 @@ func (router *metaRouter) StaticFilePatterns(path string, desc string, FilePath 
 	includeRouter := &metaRouter{
 		path:          path,
 		desc:          desc,
-		viewSet:       AsView{GET: metaStaticFileHandler, file: FilePath},
+		viewSet: AsView{file: FilePath},
 		includeRouter: nil,
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
@@ -123,7 +126,32 @@ func (router *metaRouter) StaticDirPatterns(path string, desc string, DirPath ht
 	includeRouter := &metaRouter{
 		path:          path,
 		desc:          desc,
-		viewSet:       AsView{GET: metaStaticDirHandler, dir: DirPath},
+		viewSet: AsView{dir: DirPath},
+		includeRouter: nil,
+	}
+	router.includeRouter = append(router.includeRouter, includeRouter)
+}
+
+// 添加文件静态路由
+func (router *metaRouter) StaticFilePatternsFs(path string, desc string, FileFs embed.FS) {
+	router.isUrl(path)
+	includeRouter := &metaRouter{
+		path:          path,
+		desc:          desc,
+		viewSet:       AsView{fileFs: &FileFs},
+		includeRouter: nil,
+	}
+	router.includeRouter = append(router.includeRouter, includeRouter)
+}
+
+// 添加文件夹静态路由
+func (router *metaRouter) StaticDirPatternsFs(path string, desc string, DirFs embed.FS) {
+	router.isUrl(path)
+
+	includeRouter := &metaRouter{
+		path:          path,
+		desc:          desc,
+		viewSet:       AsView{dirFs: &DirFs},
 		includeRouter: nil,
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
@@ -148,52 +176,13 @@ func (router metaRouter) Next(routerChan chan<- RouteInfo) {
 	}
 }
 
-// 路由器处理程序
-func (router metaRouter) routerHandlers(request *Request) (handlerFunc HandlerFunc, err string) {
-
-	viewSet, isPattern := router.routeResolution(request.Object.URL.Path, request.PathParams)
-	if isPattern == false {
-		err = fmt.Sprintf("URL NOT FOUND: %s", request.Object.URL.Path)
-		return nil, err
-	}
-	switch request.Object.Method {
-	case "GET":
-		handlerFunc = viewSet.GET
-	case "HEAD":
-		handlerFunc = viewSet.HEAD
-	case "POST":
-		handlerFunc = viewSet.POST
-	case "PUT":
-		handlerFunc = viewSet.PUT
-	case "PATCH":
-		handlerFunc = viewSet.PATCH
-	case "DELETE":
-		handlerFunc = viewSet.DELETE
-	case "CONNECT":
-		handlerFunc = viewSet.CONNECT
-	case "OPTIONS":
-		handlerFunc = viewSet.OPTIONS
-	case "TRACE":
-		handlerFunc = viewSet.TRACE
-	default:
-		err = fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method)
-		return nil, err
-	}
-
-	if handlerFunc == nil {
-		err = fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method)
-		return nil, err
-	}
-	return handlerFunc, ""
-}
-
 // 路由解析
 func (router metaRouter) routeResolution(Path string, PathParams metaValues) (AsView, bool) {
 	var re *regexp.Regexp
 	params, converterPattern := routerParse(router.path)
 	var reString string
 	if len(params) == 0 { // 无参数直接匹配
-		if len(router.includeRouter) == 0 && router.viewSet.file == "" && router.viewSet.dir == "" {
+		if len(router.includeRouter) == 0 && router.viewSet.dir == "" && router.viewSet.dirFs == nil {
 			reString = "^" + router.path + "$"
 		} else if strings.HasSuffix(router.path, "/") == false {
 			reString = "^" + router.path + "/"
@@ -201,7 +190,7 @@ func (router metaRouter) routeResolution(Path string, PathParams metaValues) (As
 			reString = "^" + router.path
 		}
 	} else {
-		if len(router.includeRouter) == 0 && router.viewSet.file == "" && router.viewSet.dir == "" {
+		if len(router.includeRouter) == 0 && router.viewSet.dir == "" && router.viewSet.dirFs == nil {
 			reString = "^" + converterPattern + "$"
 		} else if strings.HasSuffix(router.path, "/") == false {
 			reString = "^" + converterPattern + "/"
@@ -220,13 +209,10 @@ func (router metaRouter) routeResolution(Path string, PathParams metaValues) (As
 		param := params[i]
 		PathParams[param.paramName] = append(PathParams[param.paramName], paramsSlice[i]) // 添加参数
 	}
-	if router.viewSet.file != "" {
-		PathParams["static_file"] = append(PathParams["static_file"], router.viewSet.file)
-		return router.viewSet, true
-	} else if router.viewSet.dir != "" { // 静态路由映射
-		PathParams["static_dir"] = append(PathParams["static_dir"], string(router.viewSet.dir))
+
+	if router.viewSet.dir != "" || router.viewSet.dirFs != nil { // 静态路由映射
 		fileName := path.Clean("/" + Path[len(router.path):])
-		PathParams["path"] = append(PathParams["path"], fileName)
+		PathParams["fileName"] = append(PathParams["fileName"], fileName)
 		return router.viewSet, true
 	} else if len(router.includeRouter) == 0 { // API
 		return router.viewSet, true
