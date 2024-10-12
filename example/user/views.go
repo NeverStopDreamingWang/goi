@@ -16,7 +16,7 @@ func UserTest(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status:  http.StatusOK,
 			Message: "ok",
-			Data:    nil,
+			Results: nil,
 		},
 	}
 }
@@ -65,7 +65,7 @@ func Testlogin(request *goi.Request) interface{} {
 			Data: goi.Data{
 				Status:  http.StatusInternalServerError,
 				Message: "ok",
-				Data:    err,
+				Results: err,
 			},
 		}
 	}
@@ -76,7 +76,7 @@ func Testlogin(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status:  http.StatusOK,
 			Message: "ok",
-			Data:    token,
+			Results: token,
 		},
 	}
 }
@@ -91,7 +91,7 @@ func TestAuth(request *goi.Request) interface{} {
 			Data: goi.Data{
 				Status:  http.StatusUnauthorized,
 				Message: "token 解码错误！",
-				Data:    err,
+				Results: err,
 			},
 		}
 	} else if jwt.JwtExpiredSignatureError(err) { // token 已过期！
@@ -100,7 +100,7 @@ func TestAuth(request *goi.Request) interface{} {
 			Data: goi.Data{
 				Status:  http.StatusUnauthorized,
 				Message: "token 已过期！",
-				Data:    err,
+				Results: err,
 			},
 		}
 	}
@@ -110,7 +110,7 @@ func TestAuth(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status:  http.StatusOK,
 			Message: "ok",
-			Data:    payloads,
+			Results: payloads,
 		},
 	}
 }

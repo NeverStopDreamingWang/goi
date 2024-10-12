@@ -164,7 +164,7 @@ func TestView(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status: http.StatusOK,
 			Message:    "ok",
-			Data:   nil,
+			Results:   nil,
 		},
 	}
 }
@@ -219,7 +219,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		// 	Data: goi.Data{
 		// 		Status: http.StatusBadRequest,
 		// 		Message:    "参数错误",
-		// 		Data:   nil,
+		// 		Results:   nil,
 		// 	},
 		// }
 	}
@@ -229,7 +229,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status:  http.StatusOK,
 			Message: "ok",
-			Data:    nil,
+			Results:    nil,
 		},
 	}
 }

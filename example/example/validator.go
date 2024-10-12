@@ -45,7 +45,7 @@ func (validationErr *exampleValidationError) Response() goi.Response {
 		Data: goi.Data{
 			Status:  validationErr.Status,
 			Message: validationErr.Message,
-			Data:    nil,
+			Results: nil,
 		},
 	}
 }

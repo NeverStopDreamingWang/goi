@@ -12,7 +12,7 @@ import (
 type Data struct {
 	Status  int         `json:"status"`
 	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Results interface{} `json:"results"`
 }
 
 type Request struct {

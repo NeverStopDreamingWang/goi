@@ -19,7 +19,11 @@ func Test1(request *goi.Request) interface{} {
 }
 
 func Test3(request *goi.Request) interface{} {
-	return goi.Data{http.StatusOK, "test3 OK", "OK"}
+	return goi.Data{
+		Status:  http.StatusOK,
+		Message: "test3 OK",
+		Results: "OK",
+	}
 }
 
 // 请求传参
@@ -35,8 +39,12 @@ func TestParams(request *goi.Request) interface{} {
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return goi.Response{
-		Status: http.StatusCreated,               // 返回指定响应状态码 404
-		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
+		Status: http.StatusCreated, // 返回指定响应状态码 404
+		Data: goi.Data{
+			Status:  http.StatusOK,
+			Message: msg,
+			Results: "",
+		}, // 响应数据 null
 	}
 }
 
@@ -72,7 +80,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		// 	Data: goi.Data{
 		// 		Status: http.StatusBadRequest,
 		// 		Message:    "参数错误",
-		// 		Data:   nil,
+		// 		Results:   nil,
 		// 	},
 		// }
 	}
@@ -82,7 +90,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status:  http.StatusOK,
 			Message: "ok",
-			Data:    nil,
+			Results: nil,
 		},
 	}
 }
@@ -115,7 +123,11 @@ func TestPathParamsStrs(request *goi.Request) interface{} {
 	msg2 := fmt.Sprintf("参数: %v 参数类型:  %T\n", name2, name2)
 	fmt.Println(msg1)
 	fmt.Println(msg2)
-	return goi.Data{http.StatusOK, "ok", []string{msg1, msg2}}
+	return goi.Data{
+		Status:  http.StatusOK,
+		Message: "ok",
+		Results: []string{msg1, msg2},
+	}
 }
 
 func TestConverterParamsStrs(request *goi.Request) interface{} {
@@ -128,7 +140,11 @@ func TestConverterParamsStrs(request *goi.Request) interface{} {
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
-	return goi.Data{http.StatusOK, "ok", msg}
+	return goi.Data{
+		Status:  http.StatusOK,
+		Message: "ok",
+		Results: msg,
+	}
 }
 
 // 上下文
@@ -161,7 +177,11 @@ func TestContext(request *goi.Request) interface{} {
 		Name:      "asda",
 		Age:       12,
 	}
-	return goi.Data{http.StatusOK, msg, student}
+	return goi.Data{
+		Status:  http.StatusOK,
+		Message: msg,
+		Results: student,
+	}
 }
 
 // 返回文件
@@ -190,7 +210,11 @@ func TestPanic(request *goi.Request) interface{} {
 	name_tmp := name[100]
 	fmt.Println(name_tmp)
 	return goi.Response{
-		Status: http.StatusCreated,               // 返回指定响应状态码 404
-		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
+		Status: http.StatusCreated, // 返回指定响应状态码 404
+		Data: goi.Data{
+			Status:  http.StatusOK,
+			Message: msg,
+			Results: "",
+		}, // 响应数据 null
 	}
 }

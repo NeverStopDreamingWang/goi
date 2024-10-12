@@ -98,7 +98,7 @@ func TestModelList(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status:  http.StatusOK,
 			Message: "ok",
-			Data:    user_data,
+			Results: user_data,
 		},
 	}
 }
@@ -348,7 +348,7 @@ func TestModelUpdate(request *goi.Request) interface{} {
 			Data: goi.Data{
 				Status:  http.StatusInternalServerError,
 				Message: "修改失败！",
-				Data:    nil,
+				Results: nil,
 			},
 		}
 	}
@@ -449,7 +449,7 @@ func TestModelDelete(request *goi.Request) interface{} {
 			Data: goi.Data{
 				Status:  http.StatusOK,
 				Message: "已删除！",
-				Data:    nil,
+				Results: nil,
 			},
 		}
 	}
@@ -460,7 +460,7 @@ func TestModelDelete(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status:  http.StatusOK,
 			Message: "删除成功！",
-			Data:    nil,
+			Results: nil,
 		},
 	}
 }

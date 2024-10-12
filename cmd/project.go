@@ -323,11 +323,10 @@ type validationError struct {
 
 // 创建参数验证错误方法
 func (validationErr *validationError) NewValidationError(status int, message string, args ...interface{}) goi.ValidationError {
-	validationError := &validationError{
+	return &validationError{
 		Status:  status,
 		Message: message,
 	}
-	return validationError
 }
 
 // 参数验证错误响应格式
@@ -337,7 +336,7 @@ func (validationErr *validationError) Response() goi.Response {
 		Data: goi.Data{
 			Status:  validationErr.Status,
 			Message: validationErr.Message,
-			Data:    nil,
+			Results:    nil,
 		},
 	}
 }
