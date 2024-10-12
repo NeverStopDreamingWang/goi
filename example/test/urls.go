@@ -2,6 +2,7 @@ package test
 
 import (
 	"example/example"
+	"example/template"
 	"github.com/NeverStopDreamingWang/goi"
 )
 
@@ -43,7 +44,12 @@ func init() {
 
 	// 静态目录
 	example.Server.Router.StaticDirPatterns("/static", "测试静态目录", "template")
-	// testRouter.StaticDirPatterns("/static", "./template")
+
+	// 静态 embed.FS 文件
+	example.Server.Router.StaticFilePatternsFs("/index.html", "测试静态Fs文件", template.IndexHtml)
+
+	// 静态 embed.FS 目录
+	example.Server.Router.StaticDirPatternsFs("/static", "测试静态Fs目录", template.Html)
 
 	// 自定义方法
 	// 返回文件
