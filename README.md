@@ -22,7 +22,7 @@ go build -o goi.exe
 编译
 
 ```cmd
-go build -o goi.exe
+go build -o goi
 ```
 
 ```shel
@@ -54,20 +54,65 @@ The commands are（命令如下）:
 
 子父路由，内置路由转换器，自定义路由转换器
 
-* `Router.Include(UrlPath)` 创建一个子路由
-* `Router.UrlPatterns(UrlPath, goi.AsView{GET: Test1})` 注册一个路由
+* `Router.Include(path string, desc string)` 创建一个子路由
+    * `path` 路由
+    * `desc` 描述
+
+* `Router.UrlPatterns(path string, desc string, view AsView)` 注册一个路由
+    * `path` 路由
+    * `desc` 描述
+    * `view` 视图 `AsView` 类型
+        * `GET` `HandlerFunc`
+        * `HEAD`    `HandlerFunc`
+        * `POST`    `HandlerFunc`
+        * `PUT`     `HandlerFunc`
+        * `PATCH`   `HandlerFunc`
+        * `DELETE`  `HandlerFunc`
+        * `CONNECT` `HandlerFunc`
+        * `OPTIONS` `HandlerFunc`
+        * `TRACE`   `HandlerFunc`
 
 ### 静态路由
 
 静态路由映射，返回文件对象即响应该文件内容
 
-* `Router.StaticUrlPatterns(UrlPath, StaticUrlPath)` 注册一个静态路由
+* `Router.StaticUrlPatterns(path string, desc string, FilePath string)` 注册静态文件路由
+    * `path` 路由
+    * `desc` 描述
+    * `FilePath` 文件路径，支持`相对路径`和`绝对路径`
+
+* `Router.StaticDirPatterns(path string, desc string, DirPath http.Dir)` 注册静态目录路由
+    * `path` 路由
+    * `desc` 描述
+    * `DirPath` 静态映射路径，支持`相对路径`和`绝对路径`
+
+* `Router.StaticFilePatternsFs(path string, desc string, FileFs embed.FS)` 注册 `embed.FS` 静态文件路由
+    * `path` 路由
+    * `desc` 描述
+    * `FileFs` 嵌入文件路径，支持`相对路径`和`绝对路径`
+
+
+* `Router.StaticDirPatternsFs(path string, desc string, DirFs embed.FS)` 注册 `embed.FS` 静态目录路由
+    * `path` 路由
+    * `desc` 描述
+    * `DirFs` 嵌入目录路径，支持`相对路径`和`绝对路径`
 
 ## 中间件
 
-* 请求中间件：`Server.MiddleWares.BeforeRequest(RequestMiddleWare)` 注册请求中间件
-* 视图中间件：`Server.MiddleWares.BeforeView(ViewMiddleWare)` 注册视图中间件
-* 响应中间件：`Server.MiddleWares.BeforeResponse(ResponseMiddleWare)` 注册响应中间件
+* 请求中间件：`Server.MiddleWares.BeforeRequest(processRequest RequestMiddleware)` 注册请求中间件
+    * `type RequestMiddleware func(request *goi.Request) interface{}`
+        * `request` 请求对象
+
+
+* 视图中间件：`Server.MiddleWares.BeforeView(processView ViewMiddleware)` 注册视图中间件
+    * `type ViewMiddleware func(request *goi.Request) interface{}`
+        * `request` 请求对象
+
+
+* 响应中间件：`Server.MiddleWares.BeforeResponse(processResponse ResponseMiddleware)` 注册响应中间件
+    * `type ResponseMiddleware func(request *goi.Request, viewResponse interface{}) interface{}`
+        * `request` 请求对象
+        * `viewResponse` 视图响应结果
 
 ## 日志模块
 
@@ -116,26 +161,26 @@ The commands are（命令如下）:
 
 ```go
 func TestAuth(t *testing.T) {
-	// 原始密码
-	password := "goi123456"
+// 原始密码
+password := "goi123456"
 
-	// 生成密码的哈希值
-	hashedPassword, err := MakePassword(password, bcrypt.DefaultCost)
-	if err != nil {
-		fmt.Println("密码加密失败:", err)
-		return
-	}
+// 生成密码的哈希值
+hashedPassword, err := MakePassword(password, bcrypt.DefaultCost)
+if err != nil {
+fmt.Println("密码加密失败:", err)
+return
+}
 
-	// 输出加密后的密码
-	fmt.Println("加密后的密码:", hashedPassword)
+// 输出加密后的密码
+fmt.Println("加密后的密码:", hashedPassword)
 
-	// 验证密码
-	isValid := CheckPassword(password, hashedPassword)
-	if isValid {
-		fmt.Println("密码验证成功")
-	} else {
-		fmt.Println("密码验证失败")
-	}
+// 验证密码
+isValid := CheckPassword(password, hashedPassword)
+if isValid {
+fmt.Println("密码验证成功")
+} else {
+fmt.Println("密码验证失败")
+}
 }
 ```
 
@@ -148,7 +193,7 @@ func init() {
 	// 注册路由转换器
 
 	// 手机号
-	goi.RegisterConverter("phone", `(1[3456789]\d{9})`)
+	goi.RegisterConverter("my_phone", `(1[3456789]\d{9})`)
 }
 
 ```
@@ -161,7 +206,9 @@ func init() {
 	testRouter := example.Server.Router.Include("/test", "测试路由")
     {
         // 注册一个路径
-        testRouter.UrlPatterns("/test_phone/<phone:phone>", "", goi.AsView{GET: TestPhone}) // 测试路由转换器
+		// 类型 my_phone 
+		// 名称 phone 
+		testRouter.UrlPatterns("/test_phone/<my_phone:phone>", "", goi.AsView{GET: TestPhone}) // 测试路由转换器
     }
 }
 
@@ -732,6 +779,6 @@ if jwt.JwtDecodeError(err) { // token 解码错误！
 }
 ```
 
-##             
+##                  
 
 [详细示例：example](./example)
