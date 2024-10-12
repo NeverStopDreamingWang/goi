@@ -287,7 +287,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		// 	Data: goi.Data{
 		// 		Status: http.StatusBadRequest,
 		// 		Message:    "参数错误",
-		// 		Data:   nil,
+// 		Results:   nil,
 		// 	},
 		// }
 	}
@@ -297,7 +297,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		Data: goi.Data{
 			Status:  http.StatusOK,
 			Message: "ok",
-			Data:    nil,
+Results:    nil,
 		},
 	}
 }
@@ -675,7 +675,7 @@ func TestModelUpdate(request *goi.Request) interface{} {
 			Data: goi.Data{
 				Status: http.StatusInternalServerError,
 				Message:    "修改失败！",
-				Data:   nil,
+Results:   nil,
 			},
 		}
 	}
@@ -741,7 +741,7 @@ func TestModelDelete(request *goi.Request) interface{} {
 			Data: goi.Data{
 				Status: http.StatusOK,
 				Message:    "已删除！",
-				Data:   nil,
+Results:   nil,
 			},
 		}
 	}
