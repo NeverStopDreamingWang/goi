@@ -370,7 +370,7 @@ func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter
 	viewResponse := handlerFunc(request)
 
 	// 返回响应前的中间件
-	result = engine.MiddleWares.processResponse(request, response)
+	result = engine.MiddleWares.processResponse(request, viewResponse)
 	if result != nil {
 		return result
 	}
