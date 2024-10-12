@@ -32,11 +32,10 @@ type exampleValidationError struct {
 
 // 创建参数验证错误方法
 func (validationErr *exampleValidationError) NewValidationError(status int, message string, args ...interface{}) goi.ValidationError {
-	validationError := &exampleValidationError{
+	return &exampleValidationError{
 		Status:  status,
 		Message: message,
 	}
-	return validationError
 }
 
 // 参数验证错误响应格式
