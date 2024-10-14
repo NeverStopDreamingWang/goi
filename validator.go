@@ -55,6 +55,7 @@ func NewValidationError(status int, message string, args ...interface{}) Validat
 type validateFunc func(value string) ValidationError
 
 var metaValidate = map[string]validateFunc{
+	"bool":   boolValidate,
 	"int":    intValidate,
 	"string": stringValidate,
 	"slice":  sliceValidate,
@@ -74,6 +75,16 @@ func validateValue(validator_name string, value string) ValidationError {
 		return NewValidationError(http.StatusInternalServerError, fmt.Sprintf("验证器 %v 没有 validateFunc 方法", validator_name))
 	}
 	return validate(value)
+}
+
+// bool 类型
+func boolValidate(value string) ValidationError {
+	var BoolRe = `^(true|false)$`
+	re := regexp.MustCompile(BoolRe)
+	if re.MatchString(value) == false {
+		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+	}
+	return nil
 }
 
 // int 类型
