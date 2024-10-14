@@ -128,6 +128,12 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 	fieldType := field.Type()
 	// 尝试将值转换为目标变量的类型并赋值给目标变量
 	switch fieldType.Kind() {
+	case reflect.Bool:
+		boolValue, err := strconv.ParseBool(value)
+		if err != nil {
+			return NewValidationError(http.StatusInternalServerError, err.Error())
+		}
+		field.SetBool(boolValue)
 	case reflect.String:
 		field.SetString(value)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
