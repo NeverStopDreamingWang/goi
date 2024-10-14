@@ -84,8 +84,10 @@ func (values metaValues) ParseParams(paramsDest interface{}) ValidationError {
 		}
 
 		value_list, ok := values[fieldName]
-		if validator_name = field.Tag.Get("required"); validator_name != "" && ok == false {
-			return NewValidationError(http.StatusBadRequest, fmt.Sprintf("'%v' 缺少必填参数！", fieldName))
+		if validator_name = field.Tag.Get("required"); validator_name != "" {
+			if ok == false {
+				return NewValidationError(http.StatusBadRequest, fmt.Sprintf("'%v' 缺少必填参数！", fieldName))
+			}
 		} else if validator_name = field.Tag.Get("optional"); validator_name == "" {
 			return NewValidationError(http.StatusInternalServerError, fmt.Sprintf("'%v' 字段标签 required 与 optional 必须存在一个！", fieldName))
 		}
