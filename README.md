@@ -86,16 +86,16 @@ The commands are（命令如下）:
     * `desc` 描述
     * `DirPath` 静态映射路径，支持`相对路径`和`绝对路径`
 
-* `Router.StaticFilePatternsFs(path string, desc string, FileFs embed.FS)` 注册 `embed.FS` 静态文件路由
+* `Router.StaticFilePatternsFS(path string, desc string, FileFS embed.FS)` 注册 `embed.FS` 静态文件路由
     * `path` 路由
     * `desc` 描述
-    * `FileFs` 嵌入文件路径，支持`相对路径`和`绝对路径`
+  * `FileFS` 嵌入文件路径，支持`相对路径`和`绝对路径`
 
 
-* `Router.StaticDirPatternsFs(path string, desc string, DirFs embed.FS)` 注册 `embed.FS` 静态目录路由
+* `Router.StaticDirPatternsFS(path string, desc string, DirFS embed.FS)` 注册 `embed.FS` 静态目录路由
     * `path` 路由
     * `desc` 描述
-    * `DirFs` 嵌入目录路径，支持`相对路径`和`绝对路径`
+  * `DirFS` 嵌入目录路径，支持`相对路径`和`绝对路径`
 
 ## 中间件
 

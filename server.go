@@ -259,8 +259,8 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 文件系统处理
-	fs, isFileFs := responseData.(embed.FS)
-	if isFileFs {
+	fs, isFileFS := responseData.(embed.FS)
+	if isFileFS {
 		staticServer := http.FileServer(http.FS(fs))
 		staticServer.ServeHTTP(response, request.Object)
 		return
@@ -341,10 +341,10 @@ func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter
 		return metaStaticFileHandler(viewSet.file, request)
 	} else if viewSet.dir != "" {
 		return metaStaticDirHandler(viewSet.dir, request)
-	} else if viewSet.fileFs != nil {
-		return *viewSet.fileFs
-	} else if viewSet.dirFs != nil {
-		return *viewSet.dirFs
+	} else if viewSet.fileFS != nil {
+		return *viewSet.fileFS
+	} else if viewSet.dirFS != nil {
+		return *viewSet.dirFS
 	}
 
 	if handlerFunc == nil {

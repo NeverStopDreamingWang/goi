@@ -27,8 +27,8 @@ type AsView struct {
 	TRACE   HandlerFunc
 	file    string   // 文件
 	dir     http.Dir // 文件夹
-	fileFs *embed.FS
-	dirFs  *embed.FS
+	fileFS  *embed.FS
+	dirFS   *embed.FS
 }
 
 // 路由表
@@ -110,7 +110,7 @@ func (router *metaRouter) StaticFilePatterns(path string, desc string, FilePath 
 	includeRouter := &metaRouter{
 		path:          path,
 		desc:          desc,
-		viewSet: AsView{file: FilePath},
+		viewSet:       AsView{file: FilePath},
 		includeRouter: nil,
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
@@ -126,32 +126,32 @@ func (router *metaRouter) StaticDirPatterns(path string, desc string, DirPath ht
 	includeRouter := &metaRouter{
 		path:          path,
 		desc:          desc,
-		viewSet: AsView{dir: DirPath},
+		viewSet:       AsView{dir: DirPath},
 		includeRouter: nil,
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
 }
 
 // 添加文件静态路由
-func (router *metaRouter) StaticFilePatternsFs(path string, desc string, FileFs embed.FS) {
+func (router *metaRouter) StaticFilePatternsFS(path string, desc string, FileFS embed.FS) {
 	router.isUrl(path)
 	includeRouter := &metaRouter{
 		path:          path,
 		desc:          desc,
-		viewSet:       AsView{fileFs: &FileFs},
+		viewSet:       AsView{fileFS: &FileFS},
 		includeRouter: nil,
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
 }
 
 // 添加文件夹静态路由
-func (router *metaRouter) StaticDirPatternsFs(path string, desc string, DirFs embed.FS) {
+func (router *metaRouter) StaticDirPatternsFS(path string, desc string, DirFS embed.FS) {
 	router.isUrl(path)
 
 	includeRouter := &metaRouter{
 		path:          path,
 		desc:          desc,
-		viewSet:       AsView{dirFs: &DirFs},
+		viewSet:       AsView{dirFS: &DirFS},
 		includeRouter: nil,
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
@@ -182,7 +182,7 @@ func (router metaRouter) routeResolution(Path string, PathParams metaValues) (As
 	params, converterPattern := routerParse(router.path)
 	var reString string
 	if len(params) == 0 { // 无参数直接匹配
-		if len(router.includeRouter) == 0 && router.viewSet.dir == "" && router.viewSet.dirFs == nil {
+		if len(router.includeRouter) == 0 && router.viewSet.dir == "" && router.viewSet.dirFS == nil {
 			reString = "^" + router.path + "$"
 		} else if strings.HasSuffix(router.path, "/") == false {
 			reString = "^" + router.path + "/"
@@ -190,7 +190,7 @@ func (router metaRouter) routeResolution(Path string, PathParams metaValues) (As
 			reString = "^" + router.path
 		}
 	} else {
-		if len(router.includeRouter) == 0 && router.viewSet.dir == "" && router.viewSet.dirFs == nil {
+		if len(router.includeRouter) == 0 && router.viewSet.dir == "" && router.viewSet.dirFS == nil {
 			reString = "^" + converterPattern + "$"
 		} else if strings.HasSuffix(router.path, "/") == false {
 			reString = "^" + converterPattern + "/"
@@ -210,7 +210,7 @@ func (router metaRouter) routeResolution(Path string, PathParams metaValues) (As
 		PathParams[param.paramName] = append(PathParams[param.paramName], paramsSlice[i]) // 添加参数
 	}
 
-	if router.viewSet.dir != "" || router.viewSet.dirFs != nil { // 静态路由映射
+	if router.viewSet.dir != "" || router.viewSet.dirFS != nil { // 静态路由映射
 		fileName := path.Clean("/" + Path[len(router.path):])
 		PathParams["fileName"] = append(PathParams["fileName"], fileName)
 		return router.viewSet, true
