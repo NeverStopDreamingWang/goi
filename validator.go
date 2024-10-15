@@ -14,6 +14,24 @@ type ValidationError interface {
 	Response() Response
 }
 
+// 框架全局创建参数验证错误
+func NewValidationError(status int, message string, args ...interface{}) ValidationError {
+	return Validator.validation_error.NewValidationError(status, message, args...)
+}
+
+type metaValidator struct {
+	validation_error ValidationError
+}
+
+func newValidator() *metaValidator {
+	return &metaValidator{
+		validation_error: &defaultValidationError{}, // 使用默认参数验证错误
+	}
+}
+func (metaValidator *metaValidator) SetValidationError(validationError ValidationError) {
+	metaValidator.validation_error = validationError
+}
+
 // 默认参数验证错误
 type defaultValidationError struct {
 	Status  int
@@ -34,21 +52,6 @@ func (validationErr *defaultValidationError) Response() Response {
 		Status: validationErr.Status,
 		Data:   validationErr.Message,
 	}
-}
-
-type metaValidator struct {
-	VALIDATION_ERROR ValidationError
-}
-
-func newValidator() *metaValidator {
-	return &metaValidator{
-		VALIDATION_ERROR: &defaultValidationError{}, // 使用默认参数验证错误
-	}
-}
-
-// 框架全局创建参数验证错误
-func NewValidationError(status int, message string, args ...interface{}) ValidationError {
-	return Validator.VALIDATION_ERROR.NewValidationError(status, message, args...)
 }
 
 // 验证器处理函数
