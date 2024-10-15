@@ -57,8 +57,8 @@ func generateCertificate(SSLPath string) {
 			SerialNumber:       "",              // 证书持有者的序列号
 			CommonName:         "example",       //  证书的通用名称
 		},
-		NotBefore:             time.Now().In(Server.Settings.LOCATION),
-		NotAfter:              time.Now().In(Server.Settings.LOCATION).Add(365 * 24 * time.Hour),
+		NotBefore:             time.Now().In(Server.Settings.GetLocation()),
+		NotAfter:              time.Now().In(Server.Settings.GetLocation()).Add(365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
