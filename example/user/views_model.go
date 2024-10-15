@@ -200,7 +200,7 @@ func TestModelCreate(request *goi.Request) interface{} {
 			Data:   err.Error(),
 		}
 	}
-	create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
+	create_time := time.Now().In(goi.Settings.GetLocation()).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	user := &UserModel{
 		Username:    &params.Username,
@@ -297,7 +297,7 @@ func TestModelUpdate(request *goi.Request) interface{} {
 			Data:   err.Error(),
 		}
 	}
-	update_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
+	update_time := time.Now().In(goi.Settings.GetLocation()).Format("2006-01-02 15:04:05")
 	// mysql 数据库
 	update_user := &UserModel{
 		Username:    nil,

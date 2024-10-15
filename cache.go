@@ -106,7 +106,7 @@ func (cache *metaCache) Get(key string, value interface{}) error {
 	if element, ok := cache.dict[key]; ok {
 		cacheItem := element.Value.(*cacheItems)
 
-		nowTime := time.Now().In(Settings.LOCATION)                         // 获取当前时间
+		nowTime := time.Now().In(Settings.GetLocation())                    // 获取当前时间
 		if cacheItem.expires.IsZero() || cacheItem.expires.After(nowTime) { // 判断是否过期
 			cacheItem.mutex.Lock()
 			cacheItem.lru = nowTime
@@ -139,7 +139,7 @@ func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 	}
 	var expiresTime time.Time
 	if expires > 0 {
-		expiresTime = time.Now().In(Settings.LOCATION).Add(time.Second * time.Duration(expires)) // 获取过期时间
+		expiresTime = time.Now().In(Settings.GetLocation()).Add(time.Second * time.Duration(expires)) // 获取过期时间
 
 		if cache.EXPIRATION_POLICY == SCHEDULED { // 定时删除
 			time.AfterFunc(time.Duration(expires), func() { cache.DelExp(key) })
@@ -161,7 +161,7 @@ func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 			byteValue: buffer.Bytes(),
 			expires:   expiresTime,
 			mutex:     sync.Mutex{},
-			lru:       time.Now().In(Settings.LOCATION),
+			lru:       time.Now().In(Settings.GetLocation()),
 			lfu:       5,
 		}
 		element = cache.list.PushFront(cacheItem)
@@ -192,7 +192,7 @@ func (cache *metaCache) DelExp(key string) bool {
 		cacheItem := element.Value.(*cacheItems)
 
 		cache.list.Remove(element)
-		nowTime := time.Now().In(Settings.LOCATION) // 获取当前时间
+		nowTime := time.Now().In(Settings.GetLocation()) // 获取当前时间
 		if !cacheItem.expires.IsZero() && cacheItem.expires.Before(nowTime) {
 			delete(cache.dict, key)
 			cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))

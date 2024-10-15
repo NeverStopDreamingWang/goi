@@ -122,7 +122,7 @@ func InitUserData() error {
 
 	for i, item := range userData {
 		id := int64(i + 1)
-		create_time := time.Now().In(goi.Settings.LOCATION).Format("2006-01-02 15:04:05")
+		create_time := time.Now().In(goi.Settings.GetLocation()).Format("2006-01-02 15:04:05")
 
 		user := &UserSqliteModel{
 			Id:          &id,

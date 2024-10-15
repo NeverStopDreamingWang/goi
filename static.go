@@ -58,6 +58,6 @@ func metaResponseStatic(file os.File, request *Request, response http.ResponseWr
 		response.WriteHeader(http.StatusNotFound)
 	} else {
 		response.WriteHeader(http.StatusOK)
-		http.ServeContent(response, request.Object, fileInfo.Name(), time.Now().In(Settings.LOCATION), &file)
+		http.ServeContent(response, request.Object, fileInfo.Name(), time.Now().In(Settings.GetLocation()), &file)
 	}
 }

@@ -11,6 +11,8 @@ import (
 var Server *goi.Engine
 
 func init() {
+	var err error
+
 	// 创建 http 服务
 	Server = goi.NewHttpServer()
 
@@ -23,7 +25,7 @@ func init() {
 	// 设置网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 监听地址
-	Server.Settings.BIND_ADDRESS = "0.0.0.0"
+	Server.Settings.BIND_ADDRESS = "0.0.0.0" // 默认 127.0.0.1
 	// 端口
 	Server.Settings.PORT = 8080
 	// 绑定域名
@@ -66,6 +68,11 @@ func init() {
 
 	// 设置时区
 	Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai，America/New_York
+	err = Server.Settings.SetTimeZone("Asia/Shanghai") // 默认为空字符串 ''，本地时间
+	if err != nil {
+		panic(err)
+	}
+	//  Server.Settings.GetLocation() 获取时区 Location
 
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
