@@ -67,7 +67,6 @@ func init() {
 	}
 
 	// 设置时区
-	Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai，America/New_York
 	err = Server.Settings.SetTimeZone("Asia/Shanghai") // 默认为空字符串 ''，本地时间
 	if err != nil {
 		panic(err)
@@ -79,16 +78,23 @@ func init() {
 	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
 	Server.Cache.MAX_SIZE = 100                   // 单位为字节，0 为不限制使用
 
-	// 日志设置
+	// 日志 DEBUG 设置
 	Server.Log.DEBUG = true
-	// 日志列表
-	defaultLog := newDefaultLog()
-	accessLog := newAccessLog()
-	errorLog := newErrorLog()
-	Server.Log.LOGGERS = []*goi.MetaLogger{
-		defaultLog, // 默认日志
-		accessLog,  // 访问日志
-		errorLog,   // 错误日志
+	// 注册日志
+	defaultLog := newDefaultLog() // 默认日志
+	err = Server.Log.RegisterLogger(defaultLog)
+	if err != nil {
+		panic(err)
+	}
+	accessLog := newAccessLog() // 访问日志
+	err = Server.Log.RegisterLogger(accessLog)
+	if err != nil {
+		panic(err)
+	}
+	errorLog := newErrorLog() // 错误日志
+	err = Server.Log.RegisterLogger(errorLog)
+	if err != nil {
+		panic(err)
 	}
 
 	// 日志打印
