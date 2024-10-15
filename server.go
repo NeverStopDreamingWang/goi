@@ -17,7 +17,6 @@ import (
 
 // Http 服务
 var version = "v1.3.1"
-var engine *Engine
 var Settings *metaSettings
 var Cache *metaCache
 var Log *metaLog
@@ -48,7 +47,7 @@ func NewHttpServer() *Engine {
 	Cache = newCache()
 	Log = newLog()
 	Validator = newValidator()
-	engine = &Engine{
+	return &Engine{
 		startTime:   nil,
 		server:      http.Server{},
 		Router:      newRouter(),
@@ -58,7 +57,6 @@ func NewHttpServer() *Engine {
 		Log:         Log,
 		Validator:   Validator,
 	}
-	return engine
 }
 
 // 启动 http 服务
