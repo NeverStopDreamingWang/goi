@@ -103,8 +103,8 @@ func init() {
 	// Server.Log.Warning() = goi.Log.Warning()
 	// Server.Log.Error() = goi.Log.Error()
 
-	// 设置验证器错误，不指定则使用默认
-	Server.Validator.VALIDATION_ERROR = &exampleValidationError{}
+	// 设置验证器错误处理，不指定则使用默认
+	Server.Validator.SetValidationError(&exampleValidationError{})
 
 	// 设置自定义配置
 	// redis配置
