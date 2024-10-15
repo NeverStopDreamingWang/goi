@@ -62,19 +62,13 @@ func NewHttpServer() *Engine {
 // 启动 http 服务
 func (engine *Engine) RunServer() {
 	var err error
-
-	// 初始化时区
-	location, err := time.LoadLocation(Settings.TIME_ZONE)
-	if err != nil {
-		panic(fmt.Sprintf("初始化时区错误: %v\n", err))
-	}
-	engine.Settings.LOCATION = location
-
 	// 初始化日志
 	engine.Log.InitLogger()
 
+	startTime := time.Now().In(engine.Settings.GetLocation())
+	engine.startTime = &startTime
 	engine.Log.Log(meta, "---start---")
-	engine.Log.Log(meta, fmt.Sprintf("启动时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
+	engine.Log.Log(meta, fmt.Sprintf("启动时间: %s", engine.startTime.Format("2006-01-02 15:04:05")))
 	engine.Log.Log(meta, fmt.Sprintf("goi 版本: %v", version))
 
 	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
@@ -89,13 +83,12 @@ func (engine *Engine) RunServer() {
 		engine.Log.Log(meta, log)
 	}
 
-	engine.Log.Log(meta, fmt.Sprintf("当前时区: %v", engine.Settings.TIME_ZONE))
+	if engine.Settings.GetTimeZone() != "" {
+		engine.Log.Log(meta, fmt.Sprintf("当前时区: %v", engine.Settings.GetTimeZone()))
+	}
 
 	// 初始化缓存
 	engine.Cache.initCache()
-
-	startTime := time.Now().In(Settings.LOCATION)
-	engine.startTime = &startTime
 
 	// 注册关闭信号
 	signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
@@ -157,8 +150,8 @@ func (engine *Engine) RunServer() {
 // 停止 http 服务
 func (engine *Engine) StopServer() error {
 	engine.Log.Log(meta, "服务已停止！")
-	engine.Log.Log(meta, fmt.Sprintf("停止时间: %s", time.Now().In(Settings.LOCATION).Format("2006-01-02 15:04:05")))
-	engine.Log.Log(meta, fmt.Sprintf("共运行: %v", engine.RunTimeStr()))
+	engine.Log.Log(meta, fmt.Sprintf("停止时间: %s", time.Now().In(engine.Settings.GetLocation()).Format("2006-01-02 15:04:05")))
+	engine.Log.Log(meta, fmt.Sprintf("共运行: %v", engine.runTimeStr()))
 	engine.Log.Log(meta, "---end---")
 	// 关闭服务器
 	err := engine.server.Shutdown(context.Background())
@@ -171,14 +164,14 @@ func (engine *Engine) StopServer() error {
 // 获取当前运行时间 返回时间间隔
 func (engine *Engine) RunTime() time.Duration {
 	// 获取当前时间并设置时区
-	currentTime := time.Now().In(Settings.LOCATION)
+	currentTime := time.Now().In(engine.Settings.GetLocation())
 
 	// 计算时间间隔
 	return currentTime.Sub(*engine.startTime)
 }
 
 // 获取当前运行时间 返回字符串
-func (engine *Engine) RunTimeStr() string {
+func (engine *Engine) runTimeStr() string {
 	// 获取时间间隔
 	elapsed := engine.RunTime()
 	seconds := int(elapsed.Seconds()) % 60
@@ -201,7 +194,7 @@ func (engine *Engine) RunTimeStr() string {
 
 // 实现 ServeHTTP 接口
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	requestID := time.Now().In(engine.Settings.LOCATION)
+	requestID := time.Now().In(engine.Settings.GetLocation())
 	ctx := context.WithValue(r.Context(), "requestID", requestID)
 	r = r.WithContext(ctx)
 

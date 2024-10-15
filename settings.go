@@ -38,8 +38,9 @@ type metaSettings struct {
 	PUBLIC_KEY   string                  // 项目 RSA 公钥
 	SSL          MetaSSL                 // SSL
 	DATABASES    map[string]MetaDataBase // 数据库配置
-	TIME_ZONE    string                  // 时区
-	LOCATION     *time.Location          // 地区时区
+	time_zone string                     // 地区时区默认为空，本地时区
+	location  *time.Location             // 地区时区
+	language  Language                   // 项目语言
 
 	// 自定义设置
 	mySettings map[string]interface{}
@@ -57,10 +58,32 @@ func newSettings() *metaSettings {
 		PUBLIC_KEY:   "",
 		SSL:          MetaSSL{},
 		DATABASES:    make(map[string]MetaDataBase),
-		TIME_ZONE:    "Asia/Shanghai",
-		LOCATION:     time.Now().Location(),
+		time_zone: "",
+		location:  time.Local,
+		language:  ZH_CN,
 		mySettings:   make(map[string]interface{}),
 	}
+}
+
+// 设置时区
+func (settings metaSettings) SetTimeZone(time_zone string) error {
+	location, err := time.LoadLocation(time_zone)
+	if err != nil {
+		return err
+	}
+	settings.time_zone = time_zone
+	settings.location = location
+	return nil
+}
+
+// 获取时区
+func (settings metaSettings) GetTimeZone() string {
+	return settings.time_zone
+}
+
+// 获取时区 Location
+func (settings metaSettings) GetLocation() *time.Location {
+	return settings.location
 }
 
 // 设置自定义配置
