@@ -72,7 +72,7 @@ func (engine *Engine) RunServer() {
 	engine.Log.Log(meta, fmt.Sprintf("goi 版本: %v", version))
 
 	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
-	for _, logger := range engine.Log.LOGGERS {
+	for _, logger := range engine.Log.loggers {
 		log := fmt.Sprintf("- [%v]", logger.Name)
 		if logger.SPLIT_SIZE != 0 {
 			log += fmt.Sprintf(" 切割大小: %v", formatBytes(logger.SPLIT_SIZE))
