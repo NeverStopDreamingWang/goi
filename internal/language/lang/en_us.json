@@ -70,9 +70,5 @@
     "is_not_ptr": "{{ .name }} is not a pointer type",
     "is_not_struct_ptr": "{{ .name }} is not a struct pointer",
     "is_not_slice_ptr": "{{ .name }} is not a slice pointer"
-  },
-  "jwt": {
-    "expired_signature_error": "Expired Signature Error",
-    "decode_error": "Decode error"
   }
 }

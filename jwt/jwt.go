@@ -11,18 +11,12 @@ import (
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // Jwt 验证错误
 var (
-	jwtExpiredSignatureError = errors.New(language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "jwt.expired_signature_error",
-	}))
-	jwtDecodeError = errors.New(language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "jwt.decode_error",
-	}))
+	jwtExpiredSignatureError = errors.New("Expired Signature Error")
+	jwtDecodeError           = errors.New("Decode Error")
 )
 
 // 签名过期
