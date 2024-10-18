@@ -70,9 +70,5 @@
     "is_not_ptr": "{{ .name }} 不是指针类型",
     "is_not_struct_ptr": "{{ .name }} 不是结构体指针",
     "is_not_slice_ptr": "{{ .name }} 不是切片指针"
-  },
-  "jwt": {
-    "expired_signature_error": "签名过期错误",
-    "decode_error": "解码错误"
   }
 }
