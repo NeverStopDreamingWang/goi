@@ -58,6 +58,7 @@ type metaCache struct {
 	EVICT_POLICY      EvictPolicy      // 缓存淘汰策略
 	EXPIRATION_POLICY ExpirationPolicy // 过期策略
 	MAX_SIZE          int64
+	is_periodic       bool
 	used_size         int64
 	list              *list.List
 	dict              map[string]*list.Element
@@ -109,10 +110,6 @@ func (cache *metaCache) initCache() {
 		},
 	})
 	Log.Log(meta, ExpirationPolicyMsg)
-
-	if cache.EXPIRATION_POLICY == PERIODIC {
-		go cache.cachePeriodicDeleteExpires()
-	}
 }
 
 // Has 检查值是否存在
@@ -163,6 +160,8 @@ func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 
 		if cache.EXPIRATION_POLICY == SCHEDULED { // 定时删除
 			time.AfterFunc(time.Duration(expires), func() { cache.DelExp(key) })
+		} else if cache.EXPIRATION_POLICY == PERIODIC && cache.is_periodic == false {
+			go cache.cachePeriodicDeleteExpires()
 		}
 	}
 	if element, ok := cache.dict[key]; ok {
@@ -468,6 +467,7 @@ func (cache *metaCache) cacheEvict() {
 
 // 定期删除
 func (cache *metaCache) cachePeriodicDeleteExpires() {
+	cache.is_periodic = true
 	for cache.EXPIRATION_POLICY == PERIODIC {
 		if len(cache.dict) == 0 {
 			time.Sleep(3 * time.Second)
@@ -483,6 +483,7 @@ func (cache *metaCache) cachePeriodicDeleteExpires() {
 		}
 		time.Sleep(1 * time.Second)
 	}
+	cache.is_periodic = false
 }
 
 const (
