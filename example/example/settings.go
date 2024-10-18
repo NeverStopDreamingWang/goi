@@ -86,11 +86,8 @@ func init() {
 	//  Server.Settings.GetLocation() 获取时区 Location
 
 	// 设置框架语言
-	err = Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
-	// err = Server.Settings.SetLanguage(goi.EN_US) // 默认 ZH_CN
-	if err != nil {
-		panic(err)
-	}
+	Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
+	// Server.Settings.SetLanguage(goi.EN_US) // 默认 ZH_CN
 
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略

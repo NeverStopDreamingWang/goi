@@ -86,24 +86,10 @@ func (settings metaSettings) GetLocation() *time.Location {
 	return settings.location
 }
 
-// isValidLanguage 校验传入的语言是否有效
-func isValidLanguage(lang Language) bool {
-	switch lang {
-	case ZH_CN, EN_US:
-		return true
-	default:
-		return false
-	}
-}
-
 // 设置代码语言
-func (settings metaSettings) SetLanguage(lang Language) error {
-	if !isValidLanguage(lang) {
-		return errors.New(fmt.Sprintf("invalid language code: %v\n", lang))
-	}
+func (settings metaSettings) SetLanguage(lang Language) {
 	settings.language = lang
 	language.SetLocalize(string(settings.language))
-	return nil
 }
 
 // 获取代码语言
