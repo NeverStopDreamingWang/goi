@@ -175,22 +175,22 @@ func init() {
 	
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
-	// 设置网络协议
+	// 网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 监听地址
 	Server.Settings.BIND_ADDRESS = "0.0.0.0" // 默认 127.0.0.1
 	// 端口
 	Server.Settings.PORT = 8080
-	// 绑定域名
+	// 域名
 	Server.Settings.BIND_DOMAIN = ""
 
-	// 项目 AES 密钥
+	// AES 密钥
 	Server.Settings.SECRET_KEY = "%s"
 
-	// 项目 RSA 私钥
+	// RSA 私钥
 	Server.Settings.PRIVATE_KEY = ` + "`%s`" + `
 
-	// 项目 RSA 公钥
+	// RSA 公钥
 	Server.Settings.PUBLIC_KEY = ` + "`%s`" + `
 
 	// 设置 SSL
@@ -237,10 +237,7 @@ func init() {
 	//  Server.Settings.GetLocation() 获取时区 Location
 
 	// 设置框架语言
-	err = Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
-	if err != nil {
-		panic(err)
-	}
+	Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
 	
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
