@@ -24,8 +24,8 @@ var goiHelp = `goi version（版本）: %s
 Usage（用法）:
 	goi <command> [arguments]
 The commands are（命令如下）:
-	create-project 	myproject	创建项目
-	create-app 		myapp		创建app
+	create-project  myproject   创建项目
+	create-app      myapp       创建app
 
 `
 
@@ -40,7 +40,19 @@ var GoiCmd = &cobra.Command{
 	},
 }
 
+// help
+var HelpCmd = &cobra.Command{
+	Use:   "help",
+	Short: "help 帮助",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		help_txt := fmt.Sprintf(goiHelp, goi.Version())
+		fmt.Print(help_txt)
+		return nil
+	},
+}
+
 func main() {
+	GoiCmd.AddCommand(HelpCmd) // 帮助信息
 	if err := GoiCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

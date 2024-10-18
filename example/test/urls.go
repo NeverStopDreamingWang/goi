@@ -46,10 +46,10 @@ func init() {
 	example.Server.Router.StaticDirPatterns("/static", "测试静态目录", "template")
 
 	// embed.FS 静态文件
-	example.Server.Router.StaticFilePatternsFS("/index.html", "测试静态FS文件", template.IndexHtml)
+	example.Server.Router.StaticFilePatternsFS("/index1.html", "测试静态FS文件", template.IndexHtml)
 
 	// embed.FS 静态目录
-	example.Server.Router.StaticDirPatternsFS("/static", "测试静态FS目录", template.Html)
+	example.Server.Router.StaticDirPatternsFS("/static1", "测试静态FS目录", template.Html)
 
 	// 自定义方法
 	// 返回文件

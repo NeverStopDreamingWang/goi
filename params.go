@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 type metaValues map[string][]string
@@ -36,13 +39,25 @@ func (values metaValues) Get(key string, dest interface{}) ValidationError {
 	var validationErr ValidationError
 	value_list, ok := values[key]
 	if ok == false {
-		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("'%v' 缺少必填参数", key))
+		requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "params.required_params",
+			TemplateData: map[string]interface{}{
+				"name": key,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 	}
 	// 获取目标变量的反射值
 	destValue := reflect.ValueOf(dest)
 	// 检查目标变量是否为指针类型
 	if destValue.Kind() != reflect.Ptr {
-		return NewValidationError(http.StatusInternalServerError, "参数必须是指针类型")
+		paramsIsNotPtrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "params.params_is_not_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "dest",
+			},
+		})
+		return NewValidationError(http.StatusInternalServerError, paramsIsNotPtrMsg)
 	}
 	for _, value := range value_list {
 		// 设置到参数结构体中
@@ -62,11 +77,23 @@ func (values metaValues) ParseParams(paramsDest interface{}) ValidationError {
 
 	// 如果参数不是指针或者不是结构体类型，则返回错误
 	if paramsValue.Kind() != reflect.Ptr {
-		return NewValidationError(http.StatusInternalServerError, "参数必须是指针类型")
+		paramsIsNotPtrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "params.params_is_not_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "paramsDest",
+			},
+		})
+		return NewValidationError(http.StatusInternalServerError, paramsIsNotPtrMsg)
 	}
 	paramsValue = paramsValue.Elem()
 	if paramsValue.Kind() != reflect.Struct {
-		return NewValidationError(http.StatusInternalServerError, "参数必须是结构体指针类型")
+		paramsIsNotStructPtrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "params.params_is_not_struct_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "paramsDest",
+			},
+		})
+		return NewValidationError(http.StatusInternalServerError, paramsIsNotStructPtrMsg)
 	}
 
 	paramsType := paramsValue.Type()
@@ -86,10 +113,22 @@ func (values metaValues) ParseParams(paramsDest interface{}) ValidationError {
 		value_list, ok := values[fieldName]
 		if validator_name = field.Tag.Get("required"); validator_name != "" {
 			if ok == false {
-				return NewValidationError(http.StatusBadRequest, fmt.Sprintf("'%v' 缺少必填参数！", fieldName))
+				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "params.required_params",
+					TemplateData: map[string]interface{}{
+						"name": fieldName,
+					},
+				})
+				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 			}
 		} else if validator_name = field.Tag.Get("optional"); validator_name == "" {
-			return NewValidationError(http.StatusInternalServerError, fmt.Sprintf("'%v' 字段标签 required 与 optional 必须存在一个！", fieldName))
+			isNotRequiredOrOptionalMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.is_not_required_or_optional",
+				TemplateData: map[string]interface{}{
+					"name": fieldName,
+				},
+			})
+			return NewValidationError(http.StatusInternalServerError, isNotRequiredOrOptionalMsg)
 		}
 
 		for _, value := range value_list {
@@ -122,7 +161,13 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 	}
 	// 检查是否为可分配值
 	if !field.CanSet() {
-		return NewValidationError(http.StatusInternalServerError, "dest 不可赋值的值")
+		paramsIsNotCanSetMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "params.params_is_not_can_set",
+			TemplateData: map[string]interface{}{
+				"name": "dest",
+			},
+		})
+		return NewValidationError(http.StatusInternalServerError, paramsIsNotCanSetMsg)
 	}
 
 	fieldType := field.Type()
@@ -212,7 +257,10 @@ func (values metaValues) setFieldValue(field reflect.Value, value string) Valida
 		}
 		field.Set(mapValue)
 	default:
-		return NewValidationError(http.StatusBadRequest, "不支持的目标变量类型")
+		paramsTypeIsNotMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "params.params_type_is_unsupported",
+		})
+		return NewValidationError(http.StatusBadRequest, paramsTypeIsNotMsg)
 	}
 	return nil
 }

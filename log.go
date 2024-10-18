@@ -51,22 +51,34 @@ func newLog() *metaLog {
 // 注册日志
 func (metaLog *metaLog) RegisterLogger(loggers *MetaLogger) error {
 	if loggers.Path == "" {
-		return errors.New(fmt.Sprintf("invalid Logger Path: %v\n", loggers.Path))
+		invalidPathMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "log.invalid_path",
+		})
+		return errors.New(invalidPathMsg)
 	}
 	if len(loggers.Level) == 0 {
-		return errors.New(fmt.Sprintf("invalid Logger Level is not []\n"))
+		invalidLevelMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "log.invalid_level",
+		})
+		return errors.New(invalidLevelMsg)
 	}
 	if loggers.File == nil {
-		return errors.New(fmt.Sprintf("invalid Logger File: %v\n", loggers.File))
+		invalidFileMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "log.invalid_file",
+		})
+		return errors.New(invalidFileMsg)
 	}
 	if loggers.Logger == nil {
-		return errors.New(fmt.Sprintf("invalid Logger object: %v\n", loggers.Logger))
-	}
-	if loggers.SPLIT_SIZE == 0 && loggers.SPLIT_TIME == "" && loggers.SplitLoggerFunc == nil {
-		return errors.New(fmt.Sprintf("invalid Logger SPLIT_SIZE, SPLIT_TIME, SplitLoggerFunc must be set\n"))
+		invalidObjectMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "log.invalid_object",
+		})
+		return errors.New(invalidObjectMsg)
 	}
 	if loggers.NewLoggerFunc == nil {
-		return errors.New(fmt.Sprintf("invalid Logger NewLoggerFunc: %v\n", loggers.NewLoggerFunc))
+		invalidNewLoggerFuncMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "log.invalid_NewLoggerFunc",
+		})
+		return errors.New(invalidNewLoggerFuncMsg)
 	}
 
 	metaLog.loggers = append(metaLog.loggers, loggers)
@@ -152,7 +164,14 @@ func defaultSplitLoggerFunc(OldLogger *MetaLogger) *MetaLogger {
 	}
 	fileInfo, err := os.Stat(OldLogger.Path)
 	if err != nil {
-		panic(fmt.Sprintf("日志切割-[%v]获取日志文件信息错误: %v", OldLogger.Name, err))
+		splitLogStatErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "log.split_log_stat_error",
+			TemplateData: map[string]interface{}{
+				"name": OldLogger.Name,
+				"err":  err,
+			},
+		})
+		panic(splitLogStatErrorMsg)
 		return nil
 	}
 	fileSize := fileInfo.Size()
@@ -195,7 +214,14 @@ func defaultSplitLoggerFunc(OldLogger *MetaLogger) *MetaLogger {
 		OldLogger.File.Close()
 		err = os.Rename(OldLogger.Path, oldInfoFile)
 		if err != nil {
-			panic(fmt.Sprintf("日志切割-[%v]日志重命名错误: %v", OldLogger.Name, err))
+			splitLogReNameErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "log.split_log_rename_error",
+				TemplateData: map[string]interface{}{
+					"name": OldLogger.Name,
+					"err":  err,
+				},
+			})
+			panic(splitLogReNameErrorMsg)
 		}
 		// 重新初始化
 		return OldLogger.NewLoggerFunc()

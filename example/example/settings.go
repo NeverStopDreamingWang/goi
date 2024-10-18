@@ -1,8 +1,10 @@
 package example
 
 import (
+	"database/sql"
 	"os"
 	"path"
+	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
@@ -45,25 +47,36 @@ func init() {
 		STATUS:    false,  // SSL 开关
 		TYPE:      "自签证书", // 证书类型
 		CERT_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/example.crt"),
-		KEY_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/example.key"),
+		KEY_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/example.ke"+
+			"y"),
 	}
 
 	// 数据库配置
-	Server.Settings.DATABASES["default"] = goi.MetaDataBase{
-		ENGINE:   "mysql",
-		NAME:     "test_goi",
-		USER:     "root",
-		PASSWORD: "123",
-		HOST:     "127.0.0.1",
-		PORT:     3306,
+	Server.Settings.DATABASES["default"] = &goi.DataBase{
+		ENGINE:         "mysql",
+		DataSourceName: "root:123123@tcp(127.0.0.1:3306)/test_goi",
+		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
+			mysqlDB, err := sql.Open(ENGINE, DataSourceName)
+			if err != nil {
+				panic(err)
+			}
+			// 设置连接池参数
+			mysqlDB.SetMaxOpenConns(10)           // 设置最大打开连接数
+			mysqlDB.SetMaxIdleConns(5)            // 设置最大空闲连接数
+			mysqlDB.SetConnMaxLifetime(time.Hour) // 设置连接的最大存活时间
+			return mysqlDB, nil
+		},
 	}
-	Server.Settings.DATABASES["sqlite_1"] = goi.MetaDataBase{
-		ENGINE:   "sqlite3",
-		NAME:     path.Join(Server.Settings.BASE_DIR, "data/test_goi.db"),
-		USER:     "",
-		PASSWORD: "",
-		HOST:     "",
-		PORT:     0,
+	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
+		ENGINE:         "sqlite3",
+		DataSourceName: path.Join(Server.Settings.BASE_DIR, "data/test_goi.db"),
+		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
+			sqliteDB, err := sql.Open(ENGINE, DataSourceName)
+			if err != nil {
+				panic(err)
+			}
+			return sqliteDB, nil
+		},
 	}
 
 	// 设置时区
@@ -72,6 +85,13 @@ func init() {
 		panic(err)
 	}
 	//  Server.Settings.GetLocation() 获取时区 Location
+
+	// 设置框架语言
+	err = Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
+	// err = Server.Settings.SetLanguage(goi.EN_US) // 默认 ZH_CN
+	if err != nil {
+		panic(err)
+	}
 
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
@@ -107,9 +127,7 @@ func init() {
 	Server.Validator.SetValidationError(&exampleValidationError{})
 
 	// 设置自定义配置
-	// redis配置
-	Server.Settings.Set("REDIS_HOST", "127.0.0.1")
-	Server.Settings.Set("REDIS_PORT", 6379)
-	Server.Settings.Set("REDIS_PASSWORD", "123")
-	Server.Settings.Set("REDIS_DB", 0)
+	// Server.Settings.Set(key string, value interface{})
+	// Server.Settings.Get(key string, dest interface{})
+
 }

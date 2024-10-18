@@ -10,20 +10,18 @@ import (
 
 func init() {
 	// MySQL 数据库
-	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
+	mysqlDB, err := db.MySQLConnect("default")
 	if err != nil {
 		panic(err)
 	}
-	defer mysqlObj.Close()
-	mysqlObj.Migrate(UserModel{})
+	mysqlDB.Migrate("test_goi", UserModel{})
 
 	// sqlite 数据库
-	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
+	SQLite3DB, err := db.SQLite3Connect("sqlite")
 	if err != nil {
 		panic(err)
 	}
-	defer SQLite3DB.Close()
-	SQLite3DB.Migrate(UserSqliteModel{})
+	SQLite3DB.Migrate("test_goi", UserSqliteModel{})
 }
 
 // 用户表
@@ -45,8 +43,8 @@ func (userModel UserModel) ModelSet() *model.MySQLSettings {
 
 	modelSettings := &model.MySQLSettings{
 		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
-			BeforeFunc: nil, // 迁移之前处理函数
-			AfterFunc:  nil, // 迁移之后处理函数
+			BeforeHandler: nil, // 迁移之前处理函数
+			AfterHandler:  nil, // 迁移之后处理函数
 		},
 
 		TABLE_NAME:      "user_tb",            // 设置表名
@@ -93,8 +91,8 @@ func (userSqliteModel UserSqliteModel) ModelSet() *model.SQLite3Settings {
 
 	modelSettings := &model.SQLite3Settings{
 		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
-			BeforeFunc: nil,          // 迁移之前处理函数
-			AfterFunc:  InitUserData, // 迁移之后处理函数
+			BeforeHandler: nil,          // 迁移之前处理函数
+			AfterHandler:  InitUserData, // 迁移之后处理函数
 		},
 
 		TABLE_NAME: "user_tb", // 设置表名
@@ -109,8 +107,7 @@ func (userSqliteModel UserSqliteModel) ModelSet() *model.SQLite3Settings {
 
 // 初始化数据
 func InitUserData() error {
-	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
-	defer SQLite3DB.Close()
+	SQLite3DB, err := db.SQLite3Connect("sqlite")
 	if err != nil {
 		return err
 	}

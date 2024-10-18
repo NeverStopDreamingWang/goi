@@ -11,17 +11,23 @@ import (
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // Jwt 验证错误
 var (
-	jwtErrorExpiredSignature = errors.New("签名过期！")
-	jwtErrorDecode           = errors.New("解码错误！")
+	jwtExpiredSignatureError = errors.New(language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "jwt.expired_signature_error",
+	}))
+	jwtDecodeError = errors.New(language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "jwt.decode_error",
+	}))
 )
 
 // 签名过期
 func JwtExpiredSignatureError(err error) bool {
-	if err == jwtErrorExpiredSignature {
+	if err == jwtExpiredSignatureError {
 		return true
 	}
 	return false
@@ -29,7 +35,7 @@ func JwtExpiredSignatureError(err error) bool {
 
 // Jwt 解码错误
 func JwtDecodeError(err error) bool {
-	if err == jwtErrorDecode {
+	if err == jwtDecodeError {
 		return true
 	}
 	return false
@@ -71,7 +77,7 @@ func CkeckToken(token string, key string) (map[string]interface{}, error) {
 	var err error
 	tokenSlice := strings.Split(token, ".")
 	if len(tokenSlice) != 3 {
-		return payloads, jwtErrorDecode
+		return payloads, jwtDecodeError
 	}
 	headerBase64 := tokenSlice[0]
 	payloadBase64 := tokenSlice[1]
@@ -80,14 +86,14 @@ func CkeckToken(token string, key string) (map[string]interface{}, error) {
 	// 检查 signature
 	signatureStr, err := sha256Str(key, headerBase64+"."+payloadBase64)
 	if err != nil {
-		return payloads, jwtErrorDecode
+		return payloads, jwtDecodeError
 	}
 	signatureStr, err = base64Encode(signatureStr)
 	if err != nil {
-		return payloads, jwtErrorDecode
+		return payloads, jwtDecodeError
 	}
 	if signatureStr != signatureBase64 {
-		return payloads, jwtErrorDecode
+		return payloads, jwtDecodeError
 	}
 	// header, err := base64Decode(headerBase64)
 	// if err != nil {
@@ -95,7 +101,7 @@ func CkeckToken(token string, key string) (map[string]interface{}, error) {
 	// }
 	payloads, err = base64Decode(payloadBase64)
 	if err != nil {
-		return payloads, jwtErrorDecode
+		return payloads, jwtDecodeError
 	}
 
 	if expTimeValue, ok := payloads["exp"]; ok {
@@ -103,10 +109,10 @@ func CkeckToken(token string, key string) (map[string]interface{}, error) {
 		// 解析为time.Time类型
 		expTime, err := time.ParseInLocation("2006-01-02 15:04:05", expTimeStr, goi.Settings.GetLocation())
 		if err != nil {
-			return payloads, jwtErrorDecode
+			return payloads, jwtDecodeError
 		}
 		if expTime.Before(time.Now().In(goi.Settings.GetLocation())) {
-			return payloads, jwtErrorExpiredSignature
+			return payloads, jwtExpiredSignatureError
 		}
 	}
 	return payloads, nil

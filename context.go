@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // 内置响应数据格式
@@ -36,7 +39,13 @@ func (request *Request) parseRequestParams() {
 	if err != nil {
 		err = request.Object.ParseForm()
 		if err != nil {
-			panic(fmt.Sprintf("解析 Body 错误: %v\n", err))
+			parseBodyErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "context.parse_body_error",
+				TemplateData: map[string]interface{}{
+					"err": err,
+				},
+			})
+			panic(parseBodyErrorMsg)
 		}
 	}
 	for name, values := range request.Object.Form {
@@ -46,13 +55,25 @@ func (request *Request) parseRequestParams() {
 	// 解析 json 数据
 	body, err := io.ReadAll(request.Object.Body)
 	if err != nil {
-		panic(fmt.Sprintf("读取 Body 错误: %v\n", err))
+		readBodyErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "context.read_body_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		panic(readBodyErrorMsg)
 	}
 	if len(body) != 0 {
 		jsonData := make(map[string]interface{})
 		err = json.Unmarshal(body, &jsonData)
 		if err != nil {
-			panic(fmt.Sprintf("解析 json 错误: %v\n", err))
+			unmarshalBodyErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "context.unmarshal_body_error",
+				TemplateData: map[string]interface{}{
+					"err": err,
+				},
+			})
+			panic(unmarshalBodyErrorMsg)
 		}
 		for name, value := range jsonData {
 			stringValue, ok := value.(string)

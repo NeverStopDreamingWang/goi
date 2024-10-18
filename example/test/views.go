@@ -44,7 +44,7 @@ func TestParams(request *goi.Request) interface{} {
 			Status:  http.StatusOK,
 			Message: msg,
 			Results: "",
-		}, // 响应数据 null
+		}, // 响应数据 ""
 	}
 }
 

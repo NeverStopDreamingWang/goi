@@ -1,0 +1,78 @@
+{
+  "server": {
+    "start": "Service Started",
+    "start_time": "Starting Time: {{ .start_time }}",
+    "goi_version": "goi Version: {{ .version }}",
+    "log_split_size": "Split Size: {{ .split_size }}",
+    "log_split_time": "Split Date: {{ .split_time }}",
+    "current_time_zone": "Current Time Zone: {{ .time_zone }}",
+    "cache": {
+      "max_size": "Cache Max Size: {{ .max_size }}",
+      "evict_policy": "- Evict Policy: {{ .evict_policy }}",
+      "expiration_policy": "- Expiration Policy: {{ .expiration_policy }}",
+      "noeviction": "The maximum cache exceeds: {{ .max_size }}"
+    },
+    "invalid_operation": "Invalid Operation！",
+    "listen_address": "Listen Address: {{ .bind_address }}",
+    "close_database": "Close the database connection...",
+    "close_database_error": "Close {{ .engine }} {{ .name }} error: {{ .err }}",
+    "stop_time": "Stopping Time: {{ .stop_time }}",
+    "run_time": "Run Time: {{ .run_time }}",
+    "stop": "Service Stopped",
+    "response_json_error": "Response to json data error: {{ .err }}\n",
+    "response_error": "Response error: {{ .err }}\n"
+  },
+  "second": "second",
+  "minute": "minute",
+  "hour": "hour",
+  "day": "day",
+  "router": {
+    "path_already_exists": "Path already exists: {{ .path }}\n",
+    "path_collision": "Router Path {{ .path }} collision: {{ .collision_path }}\n",
+    "converter_is_not_exists": "The route converter does not exist: {{ .name }}"
+  },
+  "context": {
+    "read_body_error": "Read Body error: {{ .err }}\n",
+    "parse_body_error": "Parsing Body error: {{ .err }}\n",
+    "unmarshal_body_error": "Unmarshal json error: {{ .err }}\n"
+  },
+  "validator": {
+    "validator_is_not_validateFunc": "The validator {{ .name }} has no validateFunc method",
+    "params_error": "Parameter error: {{ .err }}"
+  },
+  "params": {
+    "required_params": "Missing {{ .name }} required parameter",
+    "params_is_not_ptr": "The dest parameter must be of pointer type",
+    "params_is_not_struct_ptr": "{{ .name }} The parameter must be a structure pointer type",
+    "is_not_required_or_optional": "There must be a required and optional label for the {{ .name }} field",
+    "params_is_not_can_set": "{{ .name }} is a value that cannot be assigned",
+    "params_type_is_unsupported": "Unsupported variable types"
+  },
+  "log": {
+    "invalid_path": "Path is invalid: \"\"\n",
+    "invalid_level": "Level is invalid []\n",
+    "invalid_file": "File is invalid nil\n",
+    "invalid_object": "Logger is invalid nil\n",
+    "invalid_NewLoggerFunc": "NewLoggerFunc is invalid nil\n",
+    "split_log_stat_error": "Log splitting-[{{ .name }}] Error Obtaining log file information: {{ .err }}\n",
+    "split_log_rename_error": "Log splitting-[{{ .name }}] Log renaming error: {{ .err }}\n"
+  },
+  "database": {
+    "databases_not_error": "No {{.name}} in DATABASES\n",
+    "select_error": "{{ .engine }} DataBase. {name}}] Query error: {{ .err }}\n",
+    "before_migration": "Before migration BeforeHandler ...",
+    "before_migration_error": "Before migration BeforeHandler error: {{ .err }}\n",
+    "migration": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
+    "migration_error": "Migration error: {{ .err }}\n",
+    "after_migration": "After migration AfterHandler ...",
+    "after_migration_error": "After migration AfterHandler error: {{ .err }}\n",
+    "not_SetModel_error": "Please set SetModel first\n",
+    "is_not_ptr": "{{ .name }} is not a pointer type",
+    "is_not_struct_ptr": "{{ .name }} is not a struct pointer",
+    "is_not_slice_ptr": "{{ .name }} is not a slice pointer"
+  },
+  "jwt": {
+    "expired_signature_error": "Expired Signature Error",
+    "decode_error": "Decode error"
+  }
+}

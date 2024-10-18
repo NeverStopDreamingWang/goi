@@ -1,9 +1,11 @@
 package goi
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // 参数验证器返回错误
@@ -75,7 +77,13 @@ func RegisterValidate(name string, validate validateFunc) {
 func validateValue(validator_name string, value string) ValidationError {
 	validate, ok := metaValidate[validator_name]
 	if ok == false {
-		return NewValidationError(http.StatusInternalServerError, fmt.Sprintf("验证器 %v 没有 validateFunc 方法", validator_name))
+		validatorIsNotValidateFuncMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "validator.validator_is_not_validateFunc",
+			TemplateData: map[string]interface{}{
+				"name": validator_name,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, validatorIsNotValidateFuncMsg)
 	}
 	return validate(value)
 }
@@ -85,7 +93,13 @@ func boolValidate(value string) ValidationError {
 	var BoolRe = `^(true|false)$`
 	re := regexp.MustCompile(BoolRe)
 	if re.MatchString(value) == false {
-		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "validator.params_error",
+			TemplateData: map[string]interface{}{
+				"err": value,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 	return nil
 }
@@ -95,7 +109,13 @@ func intValidate(value string) ValidationError {
 	var IntRe = `^([0-9]+)$`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "validator.params_error",
+			TemplateData: map[string]interface{}{
+				"err": value,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 	return nil
 }
@@ -105,7 +125,13 @@ func stringValidate(value string) ValidationError {
 	var IntRe = `^(.+)$`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "validator.params_error",
+			TemplateData: map[string]interface{}{
+				"err": value,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 	return nil
 }
@@ -115,7 +141,13 @@ func sliceValidate(value string) ValidationError {
 	var IntRe = `^(\[.+\])$`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "validator.params_error",
+			TemplateData: map[string]interface{}{
+				"err": value,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 	return nil
 }
@@ -125,7 +157,13 @@ func mapValidate(value string) ValidationError {
 	var IntRe = `^(\{.+\})$`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "validator.params_error",
+			TemplateData: map[string]interface{}{
+				"err": value,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 	return nil
 }
@@ -135,7 +173,13 @@ func slugValidate(value string) ValidationError {
 	var IntRe = `^([-a-zA-Z0-9_]+)`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "validator.params_error",
+			TemplateData: map[string]interface{}{
+				"err": value,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 	return nil
 }
@@ -145,7 +189,13 @@ func uuidValidate(value string) ValidationError {
 	var IntRe = `^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "validator.params_error",
+			TemplateData: map[string]interface{}{
+				"err": value,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 	return nil
 }

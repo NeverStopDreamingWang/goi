@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	go routerInfo()
+	// go routerInfo()
 
 	// 启动服务
 	example.Server.RunServer()

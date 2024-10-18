@@ -33,7 +33,7 @@ func generateCertificate(SSLPath string) {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(SSLPath, 0755)
 		if err != nil {
-			panic(fmt.Sprintf("创建 SSL 目录错误: ", err))
+			panic(fmt.Sprintf("创建 SSL 目录错误: %v", err))
 		}
 	}
 
@@ -67,6 +67,6 @@ func generateCertificate(SSLPath string) {
 	err = goi.GenerateRSACertificate(2048, certificateTemplate, SSLPath) // RSA 算法
 	// err = GenerateECCCertificate(certificateTemplate, SSLPath) // ECC 算法
 	if err != nil {
-		panic(fmt.Sprintf("生成SSL证书和私钥时发生错误: ", err))
+		panic(fmt.Sprintf("生成SSL证书和私钥时发生错误: %v", err))
 	}
 }

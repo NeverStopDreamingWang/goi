@@ -2,11 +2,13 @@ package goi
 
 import (
 	"embed"
-	"fmt"
 	"net/http"
 	"path"
 	"regexp"
 	"strings"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // HandlerFunc 定义 goi 使用的请求处理程序
@@ -68,12 +70,25 @@ func newRouter() *metaRouter {
 func (router metaRouter) isUrl(path string) {
 	for _, itemRouter := range router.includeRouter {
 		if itemRouter.path == path {
-			panic(fmt.Sprintf("路由已存在: %s\n", path))
+			pathAlreadyExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "router.path_already_exists",
+				TemplateData: map[string]interface{}{
+					"path": path,
+				},
+			})
+			panic(pathAlreadyExistsMsg)
 		}
 		itemParams, itemConverterPattern := routerParse(itemRouter.path)
 		params, converterPattern := routerParse(path)
 		if len(itemParams) != 0 && len(params) != 0 && itemConverterPattern == converterPattern {
-			panic(fmt.Sprintf("%s 冲突路由: %s\n", path, itemRouter.path))
+			pathCollisionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "router.path_collision",
+				TemplateData: map[string]interface{}{
+					"path":           path,
+					"collision_path": itemRouter.path,
+				},
+			})
+			panic(pathCollisionMsg)
 		}
 	}
 }
@@ -238,7 +253,13 @@ func routerParse(path string) ([]routerParam, string) {
 		if len(paramsSlice) == 3 {
 			converter, ok := metaConverter[paramsSlice[1]]
 			if ok == false {
-				panic(fmt.Sprintf("路由转换器不存在: %s", paramsSlice[1]))
+				converterIsNotExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "router.converter_is_not_exists",
+					TemplateData: map[string]interface{}{
+						"name": paramsSlice[1],
+					},
+				})
+				panic(converterIsNotExistsMsg)
 			}
 			re = regexp.MustCompile(paramsSlice[0])
 			path = re.ReplaceAllString(path, converter)
