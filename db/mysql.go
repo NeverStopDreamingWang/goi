@@ -9,74 +9,56 @@ import (
 	"strings"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/NeverStopDreamingWang/goi/model"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 type MySQLDB struct {
-	DB           *sql.DB
-	name         string
-	metaDatabase goi.MetaDataBase
-	model        model.MySQLModel
-	fields       []string
-	where_sql    []string
-	limit_sql    string
-	order_sql    string
-	sql          string
-	args         []interface{}
+	name      string
+	DB        *sql.DB
+	model     model.MySQLModel
+	fields    []string
+	where_sql []string
+	limit_sql string
+	order_sql string
+	sql       string
+	args      []interface{}
 }
 
 // 连接 MySQL 数据库
-func MySQLConnect(UseDataBases ...string) (*MySQLDB, error) {
-	if len(UseDataBases) == 0 { // 使用默认数据库
-		UseDataBases = append(UseDataBases, "default")
+func MySQLConnect(UseDataBases string) (*MySQLDB, error) {
+	database, ok := goi.Settings.DATABASES[UseDataBases]
+	if ok == false {
+		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.databases_not_error",
+			TemplateData: map[string]interface{}{
+				"name": UseDataBases,
+			},
+		})
+		return nil, errors.New(databasesNotErrorMsg)
 	}
-
-	for _, name := range UseDataBases {
-		database, ok := goi.Settings.DATABASES[name]
-		if ok == true && strings.ToLower(database.ENGINE) == "mysql" {
-			databaseObject, err := MetaMySQLConnect(name, database)
-			if err != nil {
-				continue
-			}
-			return databaseObject, err
-		}
+	DB, err := database.DB()
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.New("没有连接成功的 MySQL 数据库！")
-}
-
-// 连接 MySQL
-func MetaMySQLConnect(name string, database goi.MetaDataBase) (*MySQLDB, error) {
-	connectStr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", database.USER, database.PASSWORD, database.HOST, database.PORT, database.NAME)
-	mysqlDB, err := sql.Open(database.ENGINE, connectStr)
 	return &MySQLDB{
-		DB:           mysqlDB,
-		name:         name,
-		metaDatabase: database,
-		model:        nil,
-		fields:       nil,
-		where_sql:    nil,
-		limit_sql:    "",
-		order_sql:    "",
-		sql:          "",
-		args:         nil,
-	}, err
-}
-
-// 关闭连接
-func (mysqlDB *MySQLDB) Close() error {
-	err := mysqlDB.DB.Close()
-	return err
+		name:      UseDataBases,
+		DB:        DB,
+		model:     nil,
+		fields:    nil,
+		where_sql: nil,
+		limit_sql: "",
+		order_sql: "",
+		sql:       "",
+		args:      nil,
+	}, nil
 }
 
 // 获取数据库别名
 func (mysqlDB *MySQLDB) Name() string {
 	return mysqlDB.name
-}
-
-// 获取数据库配置
-func (mysqlDB *MySQLDB) MetaDatabase() goi.MetaDataBase {
-	return mysqlDB.metaDatabase
 }
 
 // 执行语句
@@ -116,18 +98,34 @@ func (mysqlDB *MySQLDB) Query(query string, args ...interface{}) (*sql.Rows, err
 }
 
 // 模型迁移
-func (mysqlDB *MySQLDB) Migrate(model model.MySQLModel) {
+func (mysqlDB *MySQLDB) Migrate(db_name string, model model.MySQLModel) {
 	var err error
 	modelSettings := model.ModelSet()
 
-	row := mysqlDB.DB.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=? AND table_name=?;", mysqlDB.metaDatabase.NAME, modelSettings.TABLE_NAME)
+	row := mysqlDB.DB.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=? AND table_name=?;", db_name, modelSettings.TABLE_NAME)
 	if row.Err() != nil {
-		panic(fmt.Sprintf("MySQL [%v] 数据库 查询错误错误: %v", mysqlDB.name, row.Err()))
+		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.select_error",
+			TemplateData: map[string]interface{}{
+				"engine":  "MySQL",
+				"db_name": mysqlDB.name,
+				"err":     row.Err(),
+			},
+		})
+		panic(selectErrorMsg)
 	}
 	var count int
 	err = row.Scan(&count)
 	if err != nil {
-		panic(fmt.Sprintf("MySQL [%v] 数据库 查询错误错误: %v", mysqlDB.name, err))
+		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.select_error",
+			TemplateData: map[string]interface{}{
+				"engine":  "MySQL",
+				"db_name": mysqlDB.name,
+				"err":     err,
+			},
+		})
+		panic(selectErrorMsg)
 	}
 
 	modelType := reflect.TypeOf(model)
@@ -188,25 +186,57 @@ func (mysqlDB *MySQLDB) Migrate(model model.MySQLModel) {
 	}
 
 	if count == 0 { // 创建表
-		if modelSettings.MigrationsHandler.BeforeFunc != nil { // 迁移之前处理
-			goi.Log.Info("迁移之前处理...")
-			err = modelSettings.MigrationsHandler.BeforeFunc()
+		if modelSettings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
+			beforeMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.before_migration",
+			})
+			goi.Log.Info(beforeMigrationMsg)
+			err = modelSettings.MigrationsHandler.BeforeHandler()
 			if err != nil {
-				panic(fmt.Sprintf("迁移之前处理错误: %v", err))
+				beforeMigrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "database.before_migration_error",
+					TemplateData: map[string]interface{}{
+						"err": err,
+					},
+				})
+				panic(beforeMigrationErrorMsg)
 			}
 		}
-
-		goi.Log.Info(fmt.Sprintf("正在迁移 MySQL: %v 数据库: %v 表: %v ...", mysqlDB.name, mysqlDB.metaDatabase.NAME, modelSettings.TABLE_NAME))
+		migrationModelMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.migration",
+			TemplateData: map[string]interface{}{
+				"engine":  "MySQL",
+				"name":    mysqlDB.name,
+				"db_name": db_name,
+				"tb_name": modelSettings.TABLE_NAME,
+			},
+		})
+		goi.Log.Info(migrationModelMsg)
 		_, err = mysqlDB.Execute(createSql)
 		if err != nil {
-			panic(fmt.Sprintf("迁移错误: %v", err))
+			migrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.migration_error",
+				TemplateData: map[string]interface{}{
+					"err": err,
+				},
+			})
+			panic(migrationErrorMsg)
 		}
 
-		if modelSettings.MigrationsHandler.AfterFunc != nil { // 迁移之后处理
-			goi.Log.Info("迁移之后处理...")
-			err = modelSettings.MigrationsHandler.AfterFunc()
+		if modelSettings.MigrationsHandler.AfterHandler != nil { // 迁移之后处理
+			afterMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.after_migration",
+			})
+			goi.Log.Info(afterMigrationMsg)
+			err = modelSettings.MigrationsHandler.AfterHandler()
 			if err != nil {
-				panic(fmt.Sprintf("迁移之后处理错误: %v", err))
+				afterMigrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "database.after_migration_error",
+					TemplateData: map[string]interface{}{
+						"err": err,
+					},
+				})
+				panic(afterMigrationErrorMsg)
 			}
 		}
 
@@ -228,7 +258,10 @@ func (mysqlDB *MySQLDB) SetModel(model model.MySQLModel) *MySQLDB {
 // 插入数据库
 func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 	if mysqlDB.model == nil {
-		return nil, errors.New("请先设置 SetModel")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return nil, errors.New(notSetModelErrorMsg)
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
@@ -325,7 +358,10 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		mysqlDB.args = nil
 	}()
 	if mysqlDB.model == nil {
-		return errors.New("请先设置 SetModel")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return errors.New(notSetModelErrorMsg)
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
@@ -335,12 +371,24 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		result   = reflect.ValueOf(queryResult)
 	)
 	if result.Kind() != reflect.Ptr {
-		return errors.New("queryResult 不是一个指向结构体的指针")
+		isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotPtrErrorMsg)
 	}
 	result = result.Elem()
 
 	if kind := result.Kind(); kind != reflect.Slice {
-		return errors.New("queryResult 不是一个切片")
+		isNotSlicePtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_slice_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotSlicePtrErrorMsg)
 	}
 
 	ItemType = result.Type().Elem() // 获取切片中的元素
@@ -405,18 +453,33 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		mysqlDB.args = nil
 	}()
 	if mysqlDB.model == nil {
-		return errors.New("请先设置 SetModel")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return errors.New(notSetModelErrorMsg)
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
 	if result.Kind() != reflect.Ptr {
-		return errors.New("queryResult 不是一个指向结构体的指针")
+		isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotPtrErrorMsg)
 	}
 	result = result.Elem()
 
 	if kind := result.Kind(); kind != reflect.Struct {
-		return errors.New("queryResult 不是一个结构体")
+		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_struct_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotStructPtrErrorMsg)
 	}
 
 	queryFields := make([]string, len(mysqlDB.fields))
@@ -457,7 +520,10 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 // 返回查询条数数量
 func (mysqlDB *MySQLDB) Count() (int, error) {
 	if mysqlDB.model == nil {
-		return 0, errors.New("请先设置 SetModel")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return 0, errors.New(notSetModelErrorMsg)
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
@@ -488,7 +554,10 @@ func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 		mysqlDB.args = nil
 	}()
 	if mysqlDB.model == nil {
-		return nil, errors.New("请先设置 SetModel 表")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return nil, errors.New(notSetModelErrorMsg)
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
@@ -530,7 +599,10 @@ func (mysqlDB *MySQLDB) Delete() (sql.Result, error) {
 		mysqlDB.args = nil
 	}()
 	if mysqlDB.model == nil {
-		return nil, errors.New("请先设置 SetModel 表")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return nil, errors.New(notSetModelErrorMsg)
 	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 	mysqlDB.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
