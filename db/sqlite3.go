@@ -5,87 +5,60 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
-	"path"
 	"reflect"
 	"strings"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/NeverStopDreamingWang/goi/model"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 type SQLite3DB struct {
-	DB           *sql.DB
-	name         string
-	metaDatabase goi.MetaDataBase
-	model        model.SQLite3Model
-	fields       []string
-	where_sql    []string
-	limit_sql    string
-	order_sql    string
-	sql          string
-	args         []interface{}
+	name      string
+	DB        *sql.DB
+	model     model.SQLite3Model
+	fields    []string
+	where_sql []string
+	limit_sql string
+	order_sql string
+	sql       string
+	args      []interface{}
 }
 
 // 连接 SQLite3 数据库
-func SQLite3Connect(UseDataBases ...string) (*SQLite3DB, error) {
-	if len(UseDataBases) == 0 { // 使用默认数据库
-		UseDataBases = append(UseDataBases, "default")
+func SQLite3Connect(UseDataBases string) (*SQLite3DB, error) {
+	database, ok := goi.Settings.DATABASES[UseDataBases]
+	if ok == false {
+		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.databases_not_error",
+			TemplateData: map[string]interface{}{
+				"name": UseDataBases,
+			},
+		})
+		return nil, errors.New(databasesNotErrorMsg)
 	}
-
-	for _, name := range UseDataBases {
-		database, ok := goi.Settings.DATABASES[name]
-		if ok == true && strings.ToLower(database.ENGINE) == "sqlite3" {
-			databaseObject, err := MetaSQLite3Connect(name, database)
-			if err != nil {
-				continue
-			}
-			return databaseObject, err
-		}
+	DB, err := database.DB()
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.New("没有连接成功的 SQLite3 数据库！")
-}
-
-// 连接 SQLite3
-func MetaSQLite3Connect(name string, database goi.MetaDataBase) (*SQLite3DB, error) {
-	dir := path.Dir(database.NAME)
-	_, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0755)
-		if err != nil {
-			panic(fmt.Sprintf("创建数据库目录错误: ", err))
-		}
-	}
-	sqlite3DB, err := sql.Open(database.ENGINE, database.NAME)
 	return &SQLite3DB{
-		DB:           sqlite3DB,
-		name:         name,
-		metaDatabase: database,
-		model:        nil,
-		fields:       nil,
-		where_sql:    nil,
-		limit_sql:    "",
-		order_sql:    "",
-		sql:          "",
-		args:         nil,
-	}, err
-}
-
-// 关闭连接
-func (sqlite3DB *SQLite3DB) Close() error {
-	err := sqlite3DB.DB.Close()
-	return err
+		name:      UseDataBases,
+		DB:        DB,
+		model:     nil,
+		fields:    nil,
+		where_sql: nil,
+		limit_sql: "",
+		order_sql: "",
+		sql:       "",
+		args:      nil,
+	}, nil
 }
 
 // 获取数据库别名
 func (sqlite3DB *SQLite3DB) Name() string {
 	return sqlite3DB.name
-}
-
-// 获取数据库配置
-func (sqlite3DB *SQLite3DB) MetaDatabase() goi.MetaDataBase {
-	return sqlite3DB.metaDatabase
 }
 
 // 执行语句
@@ -125,18 +98,34 @@ func (sqlite3DB *SQLite3DB) Query(query string, args ...interface{}) (*sql.Rows,
 }
 
 // 模型迁移
-func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
+func (sqlite3DB *SQLite3DB) Migrate(db_name string, model model.SQLite3Model) {
 	var err error
 	modelSettings := model.ModelSet()
 
 	row := sqlite3DB.DB.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name =?;", modelSettings.TABLE_NAME)
 	if row.Err() != nil {
-		panic(fmt.Sprintf("SQLite3 [%v] 数据库 查询错误错误: %v", sqlite3DB.name, row.Err()))
+		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.select_error",
+			TemplateData: map[string]interface{}{
+				"engine":  "SQLite3",
+				"db_name": sqlite3DB.name,
+				"err":     row.Err(),
+			},
+		})
+		panic(selectErrorMsg)
 	}
 	var count int
 	err = row.Scan(&count)
 	if err != nil {
-		panic(fmt.Sprintf("SQLite3 [%v] 数据库 查询错误错误: %v", sqlite3DB.name, err))
+		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.select_error",
+			TemplateData: map[string]interface{}{
+				"engine":  "SQLite3",
+				"db_name": sqlite3DB.name,
+				"err":     err,
+			},
+		})
+		panic(selectErrorMsg)
 	}
 
 	modelType := reflect.TypeOf(model)
@@ -158,95 +147,60 @@ func (sqlite3DB *SQLite3DB) Migrate(model model.SQLite3Model) {
 	createSql := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", modelSettings.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
 
 	if count == 0 { // 创建表
-		if modelSettings.MigrationsHandler.BeforeFunc != nil { // 迁移之前处理
-			goi.Log.Info("迁移之前处理...")
-			err = modelSettings.MigrationsHandler.BeforeFunc()
+		if modelSettings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
+			beforeMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.before_migration",
+			})
+			goi.Log.Info(beforeMigrationMsg)
+			err = modelSettings.MigrationsHandler.BeforeHandler()
 			if err != nil {
-				panic(fmt.Sprintf("迁移之前处理错误: %v", err))
+				beforeMigrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "database.before_migration_error",
+					TemplateData: map[string]interface{}{
+						"err": err,
+					},
+				})
+				panic(beforeMigrationErrorMsg)
 			}
 		}
-
-		goi.Log.Info(fmt.Sprintf("正在迁移 SQLite3: %v 数据库: %v 表: %v ...", sqlite3DB.name, sqlite3DB.metaDatabase.NAME, modelSettings.TABLE_NAME))
+		migrationModelMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.migration",
+			TemplateData: map[string]interface{}{
+				"engine":  "SQLite3",
+				"name":    sqlite3DB.name,
+				"db_name": db_name,
+				"tb_name": modelSettings.TABLE_NAME,
+			},
+		})
+		goi.Log.Info(migrationModelMsg)
 		_, err = sqlite3DB.Execute(createSql)
 		if err != nil {
-			panic(fmt.Sprintf("迁移错误: %v", err))
+			migrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.migration_error",
+				TemplateData: map[string]interface{}{
+					"err": err,
+				},
+			})
+			panic(migrationErrorMsg)
 		}
 
-		if modelSettings.MigrationsHandler.AfterFunc != nil { // 迁移之后处理
-			goi.Log.Info("迁移之后处理...")
-			err = modelSettings.MigrationsHandler.AfterFunc()
+		if modelSettings.MigrationsHandler.AfterHandler != nil { // 迁移之后处理
+			afterMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.after_migration",
+			})
+			goi.Log.Info(afterMigrationMsg)
+			err = modelSettings.MigrationsHandler.AfterHandler()
 			if err != nil {
-				panic(fmt.Sprintf("迁移之后处理错误: %v", err))
+				afterMigrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "database.after_migration_error",
+					TemplateData: map[string]interface{}{
+						"err": err,
+					},
+				})
+				panic(afterMigrationErrorMsg)
 			}
 		}
 
-	} else { // 自动更新表
-		var rows *sql.Rows
-		rows, err = sqlite3DB.Query("SELECT sql FROM sqlite_master WHERE type='table' AND name=?;", modelSettings.TABLE_NAME)
-		if err != nil {
-			panic(fmt.Sprintf("SQLite3 [%v] 数据库 查询错误: %v", sqlite3DB.name, err))
-		}
-		var old_createSql string
-		for rows.Next() {
-			err = rows.Scan(&old_createSql)
-			if err != nil {
-				panic(fmt.Sprintf("SQLite3 [%v] 数据库 查询错误: %v", sqlite3DB.name, err))
-			}
-		}
-		if err = rows.Close(); err != nil {
-			panic(fmt.Sprintf("关闭 Rows 错误: %v", err))
-		}
-		if createSql != old_createSql { // 创建表语句不一样
-			goi.Log.Info(fmt.Sprintf("正在更新 SQLite3: %v 数据库: %v 表: %v ", sqlite3DB.name, sqlite3DB.metaDatabase.NAME, modelSettings.TABLE_NAME))
-
-			oldTableName := fmt.Sprintf("%v_%v", modelSettings.TABLE_NAME, goi.Version())
-			goi.Log.Info(fmt.Sprintf("- 重命名旧表：%v...", oldTableName))
-
-			_, err = sqlite3DB.Execute(fmt.Sprintf("ALTER TABLE `%v` RENAME TO `%v`;", modelSettings.TABLE_NAME, oldTableName))
-			if err != nil {
-				panic(fmt.Sprintf("重命名旧表错误: %v", err))
-			}
-
-			goi.Log.Info(fmt.Sprintf("- 创建新表：%v...", modelSettings.TABLE_NAME))
-			_, err = sqlite3DB.Execute(createSql)
-			if err != nil {
-				panic(fmt.Sprintf("创建新表错误: %v", err))
-			}
-
-			TabelFieldSlice := make([]string, 0)
-			rows, err = sqlite3DB.Query(fmt.Sprintf("PRAGMA table_info(`%v`);", oldTableName))
-			if err != nil {
-				panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", sqlite3DB.name, err))
-			}
-			for rows.Next() {
-				var (
-					cid        int
-					name       string
-					dataType   string
-					notNull    int
-					dflt_value *string
-					pk         int
-				)
-				err = rows.Scan(&cid, &name, &dataType, &notNull, &dflt_value, &pk)
-				if err != nil {
-					panic(fmt.Sprintf("连接 SQLite3 [%v] 数据库 错误: %v", sqlite3DB.name, err))
-				}
-				if _, exists := tampFieldMap[name]; exists {
-					TabelFieldSlice = append(TabelFieldSlice, name)
-				}
-			}
-			if err = rows.Close(); err != nil {
-				panic(fmt.Sprintf("关闭 Rows 错误: %v", err))
-			}
-
-			goi.Log.Info("- 迁移数据...")
-			migrateFieldSql := strings.Join(TabelFieldSlice, ",")
-			migrateSql := fmt.Sprintf("INSERT INTO `%v` (%v) SELECT %v FROM `%v`;", modelSettings.TABLE_NAME, migrateFieldSql, migrateFieldSql, oldTableName)
-			_, err = sqlite3DB.Execute(migrateSql)
-			if err != nil {
-				panic(fmt.Sprintf("迁移表数据错误: %v", err))
-			}
-		}
 	}
 }
 
@@ -265,7 +219,10 @@ func (sqlite3DB *SQLite3DB) SetModel(model model.SQLite3Model) *SQLite3DB {
 // 插入数据库
 func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, error) {
 	if sqlite3DB.model == nil {
-		return nil, errors.New("请先设置 SetModel")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return nil, errors.New(notSetModelErrorMsg)
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
@@ -361,7 +318,10 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		sqlite3DB.args = nil
 	}()
 	if sqlite3DB.model == nil {
-		return errors.New("请先设置 SetModel")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return errors.New(notSetModelErrorMsg)
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
@@ -371,12 +331,24 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		result   = reflect.ValueOf(queryResult)
 	)
 	if result.Kind() != reflect.Ptr {
-		return errors.New("queryResult 不是一个指向结构体的指针")
+		isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotPtrErrorMsg)
 	}
 	result = result.Elem()
 
 	if kind := result.Kind(); kind != reflect.Slice {
-		return errors.New("queryResult 不是一个切片")
+		isNotSlicePtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_slice_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotSlicePtrErrorMsg)
 	}
 
 	ItemType = result.Type().Elem() // 获取切片中的元素
@@ -440,18 +412,33 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		sqlite3DB.args = nil
 	}()
 	if sqlite3DB.model == nil {
-		return errors.New("请先设置 SetModel")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return errors.New(notSetModelErrorMsg)
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
 	if result.Kind() != reflect.Ptr {
-		return errors.New("queryResult 不是一个指向结构体的指针")
+		isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotPtrErrorMsg)
 	}
 	result = result.Elem()
 
 	if kind := result.Kind(); kind != reflect.Struct {
-		return errors.New("queryResult 不是一个结构体")
+		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_struct_ptr",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotStructPtrErrorMsg)
 	}
 
 	queryFields := make([]string, len(sqlite3DB.fields))
@@ -492,7 +479,10 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 // 返回查询条数数量
 func (sqlite3DB *SQLite3DB) Count() (int, error) {
 	if sqlite3DB.model == nil {
-		return 0, errors.New("请先设置 SetModel")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return 0, errors.New(notSetModelErrorMsg)
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
@@ -522,7 +512,10 @@ func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, er
 		sqlite3DB.args = nil
 	}()
 	if sqlite3DB.model == nil {
-		return nil, errors.New("请先设置 SetModel 表")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return nil, errors.New(notSetModelErrorMsg)
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
@@ -563,7 +556,10 @@ func (sqlite3DB *SQLite3DB) Delete() (sql.Result, error) {
 		sqlite3DB.args = nil
 	}()
 	if sqlite3DB.model == nil {
-		return nil, errors.New("请先设置 SetModel 表")
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		return nil, errors.New(notSetModelErrorMsg)
 	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 	sqlite3DB.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
