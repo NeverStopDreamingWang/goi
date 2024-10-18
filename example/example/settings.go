@@ -44,11 +44,10 @@ func init() {
 
 	// 设置 SSL
 	Server.Settings.SSL = goi.MetaSSL{
-		STATUS:    false,  // SSL 开关
+		STATUS:    false,      // SSL 开关
 		TYPE:      "自签证书", // 证书类型
 		CERT_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/example.crt"),
-		KEY_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/example.ke"+
-			"y"),
+		KEY_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/example.key"),
 	}
 
 	// 数据库配置
