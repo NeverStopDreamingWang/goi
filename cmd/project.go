@@ -156,8 +156,10 @@ var settings = InitFile{
 		content := `package %s
 
 import (
+	"database/sql"
 	"os"
 	"path"
+	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
@@ -166,18 +168,17 @@ import (
 var Server *goi.Engine
 
 func init() {
+	var err error
+	
 	// 创建 http 服务
 	Server = goi.NewHttpServer()
-	
-	// version := goi.Version() // 获取版本信息
-	// fmt.Println("goi 版本", version)
 	
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
 	// 设置网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 监听地址
-	Server.Settings.BIND_ADDRESS = "0.0.0.0"
+	Server.Settings.BIND_ADDRESS = "0.0.0.0" // 默认 127.0.0.1
 	// 端口
 	Server.Settings.PORT = 8080
 	// 绑定域名
@@ -201,41 +202,68 @@ func init() {
 	}
 	
 	// 数据库配置
-	Server.Settings.DATABASES["default"] = goi.MetaDataBase{
-		ENGINE:   "mysql",
-		NAME:     "test_goi",
-		USER:     "root",
-		PASSWORD: "123",
-		HOST:     "127.0.0.1",
-		PORT:     3306,
+	Server.Settings.DATABASES["default"] = &goi.DataBase{
+		ENGINE:         "mysql",
+		DataSourceName: "root:123@tcp(127.0.0.1:3306)/test_goi",
+		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
+			mysqlDB, err := sql.Open(ENGINE, DataSourceName)
+			if err != nil {
+				panic(err)
+			}
+			// 设置连接池参数
+			mysqlDB.SetMaxOpenConns(10)           // 设置最大打开连接数
+			mysqlDB.SetMaxIdleConns(5)            // 设置最大空闲连接数
+			mysqlDB.SetConnMaxLifetime(time.Hour) // 设置连接的最大存活时间
+			return mysqlDB, nil
+		},
 	}
-	Server.Settings.DATABASES["sqlite_1"] = goi.MetaDataBase{
-		ENGINE:   "sqlite3",
-		NAME:     path.Join(Server.Settings.BASE_DIR, "data/test_goi.db"),
-		USER:     "",
-		PASSWORD: "",
-		HOST:     "",
-		PORT:     0,
+	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
+		ENGINE:         "sqlite3",
+		DataSourceName: path.Join(Server.Settings.BASE_DIR, "data/test_goi.db"),
+		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
+			sqliteDB, err := sql.Open(ENGINE, DataSourceName)
+			if err != nil {
+				panic(err)
+			}
+			return sqliteDB, nil
+		},
 	}
 	
 	// 设置时区
-	Server.Settings.TIME_ZONE = "Asia/Shanghai" // 默认 Asia/Shanghai，America/New_York
+	err = Server.Settings.SetTimeZone("Asia/Shanghai") // 默认为空字符串 ''，本地时间
+	if err != nil {
+		panic(err)
+	}
+	//  Server.Settings.GetLocation() 获取时区 Location
+
+	// 设置框架语言
+	err = Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
+	if err != nil {
+		panic(err)
+	}
 	
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
 	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
 	Server.Cache.MAX_SIZE = 100                   // 单位为字节，0 为不限制使用
 	
-	// 日志设置
+	// 日志 DEBUG 设置
 	Server.Log.DEBUG = true
-	// 日志列表
-	defaultLog := newDefaultLog()
-	accessLog := newAccessLog()
-	errorLog := newErrorLog()
-	Server.Log.LOGGERS = []*goi.MetaLogger{
-		defaultLog, // 默认日志
-		accessLog, // 访问日志
-		errorLog, // 错误日志
+	// 注册日志
+	defaultLog := newDefaultLog() // 默认日志
+	err = Server.Log.RegisterLogger(defaultLog)
+	if err != nil {
+		panic(err)
+	}
+	accessLog := newAccessLog() // 访问日志
+	err = Server.Log.RegisterLogger(accessLog)
+	if err != nil {
+		panic(err)
+	}
+	errorLog := newErrorLog() // 错误日志
+	err = Server.Log.RegisterLogger(errorLog)
+	if err != nil {
+		panic(err)
 	}
 	
 	// 日志打印
@@ -245,14 +273,11 @@ func init() {
 	// Server.Log.Error() = goi.Log.Error()
 	
 	// 设置验证器错误，不指定则使用默认
-	Server.Validator.VALIDATION_ERROR = &validationError{}
+	Server.Validator.SetValidationError(&validationError{})
 	
 	// 设置自定义配置
-	// redis配置
-	Server.Settings.Set("REDIS_HOST", "127.0.0.1")
-	Server.Settings.Set("REDIS_PORT", 6379)
-	Server.Settings.Set("REDIS_PASSWORD", "123")
-	Server.Settings.Set("REDIS_DB", 0)
+	// Server.Settings.Set(key string, value interface{})
+	// Server.Settings.Get(key string, dest interface{})
 }
 `
 		return fmt.Sprintf(content, projectName, secretKey, privateKey, publicKey, projectName, projectName)
@@ -310,7 +335,7 @@ func phoneValidate(value string) goi.ValidationError {
 	var IntRe = %s
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
-		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%%v", value))
 	}
 	return nil
 }
@@ -366,10 +391,13 @@ import (
 )
 
 // 日志输出
-func LogPrintln(logger *goi.MetaLogger, log ...interface{}) {
-	timeStr := fmt.Sprintf("[%v]", time.Now().In(Server.Settings.LOCATION).Format("2006-01-02 15:04:05"))
-	log = append([]interface{}{timeStr}, log...)
-	logger.Logger.Println(log...)
+func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
+	timeStr := fmt.Sprintf("[%%v]", time.Now().In(Server.Settings.GetLocation()).Format("2006-01-02 15:04:05"))
+	if level != "" {
+		timeStr += fmt.Sprintf(" %%v", level)
+	}
+	logs = append([]interface{}{timeStr}, logs...)
+	logger.Logger.Println(logs...)
 }
 
 // 默认日志
@@ -377,6 +405,15 @@ func newDefaultLog() *goi.MetaLogger {
 	var err error
 
 	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/server.log")
+	OutDir := path.Dir(OutPath) // 检查目录
+	_, err = os.Stat(OutDir)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(OutDir, 0755)
+		if err != nil {
+			panic(fmt.Sprintf("创建日志目录错误: %%v", err))
+		}
+	}
+
 	defaultLog := &goi.MetaLogger{
 		Name: "默认日志",
 		Path: OutPath,
@@ -387,24 +424,17 @@ func newDefaultLog() *goi.MetaLogger {
 		},
 		Logger:        nil,
 		File:          nil,
-		CreateTime:    time.Now().In(Server.Settings.LOCATION),
-		SPLIT_SIZE:    1024 * 1024 * 5, // 切割大小
-		SPLIT_TIME:    "2006-01-02",    // 切割日期，每天
-		NewLoggerFunc: newDefaultLog,
-		LoggerPrint:   LogPrintln,
+		LoggerPrint:     LogPrintln, // 日志输出格式
+		CreateTime:    time.Now().In(Server.Settings.GetLocation()),
+		SPLIT_SIZE:      1024 * 5,      // 切割大小
+		SPLIT_TIME:      "2006-01-02",  // 切割日期，每天
+		NewLoggerFunc:   newDefaultLog, // 初始化日志，同时用于自动切割日志后初始化新日志
+		SplitLoggerFunc: nil,           // 自定义日志切割：传入旧的日志对象，返回新日志对象
 	}
 
-	OutDir := path.Dir(OutPath) // 检查目录
-	_, err = os.Stat(OutDir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(OutDir, 0755)
-		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误: ", err))
-		}
-	}
 	defaultLog.File, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[%v]日志错误: ", defaultLog.Name, err))
+		panic(fmt.Sprintf("初始化[%%v]日志错误: %%v", defaultLog.Name, err))
 	}
 	defaultLog.Logger = log.New(defaultLog.File, "", 0)
 
@@ -416,6 +446,15 @@ func newAccessLog() *goi.MetaLogger {
 	var err error
 
 	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/access.log")
+	OutDir := path.Dir(OutPath) // 检查目录
+	_, err = os.Stat(OutDir)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(OutDir, 0755)
+		if err != nil {
+			panic(fmt.Sprintf("创建日志目录错误: %%v", err))
+		}
+	}
+
 	defaultLog := &goi.MetaLogger{
 		Name: "访问日志",
 		Path: OutPath,
@@ -424,24 +463,16 @@ func newAccessLog() *goi.MetaLogger {
 		},
 		Logger:        nil,
 		File:          nil,
-		CreateTime:    time.Now().In(Server.Settings.LOCATION),
-		SPLIT_SIZE:    1024 * 1024 * 5, // 切割大小
-		SPLIT_TIME:    "2006-01-02",    // 切割日期，每天
-		NewLoggerFunc: newAccessLog,
-		LoggerPrint:   LogPrintln,
-	}
-
-	OutDir := path.Dir(OutPath) // 检查目录
-	_, err = os.Stat(OutDir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(OutDir, 0755)
-		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误: ", err))
-		}
+		LoggerPrint:     LogPrintln, // 日志输出格式
+		CreateTime:    time.Now().In(Server.Settings.GetLocation()),
+		SPLIT_SIZE:      1024 * 1024 * 5, // 切割大小
+		SPLIT_TIME:      "2006-01-02",    // 切割日期，每天
+		NewLoggerFunc:   newAccessLog,    // 初始化日志，同时用于自动切割日志后初始化新日志
+		SplitLoggerFunc: nil,             // 自定义日志切割：传入旧的日志对象，返回新日志对象
 	}
 	defaultLog.File, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[%v]日志错误: ", defaultLog.Name, err))
+		panic(fmt.Sprintf("初始化[%%v]日志错误: %%v", defaultLog.Name, err))
 	}
 	defaultLog.Logger = log.New(defaultLog.File, "", 0)
 
@@ -453,6 +484,15 @@ func newErrorLog() *goi.MetaLogger {
 	var err error
 
 	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/error.log")
+	OutDir := path.Dir(OutPath) // 检查目录
+	_, err = os.Stat(OutDir)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(OutDir, 0755)
+		if err != nil {
+			panic(fmt.Sprintf("创建日志目录错误: %%v", err))
+		}
+	}
+
 	defaultLog := &goi.MetaLogger{
 		Name: "错误日志",
 		Path: OutPath,
@@ -461,29 +501,82 @@ func newErrorLog() *goi.MetaLogger {
 		},
 		Logger:        nil,
 		File:          nil,
-		CreateTime:    time.Now().In(Server.Settings.LOCATION),
-		SPLIT_SIZE:    1024 * 1024 * 5, // 切割大小
-		SPLIT_TIME:    "2006-01-02",    // 切割日期，每天
-		NewLoggerFunc: newErrorLog,
-		LoggerPrint:   LogPrintln,
+		LoggerPrint:     LogPrintln, // 日志输出格式
+		CreateTime:    time.Now().In(Server.Settings.GetLocation()),
+		SPLIT_SIZE:      1024 * 1024 * 5,   // 切割大小
+		SPLIT_TIME:      "2006-01-02",      // 切割日期，每天
+		NewLoggerFunc:   newErrorLog,       // 初始化日志，同时用于自动切割日志后初始化新日志
+		SplitLoggerFunc: mySplitLoggerFunc, // 自定义日志切割：传入旧的日志对象，返回新日志对象，nil 根据 SPLIT_SIZE,SPLIT_TIME 自动切割
 	}
 
-	OutDir := path.Dir(OutPath) // 检查目录
-	_, err = os.Stat(OutDir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(OutDir, 0755)
-		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误: ", err))
-		}
-	}
 	defaultLog.File, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[%v]日志错误: ", defaultLog.Name, err))
+		panic(fmt.Sprintf("初始化[%%v]日志错误: %%v", defaultLog.Name, err))
 	}
 	defaultLog.Logger = log.New(defaultLog.File, "", 0)
 
 	return defaultLog
 }
+
+// 自定义日志切割
+func mySplitLoggerFunc(OldLogger *goi.MetaLogger) *goi.MetaLogger {
+	var err error
+	if OldLogger.Path == "" {
+		return nil
+	}
+	fileInfo, err := os.Stat(OldLogger.Path)
+	if err != nil {
+		panic(fmt.Sprintf("日志切割-[%%v]获取日志文件信息错误: %%v", OldLogger.Name, err))
+		return nil
+	}
+	fileSize := fileInfo.Size()
+	nowTime := time.Now().In(Server.Settings.GetLocation())
+	isSplit := false
+	if OldLogger.SPLIT_TIME != "" { // 按照日志大小
+		if OldLogger.CreateTime.Format(OldLogger.SPLIT_TIME) != nowTime.Format(OldLogger.SPLIT_TIME) {
+			isSplit = true
+		}
+	}
+	if OldLogger.SPLIT_SIZE != 0 { // 按照日期
+		if OldLogger.SPLIT_SIZE <= fileSize {
+			isSplit = true
+		}
+	}
+	if isSplit == true && OldLogger.Path != "" && OldLogger.File != nil {
+		var (
+			fileName string
+			fileExt  string
+			fileDir  string
+		)
+
+		fileName = filepath.Base(OldLogger.Path)
+		fileDir = filepath.Dir(OldLogger.Path)
+		for i := len(fileName) - 1; i >= 0 && !os.IsPathSeparator(fileName[i]); i-- {
+			if fileName[i] == '.' {
+				fileExt = fileName[i:]
+				fileName = fileName[:i]
+				break
+			}
+		}
+		// 自动加 _n
+		oldInfoFile := path.Join(fileDir, fmt.Sprintf("%%v_%%v%%v", fileName, OldLogger.CreateTime.Format(OldLogger.SPLIT_TIME), fileExt))
+		_, err = os.Stat(oldInfoFile)
+		for idx := 1; err == nil; idx++ {
+			oldInfoFile = path.Join(fileDir, fmt.Sprintf("%%v_%%v(%%v)%%v", fileName, OldLogger.CreateTime.Format(OldLogger.SPLIT_TIME), idx, fileExt))
+			_, err = os.Stat(oldInfoFile)
+		}
+
+		OldLogger.File.Close()
+		err = os.Rename(OldLogger.Path, oldInfoFile)
+		if err != nil {
+			panic(fmt.Sprintf("日志切割-[%%v]日志重命名错误: %%v", OldLogger.Name, err))
+		}
+		// 重新初始化
+		return OldLogger.NewLoggerFunc()
+	}
+	return nil
+}
+
 `
 		return fmt.Sprintf(content, projectName)
 	},
@@ -530,7 +623,7 @@ func generateCertificate(SSLPath string) {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(SSLPath, 0755)
 		if err != nil {
-			panic(fmt.Sprintf("创建 SSL 目录错误: ", err))
+			panic(fmt.Sprintf("创建 SSL 目录错误: %%v", err))
 		}
 	}
 
@@ -554,8 +647,8 @@ func generateCertificate(SSLPath string) {
 			SerialNumber:       "",              // 证书持有者的序列号
 			CommonName:         "%s",       //  证书的通用名称
 		},
-		NotBefore:             time.Now().In(Server.Settings.LOCATION),
-		NotAfter:              time.Now().In(Server.Settings.LOCATION).Add(365 * 24 * time.Hour),
+		NotBefore:             time.Now().In(Server.Settings.GetLocation()),
+		NotAfter:              time.Now().In(Server.Settings.GetLocation()).Add(365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
@@ -564,7 +657,7 @@ func generateCertificate(SSLPath string) {
 	err = goi.GenerateRSACertificate(2048, certificateTemplate, SSLPath) // RSA 算法
 	// err = GenerateECCCertificate(certificateTemplate, SSLPath) // ECC 算法
 	if err != nil {
-		panic(fmt.Sprintf("生成SSL证书和私钥时发生错误: ", err))
+		panic(fmt.Sprintf("生成SSL证书和私钥时发生错误: %%v", err))
 	}
 }
 `

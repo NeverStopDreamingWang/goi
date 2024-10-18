@@ -65,28 +65,26 @@ var models = InitFile{
 	Content: func() string {
 		content := `package %s
 
-import (
-	// "github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/db"
-	// "github.com/NeverStopDreamingWang/goi/model"
-)
+// import (
+// 	"github.com/NeverStopDreamingWang/goi"
+// 	"github.com/NeverStopDreamingWang/goi/db"
+// 	"github.com/NeverStopDreamingWang/goi/model"
+// )
 
 func init() {
 	// MySQL 数据库
-	mysqlObj, err := db.MySQLConnect("default", "mysql_slave_2")
-	if err != nil {
-		panic(err)
-	}
-	defer mysqlObj.Close()
-	// mysqlObj.Migrate(TestModel{})
+	// mysqlDB, err := db.MySQLConnect("default")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// mysqlDB.Migrate("test_goi", TestModel{})
 	
 	// sqlite 数据库
-	SQLite3DB, err := db.SQLite3Connect("sqlite_1")
-	if err != nil {
-		panic(err)
-	}
-	defer SQLite3DB.Close()
-	// SQLite3DB.Migrate(TestSqliteModel{})
+	// SQLite3DB, err := db.SQLite3Connect("sqlite")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// SQLite3DB.Migrate("test_goi", TestSqliteModel{})
 }
 `
 		return fmt.Sprintf(content, appName)
@@ -183,7 +181,11 @@ func TestParams(request *goi.Request) interface{} {
 	fmt.Println(msg)
 	return goi.Response{
 		Status: http.StatusCreated,               // 返回指定响应状态码 404
-		Data:   goi.Data{http.StatusOK, msg, ""}, // 响应数据 null
+		Data:   goi.Data{
+			Status:  http.StatusOK,
+			Message: msg,
+			Results: "",
+		}, // 响应数据 ""
 	}
 }
 

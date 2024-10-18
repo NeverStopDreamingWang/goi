@@ -12,10 +12,13 @@ import (
 )
 
 // 日志输出
-func LogPrintln(logger *goi.MetaLogger, log ...interface{}) {
+func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
 	timeStr := fmt.Sprintf("[%v]", time.Now().In(Server.Settings.GetLocation()).Format("2006-01-02 15:04:05"))
-	log = append([]interface{}{timeStr}, log...)
-	logger.Logger.Println(log...)
+	if level != "" {
+		timeStr += fmt.Sprintf(" %v", level)
+	}
+	logs = append([]interface{}{timeStr}, logs...)
+	logger.Logger.Println(logs...)
 }
 
 // 默认日志
@@ -28,7 +31,7 @@ func newDefaultLog() *goi.MetaLogger {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
 		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误: ", err))
+			panic(fmt.Sprintf("创建日志目录错误: %v", err))
 		}
 	}
 
@@ -51,7 +54,7 @@ func newDefaultLog() *goi.MetaLogger {
 	}
 	defaultLog.File, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[%v]日志错误: ", defaultLog.Name, err))
+		panic(fmt.Sprintf("初始化[%v]日志错误: %v", defaultLog.Name, err))
 	}
 	defaultLog.Logger = log.New(defaultLog.File, "", 0)
 
@@ -68,7 +71,7 @@ func newAccessLog() *goi.MetaLogger {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
 		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误: ", err))
+			panic(fmt.Sprintf("创建日志目录错误: %v", err))
 		}
 	}
 
@@ -89,7 +92,7 @@ func newAccessLog() *goi.MetaLogger {
 	}
 	defaultLog.File, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[%v]日志错误: ", defaultLog.Name, err))
+		panic(fmt.Sprintf("初始化[%v]日志错误: %v", defaultLog.Name, err))
 	}
 	defaultLog.Logger = log.New(defaultLog.File, "", 0)
 
@@ -106,7 +109,7 @@ func newErrorLog() *goi.MetaLogger {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
 		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误: ", err))
+			panic(fmt.Sprintf("创建日志目录错误: %v", err))
 		}
 	}
 
@@ -127,7 +130,7 @@ func newErrorLog() *goi.MetaLogger {
 	}
 	defaultLog.File, err = os.OpenFile(OutPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
 	if err != nil {
-		panic(fmt.Sprintln("初始化[%v]日志错误: ", defaultLog.Name, err))
+		panic(fmt.Sprintf("初始化[%v]日志错误: %v", defaultLog.Name, err))
 	}
 	defaultLog.Logger = log.New(defaultLog.File, "", 0)
 

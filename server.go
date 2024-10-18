@@ -13,6 +13,9 @@ import (
 	"reflect"
 	"syscall"
 	"time"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // Http 服务
@@ -62,29 +65,63 @@ func NewHttpServer() *Engine {
 // 启动 http 服务
 func (engine *Engine) RunServer() {
 	var err error
+	startTime := time.Now().In(engine.Settings.GetLocation())
+	engine.startTime = &startTime
+
 	// 初始化日志
 	engine.Log.InitLogger()
 
-	startTime := time.Now().In(engine.Settings.GetLocation())
-	engine.startTime = &startTime
-	engine.Log.Log(meta, "---start---")
-	engine.Log.Log(meta, fmt.Sprintf("启动时间: %s", engine.startTime.Format("2006-01-02 15:04:05")))
-	engine.Log.Log(meta, fmt.Sprintf("goi 版本: %v", version))
+	startMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.start",
+	})
+	engine.Log.Log(meta, startMsg)
+	startTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.start_time",
+		TemplateData: map[string]interface{}{
+			"start_time": engine.startTime.Format("2006-01-02 15:04:05"),
+		},
+	})
+	engine.Log.Log(meta, startTimeMsg)
 
+	goiVersionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.goi_version",
+		TemplateData: map[string]interface{}{
+			"version": version,
+		},
+	})
+	engine.Log.Log(meta, goiVersionMsg)
 	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
 	for _, logger := range engine.Log.loggers {
 		log := fmt.Sprintf("- [%v]", logger.Name)
 		if logger.SPLIT_SIZE != 0 {
-			log += fmt.Sprintf(" 切割大小: %v", formatBytes(logger.SPLIT_SIZE))
+			logSplitSizeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "server.log_split_size",
+				TemplateData: map[string]interface{}{
+					"split_size": formatBytes(logger.SPLIT_SIZE),
+				},
+			})
+			log += " " + logSplitSizeMsg
 		}
 		if logger.SPLIT_TIME != "" {
-			log += fmt.Sprintf(" 切割日期: %v", logger.SPLIT_TIME)
+			logSplitSizeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "server.log_split_size",
+				TemplateData: map[string]interface{}{
+					"split_size": logger.SPLIT_TIME,
+				},
+			})
+			log += " " + logSplitSizeMsg
 		}
 		engine.Log.Log(meta, log)
 	}
 
 	if engine.Settings.GetTimeZone() != "" {
-		engine.Log.Log(meta, fmt.Sprintf("当前时区: %v", engine.Settings.GetTimeZone()))
+		currentTimeZoneMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.log_split_size",
+			TemplateData: map[string]interface{}{
+				"time_zone": engine.Settings.GetTimeZone(),
+			},
+		})
+		engine.Log.Log(meta, currentTimeZoneMsg)
 	}
 
 	// 初始化缓存
@@ -101,7 +138,10 @@ func (engine *Engine) RunServer() {
 			err = engine.StopServer()
 			engine.Log.Error(err)
 		default:
-			engine.Log.Log(meta, "无效操作！")
+			invalidOperationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "server.invalid_operation",
+			})
+			engine.Log.Log(meta, invalidOperationMsg)
 		}
 	}()
 
@@ -130,15 +170,39 @@ func (engine *Engine) RunServer() {
 			Certificates: []tls.Certificate{cert},
 		}
 
-		engine.Log.Log(meta, fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		listenAddressMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.listen_address",
+			TemplateData: map[string]interface{}{
+				"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
+			},
+		})
+		engine.Log.Log(meta, listenAddressMsg)
 		if engine.Settings.BIND_DOMAIN != "" {
-			engine.Log.Log(meta, fmt.Sprintf("监听地址: https://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK))
+			listenDomainMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "server.listen_address",
+				TemplateData: map[string]interface{}{
+					"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
+				},
+			})
+			engine.Log.Log(meta, listenDomainMsg)
 		}
 		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
 	} else {
-		engine.Log.Log(meta, fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK))
+		listenAddressMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.listen_address",
+			TemplateData: map[string]interface{}{
+				"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
+			},
+		})
+		engine.Log.Log(meta, listenAddressMsg)
 		if engine.Settings.BIND_DOMAIN != "" {
-			engine.Log.Log(meta, fmt.Sprintf("监听地址: http://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK))
+			listenDomainMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "server.listen_address",
+				TemplateData: map[string]interface{}{
+					"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
+				},
+			})
+			engine.Log.Log(meta, listenDomainMsg)
 		}
 		err = engine.server.Serve(ln)
 	}
@@ -149,12 +213,49 @@ func (engine *Engine) RunServer() {
 
 // 停止 http 服务
 func (engine *Engine) StopServer() error {
-	engine.Log.Log(meta, "服务已停止！")
-	engine.Log.Log(meta, fmt.Sprintf("停止时间: %s", time.Now().In(engine.Settings.GetLocation()).Format("2006-01-02 15:04:05")))
-	engine.Log.Log(meta, fmt.Sprintf("共运行: %v", engine.runTimeStr()))
-	engine.Log.Log(meta, "---end---")
+	var err error
+
+	if len(engine.Settings.DATABASES) != 0 {
+		closeDatabaseMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.close_database",
+		})
+		engine.Log.Log(meta, closeDatabaseMsg)
+	}
+	for name, database := range engine.Settings.DATABASES {
+		err = database.Close()
+		if err != nil {
+			closeDatabaseErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "server.close_database_error",
+				TemplateData: map[string]interface{}{
+					"engine": database.ENGINE,
+					"name":   name,
+					"err":    err,
+				},
+			})
+			engine.Log.Log(meta, closeDatabaseErrorMsg)
+		}
+	}
+
+	stopTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.stop_time",
+		TemplateData: map[string]interface{}{
+			"stop_time": time.Now().In(engine.Settings.GetLocation()).Format("2006-01-02 15:04:05"),
+		},
+	})
+	engine.Log.Log(meta, stopTimeMsg)
+	runTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.run_time",
+		TemplateData: map[string]interface{}{
+			"run_time": engine.runTimeStr(),
+		},
+	})
+	engine.Log.Log(meta, runTimeMsg)
+	stopMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.stop",
+	})
+	engine.Log.Log(meta, stopMsg)
 	// 关闭服务器
-	err := engine.server.Shutdown(context.Background())
+	err = engine.server.Shutdown(context.Background())
 	if err != nil {
 		return err
 	}
@@ -179,15 +280,30 @@ func (engine *Engine) runTimeStr() string {
 	hours := int(elapsed.Hours()) % 24
 	days := int(elapsed.Hours() / 24)
 
-	elapsedStr := fmt.Sprintf("%02d秒", seconds)
-	if minutes > 0 {
-		elapsedStr = fmt.Sprintf("%02d分", minutes) + elapsedStr
+	var elapsedStr string
+	if days > 0 {
+		dayMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "day",
+		})
+		elapsedStr += fmt.Sprintf("%d %v ", days, dayMsg)
 	}
 	if hours > 0 {
-		elapsedStr = fmt.Sprintf("%02d时", hours) + elapsedStr
+		hourMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "hour",
+		})
+		elapsedStr += fmt.Sprintf("%02d %v ", hours, hourMsg)
 	}
-	if days > 0 {
-		elapsedStr = fmt.Sprintf("%d天", days) + elapsedStr
+	if minutes > 0 {
+		minuteMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "minute",
+		})
+		elapsedStr += fmt.Sprintf("%02d %v ", minutes, minuteMsg)
+	}
+	if seconds > 0 {
+		secondMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "second",
+		})
+		elapsedStr += fmt.Sprintf("%02d %v ", seconds, secondMsg)
 	}
 	return elapsedStr
 }
@@ -282,13 +398,25 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// 返回响应
 	if err != nil {
-		panic(fmt.Sprintf("响应 json 数据错误: %v\n", err))
+		responseJsonErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.response_json_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		panic(responseJsonErrorMsg)
 	}
 	// 返回响应
 	response.WriteHeader(StatusCode)
 	_, err = response.Write(ResponseData)
 	if err != nil {
-		panic(fmt.Sprintf("响应错误: %v\n", err))
+		responseErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.response_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		panic(responseErrorMsg)
 	}
 }
 

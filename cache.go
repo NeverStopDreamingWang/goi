@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"container/list"
 	"encoding/gob"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 type EvictPolicy uint8      // 缓存淘汰策略
@@ -86,9 +88,27 @@ func newCache() *metaCache {
 
 // 初始化缓存
 func (cache *metaCache) initCache() {
-	Log.Log(meta, fmt.Sprintf("缓存大小: %v", formatBytes(Cache.MAX_SIZE)))
-	Log.Log(meta, fmt.Sprintf("- 淘汰策略: %v", evictPolicyNames[Cache.EVICT_POLICY]))
-	Log.Log(meta, fmt.Sprintf("- 过期策略: %v", expirationPolicyNames[Cache.EXPIRATION_POLICY]))
+	MaxSizeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.cache.max_size",
+		TemplateData: map[string]interface{}{
+			"max_size": formatBytes(Cache.MAX_SIZE),
+		},
+	})
+	Log.Log(meta, MaxSizeMsg)
+	EvictPolicyMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.cache.evict_policy",
+		TemplateData: map[string]interface{}{
+			"evict_policy": evictPolicyNames[Cache.EVICT_POLICY],
+		},
+	})
+	Log.Log(meta, EvictPolicyMsg)
+	ExpirationPolicyMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "server.cache.expiration_policy",
+		TemplateData: map[string]interface{}{
+			"expiration_policy": expirationPolicyNames[Cache.EXPIRATION_POLICY],
+		},
+	})
+	Log.Log(meta, ExpirationPolicyMsg)
 
 	if cache.EXPIRATION_POLICY == PERIODIC {
 		go cache.cachePeriodicDeleteExpires()
@@ -210,7 +230,13 @@ func (cache *metaCache) cacheEvict() {
 
 	switch cache.EVICT_POLICY {
 	case NOEVICTION: // 直接返回错误，不淘汰任何已经存在的键
-		panic("超出设置最大缓存！")
+		NoEvictionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.cache.noeviction",
+			TemplateData: map[string]interface{}{
+				"max_size": formatBytes(Cache.MAX_SIZE),
+			},
+		})
+		panic(NoEvictionMsg)
 	case ALLKEYS_RANDOM: // 所有的键 随机移除 key
 		for key, _ := range cache.dict {
 			if cache.MAX_SIZE > cache.used_size {

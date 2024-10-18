@@ -1,0 +1,78 @@
+{
+  "server": {
+    "start": "服务已启动",
+    "start_time": "启动时间: {{ .start_time }}",
+    "goi_version": "goi 版本: {{ .version }}",
+    "log_split_size": "切割大小: {{ .split_size }}",
+    "log_split_time": "切割日期: {{ .split_time }}",
+    "current_time_zone": "当前时区: {{ .time_zone }}",
+    "cache": {
+      "max_size": "缓存大小: {{ .max_size }}",
+      "evict_policy": "- 淘汰策略: {{ .evict_policy }}",
+      "expiration_policy": "- 过期策略: {{ .expiration_policy }}",
+      "noeviction": "超出设置最大缓存: {{ .max_size }}"
+    },
+    "invalid_operation": "无效操作！",
+    "listen_address": "监听地址: {{ .bind_address }}",
+    "close_database": "正在关闭数据库连接...",
+    "close_database_error": "关闭 {{ .engine }} {{ .name }} 错误: {{ .err }}",
+    "stop_time": "停止时间: {{ .stop_time }}",
+    "run_time": "运行时间: {{ .run_time }}",
+    "stop": "服务已停止",
+    "response_json_error": "响应 json 数据错误: {{ .err }}\n",
+    "response_error": "响应错误: {{ .err }}\n"
+  },
+  "second": "秒",
+  "minute": "分",
+  "hour": "时",
+  "day": "天",
+  "router": {
+    "path_already_exists": "路由已存在: {{ .path }}\n",
+    "path_collision": "路由 {{ .path }} 冲突: {{ .collision_path }}\n",
+    "converter_is_not_exists": "路由转换器不存在: {{ .name }}\n"
+  },
+  "context": {
+    "read_body_error": "读取 Body 错误: {{ .err }}\n",
+    "parse_body_error": "解析 Body 错误: {{ .err }}\n",
+    "unmarshal_body_error": "解析 json 错误: {{ .err }}\n"
+  },
+  "validator": {
+    "validator_is_not_validateFunc": "验证器 {{ .name }} 没有 validateFunc 方法",
+    "params_error": "参数错误: {{ .err }}"
+  },
+  "params": {
+    "required_params": "缺少 {{ .name }} 必填参数",
+    "params_is_not_ptr": "{{ .name }} 参数必须是指针类型",
+    "params_is_not_struct_ptr": "{{ .name }} 参数必须是结构体指针类型",
+    "is_not_required_or_optional": "{{ .name }} 字段标签 required 与 optional 必须存在一个",
+    "params_is_not_can_set": "{{ .name }} 是不可赋值的值",
+    "params_type_is_unsupported": "不支持的变量类型"
+  },
+  "log": {
+    "invalid_path": "Path 为无效的: \"\"\n",
+    "invalid_level": "Level 为无效的 []\n",
+    "invalid_file": "File 为无效的 nil\n",
+    "invalid_object": "Logger 为无效的 nil\n",
+    "invalid_NewLoggerFunc": "NewLoggerFunc 为无效的 nil\n",
+    "split_log_stat_error": "日志切割-[{{ .name }}] 获取日志文件信息错误: {{ .err }}\n",
+    "split_log_rename_error": "日志切割-[{{ .name }}] 日志重命名错误: {{ .err }}\n"
+  },
+  "database": {
+    "databases_not_error": "DATABASES 中没有 {{ .name }}\n",
+    "select_error": "{{ .engine }} 数据库 [{{ .db_name }}] 查询错误: {{ .err }}\n",
+    "before_migration": "迁移之前 BeforeHandler...",
+    "before_migration_error": "迁移之前 BeforeHandler 错误: {{ .err }}\n",
+    "migration": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}...",
+    "migration_error": "迁移错误: {{ .err }}\n",
+    "after_migration": "迁移之后 AfterHandler...",
+    "after_migration_error": "迁移之后 AfterHandler 错误： {{ .err }}\n",
+    "not_SetModel_error": "请先设置 SetModel",
+    "is_not_ptr": "{{ .name }} 不是指针类型",
+    "is_not_struct_ptr": "{{ .name }} 不是结构体指针",
+    "is_not_slice_ptr": "{{ .name }} 不是切片指针"
+  },
+  "jwt": {
+    "expired_signature_error": "签名过期错误",
+    "decode_error": "解码错误"
+  }
+}
