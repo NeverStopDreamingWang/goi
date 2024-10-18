@@ -8,37 +8,41 @@ import (
 	"path"
 	"path/filepath"
 	"time"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-type Level uint8
+type Level string
 
 // 日志等级
 const (
-	meta Level = iota // 框架日志
-	DEBUG
-	INFO
-	WARNING
-	ERROR
+	meta    Level = "" // 框架日志
+	DEBUG   Level = "DEBUG"
+	INFO    Level = "INFO"
+	WARNING Level = "WARNING"
+	ERROR   Level = "ERROR"
 )
 
 // 日志
 type MetaLogger struct {
-	Name            string                                       // 日志名称
-	Path            string                                       // 日志输出路径
-	Level           []Level                                      // 日志等级
-	Logger          *log.Logger                                  // 日志对象
-	File            *os.File                                     // 日志文件对象
-	LoggerPrint     func(logger *MetaLogger, log ...interface{}) // 自定义日志输出
-	CreateTime      time.Time                                    // 日志创建时间
-	SPLIT_SIZE      int64                                        // 日志切割大小，默认为 1G 1024 * 1024 * 1024
-	SPLIT_TIME      string                                       // 日志切割大小，默认按天切割
-	NewLoggerFunc   func() *MetaLogger                           // 初始化日志，同时用于自动切割日志后初始化新日志
-	SplitLoggerFunc func(OldLogger *MetaLogger) *MetaLogger      // 自定义日志切割：传入旧的日志对象，返回新日志对象
+	Name            string                                                    // 日志名称
+	Path            string                                                    // 日志输出路径
+	Level           []Level                                                   // 日志等级
+	Logger          *log.Logger                                               // 日志对象
+	File            *os.File                                                  // 日志文件对象
+	LoggerPrint     func(logger *MetaLogger, level Level, log ...interface{}) // 自定义日志输出
+	CreateTime      time.Time                                                 // 日志创建时间
+	SPLIT_SIZE      int64                                                     // 日志切割大小，默认为 1G 1024 * 1024 * 1024
+	SPLIT_TIME      string                                                    // 日志切割大小，默认按天切割
+	NewLoggerFunc   func() *MetaLogger                                        // 初始化日志，同时用于自动切割日志后初始化新日志
+	SplitLoggerFunc func(OldLogger *MetaLogger) *MetaLogger                   // 自定义日志切割：传入旧的日志对象，返回新日志对象
 }
 
 type metaLog struct {
-	DEBUG   bool          // 默认为 true
-	loggers []*MetaLogger // 日志列表
+	DEBUG          bool          // 默认为 true
+	console_logger *MetaLogger   // DEBUG 日志
+	loggers        []*MetaLogger // 日志列表
 }
 
 func newLog() *metaLog {
@@ -87,29 +91,6 @@ func (metaLog *metaLog) RegisterLogger(loggers *MetaLogger) error {
 
 // 日志初始化
 func (metaLog *metaLog) InitLogger() {
-	// DEBUG
-	if metaLog.DEBUG == true {
-		// 初始化控制台日志
-		consoleLogger := &MetaLogger{
-			Name:            "Debug-console",
-			Path:            "",
-			Level:           []Level{DEBUG, INFO, WARNING, ERROR},
-			Logger:          log.New(os.Stdout, "", 0),
-			File:            nil,
-			CreateTime:      time.Now().In(Settings.GetLocation()),
-			SPLIT_SIZE:      0,
-			SPLIT_TIME:      "",
-			SplitLoggerFunc: nil,
-			NewLoggerFunc:   nil,
-			LoggerPrint: func(logger *MetaLogger, log ...interface{}) {
-				timeStr := fmt.Sprintf("[%v]", time.Now().In(Settings.GetLocation()).Format("2006-01-02 15:04:05"))
-				log = append([]interface{}{timeStr}, log...)
-				logger.Logger.Println(log...)
-			},
-		}
-		metaLog.loggers = append(metaLog.loggers, consoleLogger)
-		consoleLogger.Logger.SetFlags(0)
-	}
 	for i, logger := range metaLog.loggers {
 		var newLogger *MetaLogger
 		if logger.SplitLoggerFunc != nil {
@@ -139,24 +120,67 @@ func (metaLog *metaLog) Error(log ...interface{}) {
 }
 
 // log 打印日志
-func (metaLog *metaLog) Log(level Level, log ...interface{}) {
+func (metaLog *metaLog) Log(level Level, logs ...interface{}) {
+	// DEBUG
+	if metaLog.DEBUG == true {
+		if metaLog.console_logger == nil {
+			// 初始化控制台日志
+			metaLog.console_logger = &MetaLogger{
+				Name:            "Debug-console",
+				Path:            "",
+				Level:           []Level{DEBUG, INFO, WARNING, ERROR},
+				Logger:          log.New(os.Stdout, "", 0),
+				File:            nil,
+				CreateTime:      time.Now().In(Settings.GetLocation()),
+				SPLIT_SIZE:      0,
+				SPLIT_TIME:      "",
+				SplitLoggerFunc: nil,
+				NewLoggerFunc:   nil,
+				LoggerPrint:     defaultLoggerPrint,
+			}
+			metaLog.console_logger.Logger.SetFlags(0)
+		}
+		metaLog.console_logger.LoggerPrint(metaLog.console_logger, level, logs...)
+	} else if metaLog.console_logger != nil {
+		metaLog.console_logger = nil
+	}
+
 	// 输出到所有符合的日志中
 	for i, logger := range metaLog.loggers {
 		for _, loggerLever := range logger.Level {
 			if level == loggerLever || level == meta {
-				newLogger := defaultSplitLoggerFunc(logger)
+				var newLogger *MetaLogger
+				if logger.SplitLoggerFunc != nil {
+					newLogger = logger.SplitLoggerFunc(logger) // 调用自定义日志切割
+				} else {
+					newLogger = defaultSplitLoggerFunc(logger) // 调用默认日志切割
+				}
 				if newLogger != nil {
 					metaLog.loggers[i] = newLogger
 					logger = newLogger
 				}
-				logger.LoggerPrint(logger, log...) // 调用自定义输出函数
+				if logger.LoggerPrint != nil {
+					logger.LoggerPrint(logger, level, logs...) // 调用自定义输出
+				} else {
+					defaultLoggerPrint(logger, level, logs...) // 调用默认输出
+				}
 				break
 			}
 		}
 	}
 }
 
-// 日志切割
+// 默认日志输出格式
+func defaultLoggerPrint(logger *MetaLogger, level Level, logs ...interface{}) {
+	timeStr := fmt.Sprintf("[%v]", time.Now().In(Settings.GetLocation()).Format("2006-01-02 15:04:05"))
+	if level != "" {
+		timeStr += fmt.Sprintf(" %v", level)
+	}
+	logs = append([]interface{}{timeStr}, logs...)
+	logger.Logger.Println(logs...)
+}
+
+// 默认日志切割
 func defaultSplitLoggerFunc(OldLogger *MetaLogger) *MetaLogger {
 	var err error
 	if OldLogger.Path == "" {
