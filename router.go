@@ -192,7 +192,7 @@ func (router metaRouter) Next(routerChan chan<- RouteInfo) {
 }
 
 // 路由解析
-func (router metaRouter) routeResolution(Path string, PathParams metaValues) (AsView, bool) {
+func (router metaRouter) routeResolution(Path string, PathParams ParamsValues) (AsView, bool) {
 	var re *regexp.Regexp
 	params, converterPattern := routerParse(router.path)
 	var reString string

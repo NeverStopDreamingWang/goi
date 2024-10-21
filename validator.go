@@ -122,7 +122,7 @@ func intValidate(value string) ValidationError {
 
 // string 类型
 func stringValidate(value string) ValidationError {
-	var IntRe = `^(.+)$`
+	var IntRe = `^(.*)$`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -138,7 +138,7 @@ func stringValidate(value string) ValidationError {
 
 // slice 类型
 func sliceValidate(value string) ValidationError {
-	var IntRe = `^(\[.+\])$`
+	var IntRe = `^(\[.*\])$`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -154,7 +154,7 @@ func sliceValidate(value string) ValidationError {
 
 // map 类型
 func mapValidate(value string) ValidationError {
-	var IntRe = `^(\{.+\})$`
+	var IntRe = `^(\{.*\})$`
 	re := regexp.MustCompile(IntRe)
 	if re.MatchString(value) == false {
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
