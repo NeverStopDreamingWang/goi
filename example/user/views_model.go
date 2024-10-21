@@ -19,8 +19,10 @@ type testModelListParams struct {
 // 读取多条数据到 Model
 func TestModelList(request *goi.Request) interface{} {
 	var params testModelListParams
+	var bodyParams goi.BodyParamsValues
 	var validationErr goi.ValidationError
-	validationErr = request.BodyParams.ParseParams(&params)
+	bodyParams = request.BodyParams()
+	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
 		// 验证器返回
 		return validationErr.Response()
@@ -109,8 +111,10 @@ type testModelRetrieveParams struct {
 // 读取第一条数据到 Model
 func TestModelRetrieve(request *goi.Request) interface{} {
 	var params testModelRetrieveParams
+	var bodyParams goi.BodyParamsValues
 	var validationErr goi.ValidationError
-	validationErr = request.BodyParams.ParseParams(&params)
+	bodyParams = request.BodyParams()
+	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
 		// 验证器返回
 		return validationErr.Response()
@@ -178,8 +182,10 @@ type testModelCreateParams struct {
 // 添加一条数据到 Model
 func TestModelCreate(request *goi.Request) interface{} {
 	var params testModelCreateParams
+	var bodyParams goi.BodyParamsValues
 	var validationErr goi.ValidationError
-	validationErr = request.BodyParams.ParseParams(&params)
+	bodyParams = request.BodyParams()
+	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
 		// 验证器返回
 		return validationErr.Response()
@@ -265,8 +271,10 @@ type testModelUpdateParams struct {
 // 修改 Model
 func TestModelUpdate(request *goi.Request) interface{} {
 	var params testModelUpdateParams
+	var bodyParams goi.BodyParamsValues
 	var validationErr goi.ValidationError
-	validationErr = request.BodyParams.ParseParams(&params)
+	bodyParams = request.BodyParams()
+	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
 		// 验证器返回
 		return validationErr.Response()

@@ -31,8 +31,6 @@ func TestParams(request *goi.Request) interface{} {
 	var name string
 	var validationErr goi.ValidationError
 	validationErr = request.PathParams.Get("name", &name) // 路由传参
-	// validationErr = request.QueryParams.Get("name", &name) // Query 传参
-	// validationErr = request.BodyParams.Get("name", &name) // Body 传参
 	if validationErr != nil {
 		return validationErr.Response()
 	}
@@ -66,10 +64,10 @@ type testParamsValidParams struct {
 
 func TestParamsValid(request *goi.Request) interface{} {
 	var params testParamsValidParams
+	var bodyParams goi.BodyParamsValues
 	var validationErr goi.ValidationError
-	// validationErr = request.PathParams.ParseParams(&params) // 路由传参
-	// validationErr = request.QueryParams.ParseParams(&params) // Query 传参
-	validationErr = request.BodyParams.ParseParams(&params) // Body 传参
+	bodyParams = request.BodyParams() // Body 传参
+	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
 		// 验证器返回
 		return validationErr.Response()
@@ -201,8 +199,9 @@ func TestFile(request *goi.Request) interface{} {
 
 // 异常处理
 func TestPanic(request *goi.Request) interface{} {
-
-	name := request.BodyParams["name"]
+	var bodyParams goi.BodyParamsValues
+	bodyParams = request.BodyParams()
+	name := bodyParams["name"]
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)

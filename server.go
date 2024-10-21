@@ -318,11 +318,9 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var err error
 	// 初始化请求
 	request := &Request{
-		Object:      r,
-		Context:     ctx,
-		PathParams:  make(metaValues),
-		QueryParams: make(metaValues),
-		BodyParams:  make(metaValues),
+		Object:     r,
+		Context:    ctx,
+		PathParams: make(ParamsValues),
 	}
 	// 创建自定义响应写入器
 	response := &customResponseWriter{
@@ -330,8 +328,6 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer metaRecovery(request, response) // 异常处理
-
-	request.parseRequestParams()
 
 	// 处理 HTTP 请求
 	StatusCode := http.StatusOK

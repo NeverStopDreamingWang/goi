@@ -3,7 +3,6 @@ package goi
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -19,21 +18,25 @@ type Data struct {
 }
 
 type Request struct {
-	Object      *http.Request
-	Context     context.Context // 请求上下文
-	PathParams  metaValues      // 路由参数
-	QueryParams metaValues      // 查询字符串参数
-	BodyParams  metaValues      // Body 传参
+	Object     *http.Request
+	Context    context.Context // 请求上下文
+	PathParams ParamsValues    // 路由参数
 }
 
-// 解析请求参数
-func (request *Request) parseRequestParams() {
-	var err error
+// 解析 查询字符串参数
+func (request *Request) QueryParams() ParamsValues {
+	var QueryParams ParamsValues = make(ParamsValues)
 	// 解析 Query 参数
 	for name, values := range request.Object.URL.Query() {
-		request.QueryParams[name] = append(request.QueryParams[name], values...)
+		QueryParams[name] = append(QueryParams[name], values...)
 	}
+	return QueryParams
+}
 
+// 解析 Body 传参
+func (request *Request) BodyParams() BodyParamsValues {
+	var err error
+	var bodyParams BodyParamsValues = make(BodyParamsValues)
 	// 解析 Body 参数
 	err = request.Object.ParseMultipartForm(32 << 20)
 	if err != nil {
@@ -49,7 +52,9 @@ func (request *Request) parseRequestParams() {
 		}
 	}
 	for name, values := range request.Object.Form {
-		request.BodyParams[name] = append(request.BodyParams[name], values...)
+		for _, v := range values {
+			bodyParams[name] = append(bodyParams[name], v)
+		}
 	}
 
 	// 解析 json 数据
@@ -76,14 +81,10 @@ func (request *Request) parseRequestParams() {
 			panic(unmarshalBodyErrorMsg)
 		}
 		for name, value := range jsonData {
-			stringValue, ok := value.(string)
-			if !ok {
-				// 如果无法转换为字符串，则使用 fmt.Sprint 将其转换为字符串
-				stringValue = fmt.Sprint(value)
-			}
-			request.BodyParams[name] = append(request.BodyParams[name], stringValue)
+			bodyParams[name] = append(bodyParams[name], value)
 		}
 	}
+	return bodyParams
 }
 
 // 自定义响应

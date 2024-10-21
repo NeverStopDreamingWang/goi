@@ -29,8 +29,10 @@ type testloginParams struct {
 
 func Testlogin(request *goi.Request) interface{} {
 	var params testloginParams
+	var bodyParams goi.BodyParamsValues
 	var validationErr goi.ValidationError
-	validationErr = request.BodyParams.ParseParams(&params)
+	bodyParams = request.BodyParams()
+	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
 		// 验证器返回
 		return validationErr.Response()
