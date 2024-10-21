@@ -235,7 +235,7 @@ func defaultSplitLoggerFunc(OldLogger *MetaLogger) *MetaLogger {
 			_, err = os.Stat(oldInfoFile)
 		}
 
-		OldLogger.File.Close()
+		_ = OldLogger.File.Close()
 		err = os.Rename(OldLogger.Path, oldInfoFile)
 		if err != nil {
 			splitLogReNameErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{

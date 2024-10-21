@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 
@@ -76,7 +76,7 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 		}
 
 		// 创建文件
-		filePath := path.Join(itemPath, itemFile.Name)
+		filePath := filepath.Join(itemPath, itemFile.Name)
 		file, err := os.Create(filePath)
 
 		Content := itemFile.Content()
@@ -111,7 +111,7 @@ func main() {
 		return fmt.Sprintf(content, projectName, projectName, projectName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, projectName)
+		return filepath.Join(baseDir, projectName)
 	},
 }
 
@@ -145,7 +145,7 @@ require (
 		return fmt.Sprintf(content, projectName, version, goi.Version())
 	},
 	Path: func() string {
-		return path.Join(baseDir, projectName)
+		return filepath.Join(baseDir, projectName)
 	},
 }
 
@@ -158,7 +158,7 @@ var settings = InitFile{
 import (
 	"database/sql"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
@@ -197,14 +197,14 @@ func init() {
 	Server.Settings.SSL = goi.MetaSSL{
 		STATUS:    false, // SSL 开关
 		TYPE:      "自签证书", // 证书类型
-		CERT_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/%s.crt"),
-		KEY_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/%s.key"),
+		CERT_PATH: filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.crt"),
+		KEY_PATH:  filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.key"),
 	}
 	
 	// 数据库配置
 	Server.Settings.DATABASES["default"] = &goi.DataBase{
 		ENGINE:         "mysql",
-		DataSourceName: "root:123@tcp(127.0.0.1:3306)/test_goi",
+		DataSourceName: "root:123@tcp(127.0.0.1:3306)/%s",
 		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
 			mysqlDB, err := sql.Open(ENGINE, DataSourceName)
 			if err != nil {
@@ -219,11 +219,12 @@ func init() {
 	}
 	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
 		ENGINE:         "sqlite3",
-		DataSourceName: path.Join(Server.Settings.BASE_DIR, "data/test_goi.db"),
+		DataSourceName: filepath.Join(Server.Settings.BASE_DIR, "data", "%s.db"),
 		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
-			sqliteDB, err := sql.Open(ENGINE, DataSourceName)
+			var sqliteDB *sql.DB
+			sqliteDB, err = sql.Open(ENGINE, DataSourceName)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			return sqliteDB, nil
 		},
@@ -277,10 +278,10 @@ func init() {
 	// Server.Settings.Get(key string, dest interface{})
 }
 `
-		return fmt.Sprintf(content, projectName, secretKey, privateKey, publicKey, projectName, projectName)
+		return fmt.Sprintf(content, projectName, secretKey, privateKey, publicKey, projectName, projectName, projectName, projectName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, projectName, projectName)
+		return filepath.Join(baseDir, projectName, projectName)
 	},
 }
 
@@ -303,7 +304,7 @@ func init() {
 		return fmt.Sprintf(content, projectName, "`(1[3456789]\\d{9})`")
 	},
 	Path: func() string {
-		return path.Join(baseDir, projectName, projectName)
+		return filepath.Join(baseDir, projectName, projectName)
 	},
 }
 
@@ -367,7 +368,7 @@ func (validationErr *validationError) Response() goi.Response {
 		return fmt.Sprintf(content, projectName, "`^(1[3456789]\\d{9})$`")
 	},
 	Path: func() string {
-		return path.Join(baseDir, projectName, projectName)
+		return filepath.Join(baseDir, projectName, projectName)
 	},
 }
 
@@ -382,6 +383,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
@@ -401,8 +403,8 @@ func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
 func newDefaultLog() *goi.MetaLogger {
 	var err error
 
-	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/server.log")
-	OutDir := path.Dir(OutPath) // 检查目录
+	OutPath := filepath.Join(Server.Settings.BASE_DIR, "logs", "server.log")
+	OutDir := filepath.Dir(OutPath) // 检查目录
 	_, err = os.Stat(OutDir)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
@@ -442,8 +444,8 @@ func newDefaultLog() *goi.MetaLogger {
 func newAccessLog() *goi.MetaLogger {
 	var err error
 
-	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/access.log")
-	OutDir := path.Dir(OutPath) // 检查目录
+	OutPath := filepath.Join(Server.Settings.BASE_DIR, "logs", "access.log")
+	OutDir := filepath.Dir(OutPath) // 检查目录
 	_, err = os.Stat(OutDir)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
@@ -480,8 +482,8 @@ func newAccessLog() *goi.MetaLogger {
 func newErrorLog() *goi.MetaLogger {
 	var err error
 
-	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/error.log")
-	OutDir := path.Dir(OutPath) // 检查目录
+	OutPath := filepath.Join(Server.Settings.BASE_DIR, "logs", "error.log")
+	OutDir := filepath.Dir(OutPath) // 检查目录
 	_, err = os.Stat(OutDir)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
@@ -578,7 +580,7 @@ func mySplitLoggerFunc(OldLogger *goi.MetaLogger) *goi.MetaLogger {
 		return fmt.Sprintf(content, projectName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, projectName, projectName)
+		return filepath.Join(baseDir, projectName, projectName)
 	},
 }
 
@@ -593,15 +595,16 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/NeverStopDreamingWang/goi"
 	"math/big"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {
-	SSLPath := path.Join(Server.Settings.BASE_DIR, "ssl")
+	SSLPath := filepath.Join(Server.Settings.BASE_DIR, "ssl")
 	if Server.Settings.SSL.STATUS == false {
 		return
 	}
@@ -661,6 +664,6 @@ func generateCertificate(SSLPath string) {
 		return fmt.Sprintf(content, projectName, projectName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, projectName, projectName)
+		return filepath.Join(baseDir, projectName, projectName)
 	},
 }

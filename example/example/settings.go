@@ -3,7 +3,7 @@ package example
 import (
 	"database/sql"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
@@ -46,8 +46,8 @@ func init() {
 	Server.Settings.SSL = goi.MetaSSL{
 		STATUS:    false,  // SSL 开关
 		TYPE:      "自签证书", // 证书类型
-		CERT_PATH: path.Join(Server.Settings.BASE_DIR, "ssl/example.crt"),
-		KEY_PATH:  path.Join(Server.Settings.BASE_DIR, "ssl/example.key"),
+		CERT_PATH: filepath.Join(Server.Settings.BASE_DIR, "ssl", "example.crt"),
+		KEY_PATH:  filepath.Join(Server.Settings.BASE_DIR, "ssl", "example.key"),
 	}
 
 	// 数据库配置
@@ -68,11 +68,12 @@ func init() {
 	}
 	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
 		ENGINE:         "sqlite3",
-		DataSourceName: path.Join(Server.Settings.BASE_DIR, "data/test_goi.db"),
+		DataSourceName: filepath.Join(Server.Settings.BASE_DIR, "data", "test_goi.db"),
 		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
-			sqliteDB, err := sql.Open(ENGINE, DataSourceName)
+			var sqliteDB *sql.DB
+			sqliteDB, err = sql.Open(ENGINE, DataSourceName)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			return sqliteDB, nil
 		},

@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {
-	SSLPath := path.Join(Server.Settings.BASE_DIR, "ssl")
+	SSLPath := filepath.Join(Server.Settings.BASE_DIR, "ssl")
 	if Server.Settings.SSL.STATUS == false {
 		return
 	}
