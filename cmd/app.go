@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -46,7 +45,7 @@ func GoiCreateApp(cmd *cobra.Command, args []string) error {
 		}
 
 		// 创建文件
-		filePath := path.Join(itemPath, itemFile.Name)
+		filePath := filepath.Join(itemPath, itemFile.Name)
 		file, err := os.Create(filePath)
 
 		Content := itemFile.Content()
@@ -90,7 +89,7 @@ func init() {
 		return fmt.Sprintf(content, appName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, appName)
+		return filepath.Join(baseDir, appName)
 	},
 }
 
@@ -104,7 +103,7 @@ var serializer = InitFile{
 		return fmt.Sprintf(content, appName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, appName)
+		return filepath.Join(baseDir, appName)
 	},
 }
 
@@ -138,7 +137,7 @@ func init() {
 		return fmt.Sprintf(content, appName, projectName, projectName, appName, projectName, appName, appName, appName, appName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, appName)
+		return filepath.Join(baseDir, appName)
 	},
 }
 
@@ -238,7 +237,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		return fmt.Sprintf(content, appName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, appName)
+		return filepath.Join(baseDir, appName)
 	},
 }
 
@@ -252,6 +251,6 @@ var utils = InitFile{
 		return fmt.Sprintf(content, appName)
 	},
 	Path: func() string {
-		return path.Join(baseDir, appName)
+		return filepath.Join(baseDir, appName)
 	},
 }

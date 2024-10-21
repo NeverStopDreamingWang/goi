@@ -25,8 +25,8 @@ func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
 func newDefaultLog() *goi.MetaLogger {
 	var err error
 
-	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/server.log")
-	OutDir := path.Dir(OutPath) // 检查目录
+	OutPath := filepath.Join(Server.Settings.BASE_DIR, "logs", "server.log")
+	OutDir := filepath.Dir(OutPath) // 检查目录
 	_, err = os.Stat(OutDir)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
@@ -65,8 +65,8 @@ func newDefaultLog() *goi.MetaLogger {
 func newAccessLog() *goi.MetaLogger {
 	var err error
 
-	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/access.log")
-	OutDir := path.Dir(OutPath) // 检查目录
+	OutPath := filepath.Join(Server.Settings.BASE_DIR, "logs", "access.log")
+	OutDir := filepath.Dir(OutPath) // 检查目录
 	_, err = os.Stat(OutDir)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
@@ -103,8 +103,8 @@ func newAccessLog() *goi.MetaLogger {
 func newErrorLog() *goi.MetaLogger {
 	var err error
 
-	OutPath := path.Join(Server.Settings.BASE_DIR, "logs/error.log")
-	OutDir := path.Dir(OutPath) // 检查目录
+	OutPath := filepath.Join(Server.Settings.BASE_DIR, "logs", "error.log")
+	OutDir := filepath.Dir(OutPath) // 检查目录
 	_, err = os.Stat(OutDir)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(OutDir, 0755)
@@ -185,7 +185,7 @@ func mySplitLoggerFunc(OldLogger *goi.MetaLogger) *goi.MetaLogger {
 			_, err = os.Stat(oldInfoFile)
 		}
 
-		OldLogger.File.Close()
+		_ = OldLogger.File.Close()
 		err = os.Rename(OldLogger.Path, oldInfoFile)
 		if err != nil {
 			panic(fmt.Sprintf("日志切割-[%v]日志重命名错误: %v", OldLogger.Name, err))
