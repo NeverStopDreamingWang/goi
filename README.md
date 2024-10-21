@@ -2,6 +2,9 @@
 
 基于 `net/http` 进行开发的 Web 框架
 
+[详细示例：example](./example)
+
+
 ## goi 创建命令
 
 使用 `go env GOMODCACHE` 获取 go 软件包路径：`mypath\Go\pkg\mod` + `github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe`
@@ -779,5 +782,3 @@ if jwt.JwtDecodeError(err) { // token 解码错误！
 ```
 
 ##                  
-
-[详细示例：example](./example)
