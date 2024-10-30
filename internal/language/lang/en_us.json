@@ -20,16 +20,18 @@
     "run_time": "Run Time: {{ .run_time }}",
     "stop": "Service Stopped",
     "response_json_error": "Response to json data error: {{ .err }}\n",
-    "response_error": "Response error: {{ .err }}\n"
+    "response_error": "Response error: {{ .err }}\n",
+    "url_not_allowed": "URL NOT FOUND \"{{ .path }}\".",
+    "method_not_allowed": "Method \"{{ .method }}\" not allowed."
   },
   "second": "second",
   "minute": "minute",
   "hour": "hour",
   "day": "day",
   "router": {
-    "path_already_exists": "Path already exists: {{ .path }}\n",
-    "path_collision": "Router Path {{ .path }} collision: {{ .collision_path }}\n",
-    "converter_is_not_exists": "The route converter does not exist: {{ .name }}"
+    "path_already_exists": "Path already exists: \"{{ .path }}\"\n",
+    "path_collision": "Router Path \"{{ .path }}\" collision: \"{{ .collision_path }}\"\n",
+    "converter_is_not_exists": "The route converter does not exist: \"{{ .name }}\""
   },
   "context": {
     "read_body_error": "Read Body error: {{ .err }}\n",
@@ -37,17 +39,17 @@
     "unmarshal_body_error": "Unmarshal json error: {{ .err }}\n"
   },
   "validator": {
-    "validator_is_not_validateFunc": "The validator {{ .name }} has no validateFunc method",
+    "validator_is_not_validateFunc": "The validator \"{{ .name }}\" has no validateFunc method",
     "params_error": "Parameter error: {{ .err }}"
   },
   "params": {
-    "required_params": "Missing {{ .name }} required parameter",
-    "params_is_not_ptr": "The dest parameter must be of pointer type",
-    "params_is_not_struct_ptr": "{{ .name }} The parameter must be a structure pointer type",
-    "is_not_required_or_optional": "There must be a required and optional label for the {{ .name }} field",
-    "params_is_not_can_set": "{{ .name }} is a value that cannot be assigned",
+    "required_params": "Missing \"{{ .name }}\" required parameter",
+    "params_is_not_ptr": "The \"{{ .name }}\" parameter must be of pointer type",
+    "params_is_not_struct_ptr": "\"{{ .name }}\" The parameter must be a structure pointer type",
+    "is_not_required_or_optional": "There must be a required and optional label for the \"{{ .name }}\" field",
+    "params_is_not_can_set": "\"{{ .name }}\" is a value that cannot be assigned",
     "params_type_is_unsupported": "Unsupported variable types",
-    "value_invalid": "The type of {{ .name }} {{ .type }} is invalid"
+    "value_invalid": "The type of \"{{ .name }}\" {{ .type }} is invalid"
   },
   "log": {
     "invalid_path": "Path is invalid: \"\"\n",
@@ -59,8 +61,8 @@
     "split_log_rename_error": "Log splitting-[{{ .name }}] Log renaming error: {{ .err }}\n"
   },
   "database": {
-    "databases_not_error": "No {{.name}} in DATABASES\n",
-    "select_error": "{{ .engine }} DataBase. {name}}] Query error: {{ .err }}\n",
+    "databases_not_error": "No \"{{ .name }}\" in DATABASES\n",
+    "select_error": "{{ .engine }} DataBase \"{{ .db_name }}\" Query error: {{ .err }}\n",
     "before_migration": "Before migration BeforeHandler ...",
     "before_migration_error": "Before migration BeforeHandler error: {{ .err }}\n",
     "migration": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",

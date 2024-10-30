@@ -19,7 +19,7 @@ import (
 )
 
 // Http 服务
-var version = "v1.3.1"
+var version = "v1.3.3"
 var Settings *metaSettings
 var Cache *metaCache
 var Log *metaLog
@@ -420,9 +420,15 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter) (result interface{}) {
 	viewSet, isPattern := engine.Router.routeResolution(request.Object.URL.Path, request.PathParams)
 	if isPattern == false {
+		urlNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.url_not_allowed",
+			TemplateData: map[string]interface{}{
+				"path": request.Object.URL.Path,
+			},
+		})
 		return Response{
 			Status: http.StatusNotFound,
-			Data:   fmt.Sprintf("URL NOT FOUND: %s", request.Object.URL.Path),
+			Data:   urlNotAllowedMsg,
 		}
 	}
 	var handlerFunc HandlerFunc
@@ -446,9 +452,15 @@ func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter
 	case "TRACE":
 		handlerFunc = viewSet.TRACE
 	default:
+		methodNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.method_not_allowed",
+			TemplateData: map[string]interface{}{
+				"method": request.Object.Method,
+			},
+		})
 		return Response{
 			Status: http.StatusNotFound,
-			Data:   fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method),
+			Data:   methodNotAllowedMsg,
 		}
 	}
 
@@ -463,9 +475,15 @@ func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter
 	}
 
 	if handlerFunc == nil {
+		methodNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.method_not_allowed",
+			TemplateData: map[string]interface{}{
+				"method": request.Object.Method,
+			},
+		})
 		return Response{
 			Status: http.StatusNotFound,
-			Data:   fmt.Sprintf("Method NOT FOUND: %s", request.Object.Method),
+			Data:   methodNotAllowedMsg,
 		}
 	}
 
