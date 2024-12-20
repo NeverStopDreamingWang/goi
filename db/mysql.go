@@ -16,19 +16,22 @@ import (
 )
 
 type MySQLDB struct {
-	name      string
-	DB        *sql.DB
-	model     model.MySQLModel
-	fields    []string
-	where_sql []string
-	limit_sql string
-	order_sql string
-	sql       string
-	args      []interface{}
+	name        string           // 连接名称
+	DB          *sql.DB          // 数据库连接对象
+	transaction *sql.Tx          // 事务
+	model       model.MySQLModel // 模型
+	fields      []string         // 模型字段
+	field_sql   []string         // 表字段
+	where_sql   []string         // 条件语句
+	limit_sql   string           // 分页
+	group_sql   string           // 分组
+	order_sql   string           // 排序
+	sql         string           // 执行 sql
+	args        []interface{}    // 条件参数
 }
 
 // 连接 MySQL 数据库
-func MySQLConnect(UseDataBases string) (*MySQLDB, error) {
+func MySQLConnect(UseDataBases string) *MySQLDB {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if ok == false {
 		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -37,23 +40,21 @@ func MySQLConnect(UseDataBases string) (*MySQLDB, error) {
 				"name": UseDataBases,
 			},
 		})
-		return nil, errors.New(databasesNotErrorMsg)
-	}
-	DB, err := database.DB()
-	if err != nil {
-		return nil, err
+		panic(errors.New(databasesNotErrorMsg))
 	}
 	return &MySQLDB{
 		name:      UseDataBases,
-		DB:        DB,
+		DB:        database.DB(),
 		model:     nil,
 		fields:    nil,
+		field_sql: nil,
 		where_sql: nil,
 		limit_sql: "",
+		group_sql: "",
 		order_sql: "",
 		sql:       "",
 		args:      nil,
-	}, nil
+	}
 }
 
 // 获取数据库别名
@@ -61,31 +62,51 @@ func (mysqlDB *MySQLDB) Name() string {
 	return mysqlDB.name
 }
 
-// 执行语句
-func (mysqlDB *MySQLDB) Execute(query string, args ...interface{}) (sql.Result, error) {
-	// 开启事务
-	transaction, err := mysqlDB.DB.Begin()
-	if err != nil {
-		return nil, err
+// 获取SQL语句
+func (mysqlDB *MySQLDB) GetSQL() string {
+	return mysqlDB.sql
+}
+
+// 事务
+func (mysqlDB *MySQLDB) WithTransaction(transactionFunc func(mysqlDB *MySQLDB, args ...interface{}) error, args ...interface{}) error {
+	var err error
+	if mysqlDB.transaction != nil {
+		transactionCannotBeNestedErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.transaction_cannot_be_nested_error",
+		})
+		return errors.New(transactionCannotBeNestedErrorMsg)
 	}
 
-	// 执行SQL语句
-	result, err := transaction.Exec(query, args...)
+	defer func() {
+		mysqlDB.transaction = nil
+	}()
+
+	mysqlDB.transaction, err = mysqlDB.DB.Begin()
 	if err != nil {
-		rollErr := transaction.Rollback() // 回滚事务
-		if rollErr != nil {
-			return result, rollErr
-		}
-		return result, err
+		return err
+	}
+	err = transactionFunc(mysqlDB, args...)
+	if err != nil {
+		_ = mysqlDB.transaction.Rollback()
+		return err
 	}
 
 	// 提交事务
-	err = transaction.Commit()
+	err = mysqlDB.transaction.Commit()
 	if err != nil {
-		return result, err
+		_ = mysqlDB.transaction.Rollback()
+		return err
 	}
+	return nil
+}
 
-	return result, err
+// 执行语句
+func (mysqlDB *MySQLDB) Execute(query string, args ...interface{}) (sql.Result, error) {
+	if mysqlDB.transaction != nil {
+		return mysqlDB.transaction.Exec(query, args...)
+	} else {
+		return mysqlDB.DB.Exec(query, args...)
+	}
 }
 
 // 查询语句
@@ -243,26 +264,73 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model model.MySQLModel) {
 	}
 }
 
+func (mysqlDB *MySQLDB) isSetModel() {
+	if mysqlDB.model == nil {
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		panic(errors.New(notSetModelErrorMsg))
+	}
+}
+
 // 设置使用模型
 func (mysqlDB *MySQLDB) SetModel(model model.MySQLModel) *MySQLDB {
 	mysqlDB.model = model
-	ModelType := reflect.TypeOf(model)
+	ModelType := reflect.TypeOf(mysqlDB.model)
 	// 获取字段
 	mysqlDB.fields = make([]string, ModelType.NumField())
+	mysqlDB.field_sql = make([]string, ModelType.NumField())
 	for i := 0; i < ModelType.NumField(); i++ {
-		mysqlDB.fields[i] = ModelType.Field(i).Name
+		field := ModelType.Field(i)
+		mysqlDB.fields[i] = field.Name
+
+		field_name, ok := field.Tag.Lookup("field_name")
+		if !ok {
+			field_name = strings.ToLower(field.Name)
+		}
+		mysqlDB.field_sql[i] = field_name
+	}
+	mysqlDB.where_sql = nil
+	mysqlDB.limit_sql = ""
+	mysqlDB.group_sql = ""
+	mysqlDB.order_sql = ""
+	mysqlDB.sql = ""
+	mysqlDB.args = nil
+	return mysqlDB
+}
+
+// 设置查询字段
+func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
+	ModelType := reflect.TypeOf(mysqlDB.model)
+	// 获取字段
+	mysqlDB.fields = make([]string, len(fields))
+	mysqlDB.field_sql = make([]string, len(fields))
+	for i, fieldName := range fields {
+		field, ok := ModelType.FieldByName(fieldName)
+		if ok == false {
+			fieldIsNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.field_is_not_error",
+				TemplateData: map[string]interface{}{
+					"name": fieldName,
+				},
+			})
+			panic(fieldIsNotErrorMsg)
+		}
+		mysqlDB.fields[i] = field.Name
+
+		field_name, ok := field.Tag.Lookup("field_name")
+		if !ok {
+			field_name = strings.ToLower(field.Name)
+		}
+		mysqlDB.field_sql[i] = field_name
 	}
 	return mysqlDB
 }
 
 // 插入数据库
 func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
-	if mysqlDB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return nil, errors.New(notSetModelErrorMsg)
-	}
+	mysqlDB.isSetModel()
+
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
@@ -280,7 +348,7 @@ func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 		}
 	}
 
-	fieldsSQL := strings.Join(mysqlDB.fields, "`,`")
+	fieldsSQL := strings.Join(mysqlDB.field_sql, "`,`")
 
 	tempValues := make([]string, len(mysqlDB.fields))
 	for i := 0; i < len(mysqlDB.fields); i++ {
@@ -289,20 +357,63 @@ func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
 	valuesSQL := strings.Join(tempValues, ",")
 
 	mysqlDB.sql = fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
-
 	return mysqlDB.Execute(mysqlDB.sql, insertValues...)
-}
-
-// 设置查询字段
-func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
-	mysqlDB.fields = fields
-	return mysqlDB
 }
 
 // 查询语句
 func (mysqlDB *MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
-	mysqlDB.where_sql = append(mysqlDB.where_sql, query)
-	mysqlDB.args = append(mysqlDB.args, args...)
+	queryParts := strings.Split(query, "?")
+	if len(queryParts)-1 != len(args) {
+		whereArgsPlaceholderErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.where_args_placeholder_error",
+		})
+		panic(whereArgsPlaceholderErrorMsg)
+	}
+
+	queryBuilder := strings.Builder{}
+	queryBuilder.WriteString(queryParts[0])
+	for i, param := range args {
+		// 检查是否是切片
+		paramValue := reflect.ValueOf(param)
+		if paramValue.Kind() == reflect.Ptr {
+			paramValue = paramValue.Elem()
+		}
+
+		if paramValue.Kind() == reflect.Slice {
+			placeholders := "(" + strings.Repeat("?,", paramValue.Len()-1) + "?" + ")"
+			queryBuilder.WriteString(placeholders)
+
+			// 将切片元素加入 args
+			for j := 0; j < paramValue.Len(); j++ {
+				mysqlDB.args = append(mysqlDB.args, paramValue.Index(j).Interface())
+			}
+		} else {
+			// 普通参数，直接添加占位符
+			queryBuilder.WriteString("?")
+			mysqlDB.args = append(mysqlDB.args, param)
+		}
+		// 添加切割后的下一部分
+		queryBuilder.WriteString(queryParts[i+1])
+	}
+	mysqlDB.where_sql = append(mysqlDB.where_sql, queryBuilder.String())
+	return mysqlDB
+}
+
+// 分组
+func (mysqlDB *MySQLDB) GroupBy(groups ...string) *MySQLDB {
+	var groupFields []string
+	for _, group := range groups {
+		group = strings.Trim(group, " `'\"")
+		if group == "" {
+			continue
+		}
+		groupFields = append(groupFields, fmt.Sprintf("`%s`", group))
+	}
+	if len(groups) > 0 {
+		mysqlDB.group_sql = fmt.Sprintf(" GROUP BY %s", strings.Join(groups, ", "))
+	} else {
+		mysqlDB.group_sql = ""
+	}
 	return mysqlDB
 }
 
@@ -334,7 +445,7 @@ func (mysqlDB *MySQLDB) OrderBy(orders ...string) *MySQLDB {
 	return mysqlDB
 }
 
-// 排序
+// 分页
 func (mysqlDB *MySQLDB) Page(page int, pagesize int) (int, int, error) {
 	if page <= 0 {
 		page = 1
@@ -351,18 +462,15 @@ func (mysqlDB *MySQLDB) Page(page int, pagesize int) (int, int, error) {
 
 // 执行查询语句获取数据
 func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
+	mysqlDB.isSetModel()
+
 	defer func() {
 		mysqlDB.where_sql = nil
 		mysqlDB.limit_sql = ""
+		mysqlDB.group_sql = ""
 		mysqlDB.order_sql = ""
 		mysqlDB.args = nil
 	}()
-	if mysqlDB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return errors.New(notSetModelErrorMsg)
-	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	var (
@@ -397,15 +505,14 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		ItemType = ItemType.Elem()
 	}
 
-	queryFields := make([]string, len(mysqlDB.fields))
-	for i, fieldName := range mysqlDB.fields {
-		queryFields[i] = strings.ToLower(fieldName)
-	}
-	fieldsSQl := strings.Join(queryFields, "`,`")
+	fieldsSQl := strings.Join(mysqlDB.field_sql, "`,`")
 
 	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
 	if len(mysqlDB.where_sql) > 0 {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
+	}
+	if mysqlDB.group_sql != "" {
+		mysqlDB.sql += mysqlDB.group_sql
 	}
 	if mysqlDB.order_sql != "" {
 		mysqlDB.sql += mysqlDB.order_sql
@@ -446,18 +553,15 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 
 // 返回第一条数据
 func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
+	mysqlDB.isSetModel()
+
 	defer func() {
 		mysqlDB.where_sql = nil
 		mysqlDB.limit_sql = ""
+		mysqlDB.group_sql = ""
 		mysqlDB.order_sql = ""
 		mysqlDB.args = nil
 	}()
-	if mysqlDB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return errors.New(notSetModelErrorMsg)
-	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
@@ -482,15 +586,14 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	queryFields := make([]string, len(mysqlDB.fields))
-	for i, fieldName := range mysqlDB.fields {
-		queryFields[i] = strings.ToLower(fieldName)
-	}
-	fieldsSQl := strings.Join(queryFields, "`,`")
+	fieldsSQl := strings.Join(mysqlDB.field_sql, "`,`")
 
 	mysqlDB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
 	if len(mysqlDB.where_sql) > 0 {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
+	}
+	if mysqlDB.group_sql != "" {
+		mysqlDB.sql += mysqlDB.group_sql
 	}
 	if mysqlDB.order_sql != "" {
 		mysqlDB.sql += mysqlDB.order_sql
@@ -519,12 +622,8 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 
 // 返回查询条数数量
 func (mysqlDB *MySQLDB) Count() (int, error) {
-	if mysqlDB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return 0, errors.New(notSetModelErrorMsg)
-	}
+	mysqlDB.isSetModel()
+
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	mysqlDB.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
@@ -549,16 +648,12 @@ func (mysqlDB *MySQLDB) Count() (int, error) {
 
 // 更新数据，返回操作条数
 func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
+	mysqlDB.isSetModel()
+
 	defer func() {
 		mysqlDB.where_sql = nil
 		mysqlDB.args = nil
 	}()
-	if mysqlDB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return nil, errors.New(notSetModelErrorMsg)
-	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
@@ -594,16 +689,12 @@ func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
 
 // 删除数据，返回操作条数
 func (mysqlDB *MySQLDB) Delete() (sql.Result, error) {
+	mysqlDB.isSetModel()
+
 	defer func() {
 		mysqlDB.where_sql = nil
 		mysqlDB.args = nil
 	}()
-	if mysqlDB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return nil, errors.New(notSetModelErrorMsg)
-	}
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 	mysqlDB.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
 	if len(mysqlDB.where_sql) > 0 {
