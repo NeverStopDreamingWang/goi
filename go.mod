@@ -7,8 +7,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/nicksnyder/go-i18n/v2 v2.4.1
 	github.com/spf13/cobra v1.8.0
-	golang.org/x/crypto v0.22.0
-	golang.org/x/text v0.19.0
+	golang.org/x/crypto v0.31.0
+	golang.org/x/text v0.21.0
 )
 
 require (
