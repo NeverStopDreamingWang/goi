@@ -16,19 +16,22 @@ import (
 )
 
 type SQLite3DB struct {
-	name      string
-	DB        *sql.DB
-	model     model.SQLite3Model
-	fields    []string
-	where_sql []string
-	limit_sql string
-	order_sql string
-	sql       string
-	args      []interface{}
+	name        string             // 连接名称
+	DB          *sql.DB            // 数据库连接对象
+	transaction *sql.Tx            // 事务
+	model       model.SQLite3Model // 模型
+	fields      []string           // 模型字段
+	field_sql   []string           // 表字段
+	where_sql   []string           // 条件语句
+	limit_sql   string             // 分页
+	group_sql   string             // 分组
+	order_sql   string             // 排序
+	sql         string             // 执行 sql
+	args        []interface{}      // 条件参数
 }
 
 // 连接 SQLite3 数据库
-func SQLite3Connect(UseDataBases string) (*SQLite3DB, error) {
+func SQLite3Connect(UseDataBases string) *SQLite3DB {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if ok == false {
 		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -37,23 +40,21 @@ func SQLite3Connect(UseDataBases string) (*SQLite3DB, error) {
 				"name": UseDataBases,
 			},
 		})
-		return nil, errors.New(databasesNotErrorMsg)
-	}
-	DB, err := database.DB()
-	if err != nil {
-		return nil, err
+		panic(errors.New(databasesNotErrorMsg))
 	}
 	return &SQLite3DB{
 		name:      UseDataBases,
-		DB:        DB,
+		DB:        database.DB(),
 		model:     nil,
 		fields:    nil,
+		field_sql: nil,
 		where_sql: nil,
 		limit_sql: "",
+		group_sql: "",
 		order_sql: "",
 		sql:       "",
 		args:      nil,
-	}, nil
+	}
 }
 
 // 获取数据库别名
@@ -61,31 +62,51 @@ func (sqlite3DB *SQLite3DB) Name() string {
 	return sqlite3DB.name
 }
 
-// 执行语句
-func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Result, error) {
-	// 开启事务
-	transaction, err := sqlite3DB.DB.Begin()
-	if err != nil {
-		return nil, err
+// 获取SQL语句
+func (sqlite3DB *SQLite3DB) GetSQL() string {
+	return sqlite3DB.sql
+}
+
+// 事务
+func (sqlite3DB *SQLite3DB) WithTransaction(transactionFunc func(sqlite3DB *SQLite3DB, args ...interface{}) error, args ...interface{}) error {
+	var err error
+	if sqlite3DB.transaction != nil {
+		transactionCannotBeNestedErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.transaction_cannot_be_nested_error",
+		})
+		return errors.New(transactionCannotBeNestedErrorMsg)
 	}
 
-	// 执行SQL语句
-	result, err := transaction.Exec(query, args...)
+	defer func() {
+		sqlite3DB.transaction = nil
+	}()
+
+	sqlite3DB.transaction, err = sqlite3DB.DB.Begin()
 	if err != nil {
-		rollErr := transaction.Rollback() // 回滚事务
-		if rollErr != nil {
-			return result, rollErr
-		}
-		return result, err
+		return err
+	}
+	err = transactionFunc(sqlite3DB, args...)
+	if err != nil {
+		_ = sqlite3DB.transaction.Rollback()
+		return err
 	}
 
 	// 提交事务
-	err = transaction.Commit()
+	err = sqlite3DB.transaction.Commit()
 	if err != nil {
-		return result, err
+		_ = sqlite3DB.transaction.Rollback()
+		return err
 	}
+	return nil
+}
 
-	return result, err
+// 执行语句
+func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Result, error) {
+	if sqlite3DB.transaction != nil {
+		return sqlite3DB.transaction.Exec(query, args...)
+	} else {
+		return sqlite3DB.DB.Exec(query, args...)
+	}
 }
 
 // 查询语句
@@ -204,26 +225,73 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model model.SQLite3Model) {
 	}
 }
 
+func (sqlite3DB *SQLite3DB) isSetModel() {
+	if sqlite3DB.model == nil {
+		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.not_SetModel_error",
+		})
+		panic(errors.New(notSetModelErrorMsg))
+	}
+}
+
 // 设置使用模型
 func (sqlite3DB *SQLite3DB) SetModel(model model.SQLite3Model) *SQLite3DB {
 	sqlite3DB.model = model
-	ModelType := reflect.TypeOf(model)
+	ModelType := reflect.TypeOf(sqlite3DB.model)
 	// 获取字段
 	sqlite3DB.fields = make([]string, ModelType.NumField())
+	sqlite3DB.field_sql = make([]string, ModelType.NumField())
 	for i := 0; i < ModelType.NumField(); i++ {
-		sqlite3DB.fields[i] = ModelType.Field(i).Name
+		field := ModelType.Field(i)
+		sqlite3DB.fields[i] = field.Name
+
+		field_name, ok := field.Tag.Lookup("field_name")
+		if !ok {
+			field_name = strings.ToLower(field.Name)
+		}
+		sqlite3DB.field_sql[i] = field_name
+	}
+	sqlite3DB.where_sql = nil
+	sqlite3DB.limit_sql = ""
+	sqlite3DB.group_sql = ""
+	sqlite3DB.order_sql = ""
+	sqlite3DB.sql = ""
+	sqlite3DB.args = nil
+	return sqlite3DB
+}
+
+// 设置查询字段
+func (sqlite3DB *SQLite3DB) Fields(fields ...string) *SQLite3DB {
+	ModelType := reflect.TypeOf(sqlite3DB.model)
+	// 获取字段
+	sqlite3DB.fields = make([]string, len(fields))
+	sqlite3DB.field_sql = make([]string, len(fields))
+	for i, fieldName := range fields {
+		field, ok := ModelType.FieldByName(fieldName)
+		if ok == false {
+			fieldIsNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.field_is_not_error",
+				TemplateData: map[string]interface{}{
+					"name": fieldName,
+				},
+			})
+			panic(fieldIsNotErrorMsg)
+		}
+		sqlite3DB.fields[i] = field.Name
+
+		field_name, ok := field.Tag.Lookup("field_name")
+		if !ok {
+			field_name = strings.ToLower(field.Name)
+		}
+		sqlite3DB.field_sql[i] = field_name
 	}
 	return sqlite3DB
 }
 
 // 插入数据库
 func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, error) {
-	if sqlite3DB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return nil, errors.New(notSetModelErrorMsg)
-	}
+	sqlite3DB.isSetModel()
+
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
@@ -241,7 +309,7 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, er
 		}
 	}
 
-	fieldsSQL := strings.Join(sqlite3DB.fields, "`,`")
+	fieldsSQL := strings.Join(sqlite3DB.field_sql, "`,`")
 
 	tempValues := make([]string, len(sqlite3DB.fields))
 	for i := 0; i < len(sqlite3DB.fields); i++ {
@@ -253,16 +321,60 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, er
 	return sqlite3DB.Execute(sqlite3DB.sql, insertValues...)
 }
 
-// 设置查询字段
-func (sqlite3DB *SQLite3DB) Fields(fields ...string) *SQLite3DB {
-	sqlite3DB.fields = fields
+// 查询语句
+func (sqlite3DB *SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
+	queryParts := strings.Split(query, "?")
+	if len(queryParts)-1 != len(args) {
+		whereArgsPlaceholderErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.where_args_placeholder_error",
+		})
+		panic(whereArgsPlaceholderErrorMsg)
+	}
+
+	queryBuilder := strings.Builder{}
+	queryBuilder.WriteString(queryParts[0])
+	for i, param := range args {
+		// 检查是否是切片
+		paramValue := reflect.ValueOf(param)
+		if paramValue.Kind() == reflect.Ptr {
+			paramValue = paramValue.Elem()
+		}
+
+		if paramValue.Kind() == reflect.Slice {
+			placeholders := "(" + strings.Repeat("?,", paramValue.Len()-1) + "?" + ")"
+			queryBuilder.WriteString(placeholders)
+
+			// 将切片元素加入 args
+			for j := 0; j < paramValue.Len(); j++ {
+				sqlite3DB.args = append(sqlite3DB.args, paramValue.Index(j).Interface())
+			}
+		} else {
+			// 普通参数，直接添加占位符
+			queryBuilder.WriteString("?")
+			sqlite3DB.args = append(sqlite3DB.args, param)
+		}
+		// 添加切割后的下一部分
+		queryBuilder.WriteString(queryParts[i+1])
+	}
+	sqlite3DB.where_sql = append(sqlite3DB.where_sql, queryBuilder.String())
 	return sqlite3DB
 }
 
-// 查询语句
-func (sqlite3DB *SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
-	sqlite3DB.where_sql = append(sqlite3DB.where_sql, query)
-	sqlite3DB.args = append(sqlite3DB.args, args...)
+// 分组
+func (sqlite3DB *SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
+	var groupFields []string
+	for _, group := range groups {
+		group = strings.Trim(group, " `'\"")
+		if group == "" {
+			continue
+		}
+		groupFields = append(groupFields, fmt.Sprintf("`%s`", group))
+	}
+	if len(groupFields) > 0 {
+		sqlite3DB.group_sql = fmt.Sprintf(" GROUP BY %s", strings.Join(groupFields, ", "))
+	} else {
+		sqlite3DB.group_sql = ""
+	}
 	return sqlite3DB
 }
 
@@ -294,7 +406,7 @@ func (sqlite3DB *SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 	return sqlite3DB
 }
 
-// 排序
+// 分页
 func (sqlite3DB *SQLite3DB) Page(page int, pagesize int) (int, int, error) {
 	if page <= 0 {
 		page = 1
@@ -311,18 +423,15 @@ func (sqlite3DB *SQLite3DB) Page(page int, pagesize int) (int, int, error) {
 
 // 执行查询语句获取数据
 func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
+	sqlite3DB.isSetModel()
+
 	defer func() {
 		sqlite3DB.where_sql = nil
 		sqlite3DB.limit_sql = ""
+		sqlite3DB.group_sql = ""
 		sqlite3DB.order_sql = ""
 		sqlite3DB.args = nil
 	}()
-	if sqlite3DB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return errors.New(notSetModelErrorMsg)
-	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	var (
@@ -357,15 +466,14 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		ItemType = ItemType.Elem()
 	}
 
-	queryFields := make([]string, len(sqlite3DB.fields))
-	for i, fieldName := range sqlite3DB.fields {
-		queryFields[i] = strings.ToLower(fieldName)
-	}
-	fieldsSQl := strings.Join(queryFields, "`,`")
+	fieldsSQl := strings.Join(sqlite3DB.field_sql, "`,`")
 
 	sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	}
+	if sqlite3DB.group_sql != "" {
+		sqlite3DB.sql += sqlite3DB.group_sql
 	}
 	if sqlite3DB.order_sql != "" {
 		sqlite3DB.sql += sqlite3DB.order_sql
@@ -373,6 +481,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	if sqlite3DB.limit_sql != "" {
 		sqlite3DB.sql += sqlite3DB.limit_sql
 	}
+
 	rows, err := sqlite3DB.DB.Query(sqlite3DB.sql, sqlite3DB.args...)
 	defer rows.Close()
 	if err != nil {
@@ -405,18 +514,15 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 
 // 返回第一条数据
 func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
+	sqlite3DB.isSetModel()
+
 	defer func() {
 		sqlite3DB.where_sql = nil
 		sqlite3DB.limit_sql = ""
+		sqlite3DB.group_sql = ""
 		sqlite3DB.order_sql = ""
 		sqlite3DB.args = nil
 	}()
-	if sqlite3DB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return errors.New(notSetModelErrorMsg)
-	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
@@ -441,15 +547,14 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	queryFields := make([]string, len(sqlite3DB.fields))
-	for i, fieldName := range sqlite3DB.fields {
-		queryFields[i] = strings.ToLower(fieldName)
-	}
-	fieldsSQl := strings.Join(queryFields, "`,`")
+	fieldsSQl := strings.Join(sqlite3DB.field_sql, "`,`")
 
 	sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	}
+	if sqlite3DB.group_sql != "" {
+		sqlite3DB.sql += sqlite3DB.group_sql
 	}
 	if sqlite3DB.order_sql != "" {
 		sqlite3DB.sql += sqlite3DB.order_sql
@@ -478,18 +583,15 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 
 // 返回查询条数数量
 func (sqlite3DB *SQLite3DB) Count() (int, error) {
-	if sqlite3DB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return 0, errors.New(notSetModelErrorMsg)
-	}
+	sqlite3DB.isSetModel()
+
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	sqlite3DB.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
 	}
+
 	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
 	if row == nil {
 		return 0, nil
@@ -507,16 +609,12 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 
 // 更新数据，返回操作条数
 func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, error) {
+	sqlite3DB.isSetModel()
+
 	defer func() {
 		sqlite3DB.where_sql = nil
 		sqlite3DB.args = nil
 	}()
-	if sqlite3DB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return nil, errors.New(notSetModelErrorMsg)
-	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
@@ -545,26 +643,24 @@ func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, er
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
 	}
+
 	updateValues = append(updateValues, sqlite3DB.args...)
 	return sqlite3DB.Execute(sqlite3DB.sql, updateValues...)
 }
 
 // 删除数据，返回操作条数
 func (sqlite3DB *SQLite3DB) Delete() (sql.Result, error) {
+	sqlite3DB.isSetModel()
+
 	defer func() {
 		sqlite3DB.where_sql = nil
 		sqlite3DB.args = nil
 	}()
-	if sqlite3DB.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
-		})
-		return nil, errors.New(notSetModelErrorMsg)
-	}
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 	sqlite3DB.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
 	if len(sqlite3DB.where_sql) > 0 {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
 	}
+
 	return sqlite3DB.Execute(sqlite3DB.sql, sqlite3DB.args...)
 }
