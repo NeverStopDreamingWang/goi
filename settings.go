@@ -66,7 +66,7 @@ func newSettings() *metaSettings {
 }
 
 // 设置时区
-func (settings metaSettings) SetTimeZone(time_zone string) error {
+func (settings *metaSettings) SetTimeZone(time_zone string) error {
 	location, err := time.LoadLocation(time_zone)
 	if err != nil {
 		return err
