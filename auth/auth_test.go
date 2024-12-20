@@ -3,8 +3,6 @@ package auth
 import (
 	"fmt"
 	"testing"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 // 调试
@@ -13,7 +11,7 @@ func TestAuth(t *testing.T) {
 	password := "goi123456"
 
 	// 生成密码的哈希值
-	hashedPassword, err := MakePassword(password, bcrypt.DefaultCost)
+	hashedPassword, err := MakePassword(password)
 	if err != nil {
 		fmt.Println("密码加密失败:", err)
 		return
