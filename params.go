@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -107,7 +108,7 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 		field = paramsType.Field(i)
 		fieldName = field.Tag.Get("name")
 		if fieldName == "" {
-			fieldName = field.Name // 字段名
+			fieldName = strings.ToLower(field.Name) // 字段名
 		}
 
 		value_list, ok := values[fieldName]
@@ -367,7 +368,7 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 
 		fieldName = field.Tag.Get("name")
 		if fieldName == "" {
-			fieldName = field.Name // 字段名
+			fieldName = strings.ToLower(field.Name) // 字段名
 		}
 
 		value_list, ok := values[fieldName]
