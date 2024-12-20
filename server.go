@@ -25,7 +25,16 @@ var Cache *metaCache
 var Log *metaLog
 var Validator *metaValidator
 
-var exitChan = make(chan os.Signal, 1)
+var serverChan = make(chan os.Signal, 1)
+
+// 关闭服务处理程序
+type ShutdownHandler func(engine *Engine) error
+
+// 关闭服务回调
+type ShutdownCallback struct {
+	name    string
+	handler ShutdownHandler
+}
 
 // 版本
 func Version() string {
@@ -34,14 +43,15 @@ func Version() string {
 
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
-	startTime   *time.Time
-	server      http.Server
-	Router      *metaRouter
-	MiddleWares *metaMiddleWares
-	Settings    *metaSettings
-	Cache       *metaCache
-	Log         *metaLog
-	Validator   *metaValidator
+	startTime               *time.Time         // 启动时间
+	server                  http.Server        // net/http 服务
+	Router                  *MetaRouter        // 路由
+	MiddleWares             *metaMiddleWares   // 中间件
+	Settings                *metaSettings      // 设置
+	Cache                   *metaCache         // 缓存
+	Log                     *metaLog           // 日志
+	Validator               *metaValidator     // 验证器
+	ShutdownCallbackHandler []ShutdownCallback // 用户定义的关闭服务回调处理程序
 }
 
 // 创建一个 Http 服务
@@ -128,18 +138,21 @@ func (engine *Engine) RunServer() {
 	engine.Cache.initCache()
 
 	// 注册关闭信号
-	signal.Notify(exitChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(serverChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 
 	go func() {
 		// 等待关闭信号
-		sig, _ := <-exitChan
+		sig, _ := <-serverChan
 		switch sig {
-		case os.Kill, os.Interrupt:
+		case os.Kill, os.Interrupt, syscall.SIGTERM:
 			err = engine.StopServer()
 			engine.Log.Error(err)
 		default:
 			invalidOperationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "server.invalid_operation",
+				TemplateData: map[string]interface{}{
+					"name": sig,
+				},
 			})
 			engine.Log.Log(meta, invalidOperationMsg)
 		}
@@ -211,9 +224,39 @@ func (engine *Engine) RunServer() {
 	}
 }
 
+// 注册停止回调函数
+func (engine *Engine) RegisterShutdownHandler(name string, shutdownHandler ShutdownHandler) {
+	engine.ShutdownCallbackHandler = append(engine.ShutdownCallbackHandler, ShutdownCallback{
+		name:    name,
+		handler: shutdownHandler,
+	})
+}
+
 // 停止 http 服务
 func (engine *Engine) StopServer() error {
 	var err error
+
+	// 执行用户定义的回调函数
+	for _, shutdownCallback := range engine.ShutdownCallbackHandler {
+		shutdownHandlerMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.shutdown_handler",
+			TemplateData: map[string]interface{}{
+				"name": shutdownCallback.name,
+			},
+		})
+		engine.Log.Log(meta, shutdownHandlerMsg)
+
+		err = shutdownCallback.handler(engine)
+		if err != nil {
+			shutdownHandlerErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "server.shutdown_handler_error",
+				TemplateData: map[string]interface{}{
+					"err": err,
+				},
+			})
+			engine.Log.Log(meta, shutdownHandlerErrorMsg)
+		}
+	}
 
 	if len(engine.Settings.DATABASES) != 0 {
 		closeDatabaseMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -377,18 +420,10 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch value := responseData.(type) {
-	case nil:
-		ResponseData, err = json.Marshal(value)
-	case bool:
-		ResponseData, err = json.Marshal(value)
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		ResponseData, err = json.Marshal(value)
-	case float32, float64:
-		ResponseData, err = json.Marshal(value)
 	case string:
 		ResponseData = []byte(value)
 	case []byte:
-		ResponseData = responseData.([]byte)
+		ResponseData = value
 	default:
 		ResponseData, err = json.Marshal(value)
 	}
