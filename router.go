@@ -34,11 +34,11 @@ type AsView struct {
 }
 
 // 路由表
-type metaRouter struct {
+type MetaRouter struct {
 	path          string        // 路由
 	desc          string        // 简介
 	viewSet       AsView        // 视图方法
-	includeRouter []*metaRouter // 子路由
+	includeRouter []*MetaRouter // 子路由
 }
 
 // 路由信息
@@ -57,17 +57,17 @@ type routerParam struct {
 }
 
 // 创建路由
-func newRouter() *metaRouter {
-	return &metaRouter{
-		path:          "",
+func newRouter() *MetaRouter {
+	return &MetaRouter{
+		path:          "/",
 		desc:          "根",
 		viewSet:       AsView{},
-		includeRouter: make([]*metaRouter, 0, 0),
+		includeRouter: make([]*MetaRouter, 0, 0),
 	}
 }
 
 // 判断路由是否被注册
-func (router metaRouter) isUrl(path string) {
+func (router MetaRouter) isUrl(path string) {
 	for _, itemRouter := range router.includeRouter {
 		if itemRouter.path == path {
 			pathAlreadyExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -94,23 +94,23 @@ func (router metaRouter) isUrl(path string) {
 }
 
 // 添加父路由
-func (router *metaRouter) Include(path string, desc string) *metaRouter {
+func (router *MetaRouter) Include(path string, desc string) *MetaRouter {
 	router.isUrl(path)
 
-	includeRouter := &metaRouter{
+	includeRouter := &MetaRouter{
 		path:          path,
 		desc:          desc,
 		viewSet:       AsView{},
-		includeRouter: make([]*metaRouter, 0, 0),
+		includeRouter: make([]*MetaRouter, 0, 0),
 	}
 	router.includeRouter = append(router.includeRouter, includeRouter)
 	return includeRouter
 }
 
 // 添加路由
-func (router *metaRouter) UrlPatterns(path string, desc string, view AsView) {
+func (router *MetaRouter) UrlPatterns(path string, desc string, view AsView) {
 	router.isUrl(path)
-	includeRouter := &metaRouter{
+	includeRouter := &MetaRouter{
 		path:          path,
 		desc:          desc,
 		viewSet:       view,
@@ -120,9 +120,9 @@ func (router *metaRouter) UrlPatterns(path string, desc string, view AsView) {
 }
 
 // 添加文件静态路由
-func (router *metaRouter) StaticFilePatterns(path string, desc string, FilePath string) {
+func (router *MetaRouter) StaticFilePatterns(path string, desc string, FilePath string) {
 	router.isUrl(path)
-	includeRouter := &metaRouter{
+	includeRouter := &MetaRouter{
 		path:          path,
 		desc:          desc,
 		viewSet:       AsView{file: FilePath},
@@ -132,13 +132,13 @@ func (router *metaRouter) StaticFilePatterns(path string, desc string, FilePath 
 }
 
 // 添加文件夹静态路由
-func (router *metaRouter) StaticDirPatterns(path string, desc string, DirPath http.Dir) {
+func (router *MetaRouter) StaticDirPatterns(path string, desc string, DirPath http.Dir) {
 	router.isUrl(path)
 
 	if DirPath == "" {
 		DirPath = "."
 	}
-	includeRouter := &metaRouter{
+	includeRouter := &MetaRouter{
 		path:          path,
 		desc:          desc,
 		viewSet:       AsView{dir: DirPath},
@@ -148,9 +148,9 @@ func (router *metaRouter) StaticDirPatterns(path string, desc string, DirPath ht
 }
 
 // 添加文件静态路由
-func (router *metaRouter) StaticFilePatternsFS(path string, desc string, FileFS embed.FS) {
+func (router *MetaRouter) StaticFilePatternsFS(path string, desc string, FileFS embed.FS) {
 	router.isUrl(path)
-	includeRouter := &metaRouter{
+	includeRouter := &MetaRouter{
 		path:          path,
 		desc:          desc,
 		viewSet:       AsView{fileFS: &FileFS},
@@ -160,10 +160,10 @@ func (router *metaRouter) StaticFilePatternsFS(path string, desc string, FileFS 
 }
 
 // 添加文件夹静态路由
-func (router *metaRouter) StaticDirPatternsFS(path string, desc string, DirFS embed.FS) {
+func (router *MetaRouter) StaticDirPatternsFS(path string, desc string, DirFS embed.FS) {
 	router.isUrl(path)
 
-	includeRouter := &metaRouter{
+	includeRouter := &MetaRouter{
 		path:          path,
 		desc:          desc,
 		viewSet:       AsView{dirFS: &DirFS},
@@ -173,7 +173,7 @@ func (router *metaRouter) StaticDirPatternsFS(path string, desc string, DirFS em
 }
 
 // Next 方法用于遍历每个路径并获取路由信息
-func (router metaRouter) Next(routerChan chan<- RouteInfo) {
+func (router MetaRouter) Next(routerChan chan<- RouteInfo) {
 	// 遍历子路由
 	for _, itemRouter := range router.includeRouter {
 		// 发送路由的信息到通道
@@ -192,7 +192,7 @@ func (router metaRouter) Next(routerChan chan<- RouteInfo) {
 }
 
 // 路由解析
-func (router metaRouter) routeResolution(Path string, PathParams ParamsValues) (AsView, bool) {
+func (router MetaRouter) routeResolution(Path string, PathParams ParamsValues) (AsView, bool) {
 	var re *regexp.Regexp
 	params, converterPattern := routerParse(router.path)
 	var reString string
