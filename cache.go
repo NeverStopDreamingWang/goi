@@ -62,12 +62,13 @@ type metaCache struct {
 	used_size         int64
 	list              *list.List
 	dict              map[string]*list.Element
+	lock              sync.RWMutex
 }
 
 type cacheItems struct {
 	key       string
 	valueType reflect.Type
-	byteValue []byte
+	bytes     []byte
 	expires   time.Time
 	mutex     sync.Mutex
 	lru       time.Time
@@ -83,6 +84,7 @@ func newCache() *metaCache {
 		used_size:         0,
 		list:              list.New(),
 		dict:              make(map[string]*list.Element),
+		lock:              sync.RWMutex{},
 	}
 	return cache
 }
@@ -112,15 +114,42 @@ func (cache *metaCache) initCache() {
 	Log.Log(meta, ExpirationPolicyMsg)
 }
 
+// get 获取键值
+func (cache *metaCache) get(key string) (*list.Element, bool) {
+	cache.lock.RLock()
+	element, ok := cache.dict[key]
+	cache.lock.RUnlock()
+	return element, ok
+}
+
+// set 设置键值
+func (cache *metaCache) set(cacheItem *cacheItems) {
+	cache.lock.Lock()
+	element := cache.list.PushFront(cacheItem)
+	cache.dict[cacheItem.key] = element
+	cache.used_size += int64(len(cacheItem.key) + len(cacheItem.bytes))
+	cache.lock.Unlock()
+}
+
+// del 删除键值
+func (cache *metaCache) del(element *list.Element) {
+	cacheItem := element.Value.(*cacheItems)
+	cache.lock.Lock()
+	cache.list.Remove(element)
+	delete(cache.dict, cacheItem.key)
+	cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.bytes))
+	cache.lock.Unlock()
+}
+
 // Has 检查值是否存在
 func (cache metaCache) Has(key string) bool {
-	_, ok := cache.dict[key]
+	_, ok := cache.get(key)
 	return ok
 }
 
 // Get 查找键的值
 func (cache *metaCache) Get(key string, value interface{}) error {
-	if element, ok := cache.dict[key]; ok {
+	if element, ok := cache.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
 
 		nowTime := time.Now().In(Settings.GetLocation())                    // 获取当前时间
@@ -131,7 +160,7 @@ func (cache *metaCache) Get(key string, value interface{}) error {
 			cacheItem.mutex.Unlock()
 
 			// 将字节解码回原始值类型
-			reader := bytes.NewReader(cacheItem.byteValue)
+			reader := bytes.NewReader(cacheItem.bytes)
 			decoder := gob.NewDecoder(reader)
 			err := decoder.Decode(value)
 			if err != nil {
@@ -164,28 +193,26 @@ func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 			go cache.cachePeriodicDeleteExpires()
 		}
 	}
-	if element, ok := cache.dict[key]; ok {
+	if element, ok := cache.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
 		cacheItem.mutex.Lock()
 
-		cache.used_size += int64(buffer.Len() - len(cacheItem.byteValue))
+		cache.used_size += int64(buffer.Len() - len(cacheItem.bytes))
 		cacheItem.valueType = reflect.TypeOf(value)
-		cacheItem.byteValue = buffer.Bytes()
+		cacheItem.bytes = buffer.Bytes()
 		cacheItem.expires = expiresTime
 		cacheItem.mutex.Unlock()
 	} else {
 		cacheItem := &cacheItems{
 			key:       key,
 			valueType: reflect.TypeOf(value),
-			byteValue: buffer.Bytes(),
+			bytes:     buffer.Bytes(),
 			expires:   expiresTime,
 			mutex:     sync.Mutex{},
 			lru:       time.Now().In(Settings.GetLocation()),
 			lfu:       5,
 		}
-		element = cache.list.PushFront(cacheItem)
-		cache.used_size += int64(len(key) + buffer.Len())
-		cache.dict[key] = element
+		cache.set(cacheItem)
 	}
 
 	for cache.MAX_SIZE != 0 && cache.MAX_SIZE < cache.used_size {
@@ -196,25 +223,19 @@ func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 
 // Del 删除键值
 func (cache *metaCache) Del(key string) {
-	if element, ok := cache.dict[key]; ok {
-		cacheItem := element.Value.(*cacheItems)
-
-		cache.list.Remove(element)
-		delete(cache.dict, key)
-		cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+	if element, ok := cache.get(key); ok {
+		cache.del(element)
 	}
 }
 
 // DelExp 删除过期的 key， 如果 key 已过期则删除返回 true，未过期则不会删除返回 false
 func (cache *metaCache) DelExp(key string) bool {
-	if element, ok := cache.dict[key]; ok {
+	if element, ok := cache.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
 
-		cache.list.Remove(element)
 		nowTime := time.Now().In(Settings.GetLocation()) // 获取当前时间
 		if !cacheItem.expires.IsZero() && cacheItem.expires.Before(nowTime) {
-			delete(cache.dict, key)
-			cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+			cache.del(element)
 			return true
 		}
 	}
@@ -237,11 +258,17 @@ func (cache *metaCache) cacheEvict() {
 		})
 		panic(NoEvictionMsg)
 	case ALLKEYS_RANDOM: // 所有的键 随机移除 key
-		for key, _ := range cache.dict {
+		var elementRemove []*list.Element
+		cache.lock.RLock()
+		for _, element := range cache.dict {
 			if cache.MAX_SIZE > cache.used_size {
 				break
 			}
-			cache.Del(key)
+			elementRemove = append(elementRemove, element)
+		}
+		cache.lock.RUnlock()
+		for _, element := range elementRemove {
+			cache.del(element)
 		}
 	case ALLKEYS_LRU: // 所有的键 移除最近最少使用的 key
 		var averageUnix int64
@@ -249,6 +276,8 @@ func (cache *metaCache) cacheEvict() {
 		for cache.MAX_SIZE < cache.used_size {
 			var totalUnix int64
 			var i int64 = 0
+
+			cache.lock.RLock()
 			for _, element := range cache.dict {
 				cacheItem := element.Value.(*cacheItems)
 				totalUnix += cacheItem.lru.Unix()
@@ -264,6 +293,7 @@ func (cache *metaCache) cacheEvict() {
 			}
 
 			i = 0
+			var elementRemove []*list.Element
 			for _, element := range cache.dict {
 				if cache.MAX_SIZE > cache.used_size {
 					break
@@ -271,14 +301,16 @@ func (cache *metaCache) cacheEvict() {
 				cacheItem := element.Value.(*cacheItems)
 
 				if averageUnix > cacheItem.lru.Unix() {
-					cache.list.Remove(element)
-					delete(cache.dict, cacheItem.key)
-					cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+					elementRemove = append(elementRemove, element)
 				}
 				i++
 				if i >= num {
 					break
 				}
+			}
+			cache.lock.RUnlock()
+			for _, element := range elementRemove {
+				cache.del(element)
 			}
 		}
 
@@ -288,6 +320,8 @@ func (cache *metaCache) cacheEvict() {
 		for cache.MAX_SIZE < cache.used_size {
 			var totalCounter int64
 			var i int64 = 0
+
+			cache.lock.RLock()
 			for _, element := range cache.dict {
 				cacheItem := element.Value.(*cacheItems)
 				totalCounter += int64(cacheItem.lfu)
@@ -303,6 +337,7 @@ func (cache *metaCache) cacheEvict() {
 			}
 
 			i = 0
+			var elementRemove []*list.Element
 			for _, element := range cache.dict {
 				if cache.MAX_SIZE > cache.used_size {
 					break
@@ -310,25 +345,34 @@ func (cache *metaCache) cacheEvict() {
 				cacheItem := element.Value.(*cacheItems)
 
 				if averageCounter > cacheItem.lfu {
-					cache.list.Remove(element)
-					delete(cache.dict, cacheItem.key)
-					cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+					elementRemove = append(elementRemove, element)
 				}
 				i++
 				if i >= num {
 					break
 				}
 			}
+			cache.lock.RUnlock()
+			for _, element := range elementRemove {
+				cache.del(element)
+			}
 		}
 	case VOLATILE_RANDOM: // 所有设置了过期时间的键 随机移除 key
-		for key, element := range cache.dict {
+		var elementRemove []*list.Element
+		cache.lock.RLock()
+		for _, element := range cache.dict {
 			if cache.MAX_SIZE > cache.used_size {
 				break
 			}
-			if cacheItem := element.Value.(*cacheItems); cacheItem.expires.IsZero() {
+			cacheItem := element.Value.(*cacheItems)
+			if cacheItem.expires.IsZero() {
 				continue
 			}
-			cache.Del(key)
+			elementRemove = append(elementRemove, element)
+		}
+		cache.lock.RUnlock()
+		for _, element := range elementRemove {
+			cache.del(element)
 		}
 	case VOLATILE_LRU: // 所有设置了过期时间的键 移除最近最少使用的 key
 		var averageUnix int64
@@ -336,6 +380,8 @@ func (cache *metaCache) cacheEvict() {
 		for cache.MAX_SIZE < cache.used_size {
 			var totalUnix int64
 			var i int64 = 0
+
+			cache.lock.RLock()
 			for _, element := range cache.dict {
 				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
@@ -354,6 +400,7 @@ func (cache *metaCache) cacheEvict() {
 			}
 
 			i = 0
+			var elementRemove []*list.Element
 			for _, element := range cache.dict {
 				if cache.MAX_SIZE > cache.used_size {
 					break
@@ -364,14 +411,16 @@ func (cache *metaCache) cacheEvict() {
 				}
 
 				if averageUnix > cacheItem.lru.Unix() {
-					cache.list.Remove(element)
-					delete(cache.dict, cacheItem.key)
-					cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+					elementRemove = append(elementRemove, element)
 				}
 				i++
 				if i >= num {
 					break
 				}
+			}
+			cache.lock.RUnlock()
+			for _, element := range elementRemove {
+				cache.del(element)
 			}
 		}
 	case VOLATILE_LFU: // 所有设置了过期时间的键 移除最近最不频繁使用的 key
@@ -380,6 +429,8 @@ func (cache *metaCache) cacheEvict() {
 		for cache.MAX_SIZE < cache.used_size {
 			var totalCounter int64
 			var i int64 = 0
+
+			cache.lock.RLock()
 			for _, element := range cache.dict {
 				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
@@ -398,6 +449,7 @@ func (cache *metaCache) cacheEvict() {
 			}
 
 			i = 0
+			var elementRemove []*list.Element
 			for _, element := range cache.dict {
 				if cache.MAX_SIZE > cache.used_size {
 					break
@@ -408,14 +460,16 @@ func (cache *metaCache) cacheEvict() {
 				}
 
 				if averageCounter > cacheItem.lfu {
-					cache.list.Remove(element)
-					delete(cache.dict, cacheItem.key)
-					cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+					elementRemove = append(elementRemove, element)
 				}
 				i++
 				if i >= num {
 					break
 				}
+			}
+			cache.lock.RUnlock()
+			for _, element := range elementRemove {
+				cache.del(element)
 			}
 		}
 	case VOLATILE_TTL: // 所有设置了过期时间的键 移除快过期的 key
@@ -424,6 +478,8 @@ func (cache *metaCache) cacheEvict() {
 		for cache.MAX_SIZE < cache.used_size {
 			var totalUnix int64
 			var i int64 = 0
+
+			cache.lock.RLock()
 			for _, element := range cache.dict {
 				cacheItem := element.Value.(*cacheItems)
 				if cacheItem.expires.IsZero() {
@@ -442,6 +498,7 @@ func (cache *metaCache) cacheEvict() {
 			}
 
 			i = 0
+			var elementRemove []*list.Element
 			for _, element := range cache.dict {
 				if cache.MAX_SIZE > cache.used_size {
 					break
@@ -452,14 +509,16 @@ func (cache *metaCache) cacheEvict() {
 				}
 
 				if averageUnix > cacheItem.lru.Unix() {
-					cache.list.Remove(element)
-					delete(cache.dict, cacheItem.key)
-					cache.used_size -= int64(len(cacheItem.key) + len(cacheItem.byteValue))
+					elementRemove = append(elementRemove, element)
 				}
 				i++
 				if i >= num {
 					break
 				}
+			}
+			cache.lock.RUnlock()
+			for _, element := range elementRemove {
+				cache.del(element)
 			}
 		}
 	}
@@ -474,14 +533,26 @@ func (cache *metaCache) cachePeriodicDeleteExpires() {
 			continue
 		}
 		count := rand.Intn(len(cache.dict))
-		for key, _ := range cache.dict {
+
+		var elementRemove []*list.Element
+		cache.lock.RLock()
+		for _, element := range cache.dict {
 			if count <= 0 {
 				break
 			}
-			cache.DelExp(key)
+			cacheItem := element.Value.(*cacheItems)
+
+			nowTime := time.Now().In(Settings.GetLocation()) // 获取当前时间
+			if !cacheItem.expires.IsZero() && cacheItem.expires.Before(nowTime) {
+				elementRemove = append(elementRemove, element)
+			}
 			count--
 		}
-		time.Sleep(1 * time.Second)
+		cache.lock.RUnlock()
+		for _, element := range elementRemove {
+			cache.del(element)
+		}
+		time.Sleep(3 * time.Second)
 	}
 	cache.is_periodic = false
 }
