@@ -7,17 +7,17 @@ type SQLite3Settings struct {
 	TABLE_NAME string // 表名
 
 	// 自定义配置
-	MySettings MySettings
+	Settings Settings
 }
 
 // 设置自定义配置
 func (modelsettings *SQLite3Settings) Set(name string, value interface{}) {
-	modelsettings.MySettings[name] = value
+	modelsettings.Settings[name] = value
 }
 
 // 获取自定义配置
 func (modelsettings SQLite3Settings) Get(name string) interface{} {
-	return modelsettings.MySettings[name]
+	return modelsettings.Settings[name]
 }
 
 // 模型类
