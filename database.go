@@ -9,19 +9,15 @@ type DataBase struct {
 	ENGINE         string
 	DataSourceName string
 	db             *sql.DB
-	Connect        func(ENGINE string, DataSourceName string) (*sql.DB, error) // 使用时自动连接
+	Connect        func(ENGINE string, DataSourceName string) *sql.DB // 使用时自动连接
 }
 
 // 返回数据库连接对象
-func (database *DataBase) DB() (*sql.DB, error) {
-	var err error
+func (database *DataBase) DB() *sql.DB {
 	if database.db == nil {
-		database.db, err = database.Connect(database.ENGINE, database.DataSourceName)
-		if err != nil {
-			return nil, err
-		}
+		database.db = database.Connect(database.ENGINE, database.DataSourceName)
 	}
-	return database.db, nil
+	return database.db
 }
 
 func (database *DataBase) Close() error {
