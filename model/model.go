@@ -1,7 +1,7 @@
 package model
 
 // 自定义设置
-type MySettings map[string]interface{}
+type Settings map[string]interface{}
 
 // map 数据
 type MapData map[string]interface{}

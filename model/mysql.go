@@ -19,17 +19,17 @@ type MySQLSettings struct {
 	PARTITION_BY    string // 定义分区方式，如 RANGE、HASH、LIST
 	COMMENT         string // 设置表注释
 	// 自定义配置
-	MySettings MySettings
+	Settings Settings
 }
 
 // 设置自定义配置
 func (mysqlmodelsettings *MySQLSettings) Set(name string, value interface{}) {
-	mysqlmodelsettings.MySettings[name] = value
+	mysqlmodelsettings.Settings[name] = value
 }
 
 // 获取自定义配置
 func (mysqlmodelsettings MySQLSettings) Get(name string) interface{} {
-	return mysqlmodelsettings.MySettings[name]
+	return mysqlmodelsettings.Settings[name]
 }
 
 // 模型类
