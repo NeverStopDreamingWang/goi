@@ -104,6 +104,7 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 		var field reflect.StructField
 		var fieldName string
 		var validator_name string
+		var is_required bool
 
 		field = paramsType.Field(i)
 		fieldName = field.Tag.Get("name")
@@ -113,6 +114,7 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 
 		value_list, ok := values[fieldName]
 		if validator_name = field.Tag.Get("required"); validator_name != "" {
+			is_required = true
 			if ok == false {
 				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "params.required_params",
@@ -136,7 +138,11 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 			return NewValidationError(http.StatusInternalServerError, isNotRequiredOrOptionalMsg)
 		}
 
+		var flag bool
 		for _, value := range value_list {
+			if value == "" {
+				continue
+			}
 			validationErr = validateValue(validator_name, value)
 			if validationErr != nil {
 				return validationErr
@@ -146,6 +152,18 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 			if validationErr != nil {
 				return validationErr
 			}
+			flag = true
+			break
+		}
+
+		if is_required == true && flag == false {
+			requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.required_params",
+				TemplateData: map[string]interface{}{
+					"name": fieldName,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 		}
 	}
 
@@ -363,6 +381,7 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 		var field reflect.StructField
 		var fieldName string
 		var validator_name string
+		var is_required bool
 
 		field = paramsType.Field(i)
 
@@ -373,6 +392,7 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 
 		value_list, ok := values[fieldName]
 		if validator_name = field.Tag.Get("required"); validator_name != "" {
+			is_required = true
 			if ok == false {
 				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "params.required_params",
@@ -396,6 +416,7 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 			return NewValidationError(http.StatusInternalServerError, isNotRequiredOrOptionalMsg)
 		}
 
+		var flag bool
 		for _, value := range value_list {
 			if value == nil {
 				continue
@@ -410,6 +431,18 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 			if validationErr != nil {
 				return validationErr
 			}
+			flag = true
+			break
+		}
+
+		if is_required == true && flag == false {
+			requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.required_params",
+				TemplateData: map[string]interface{}{
+					"name": fieldName,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 		}
 	}
 
@@ -478,17 +511,25 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 				return NewValidationError(http.StatusInternalServerError, err.Error())
 			}
 			field.SetInt(intValue)
+		case int:
+			field.SetInt(int64(v))
 		case int64:
 			field.SetInt(v)
+		case float64:
+			field.SetInt(int64(v))
 		default:
-			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.value_invalid",
-				TemplateData: map[string]interface{}{
-					"name": fieldType.Name(),
-					"type": "int int8 int16 int32 int64",
-				},
-			})
-			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+			intValue, err := strconv.ParseInt(fmt.Sprint(v), 10, fieldType.Bits())
+			if err != nil {
+				valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "params.value_invalid",
+					TemplateData: map[string]interface{}{
+						"name": fieldType.Name(),
+						"type": "int int8 int16 int32 int64",
+					},
+				})
+				return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+			}
+			field.SetInt(intValue)
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		switch v := value.(type) {
@@ -498,17 +539,25 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 				return NewValidationError(http.StatusInternalServerError, err.Error())
 			}
 			field.SetUint(uintValue)
+		case int:
+			field.SetUint(uint64(v))
 		case uint64:
 			field.SetUint(v)
+		case float64:
+			field.SetUint(uint64(v))
 		default:
-			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.value_invalid",
-				TemplateData: map[string]interface{}{
-					"name": fieldType.Name(),
-					"type": "uint uint8 uint16 uint32 uint64",
-				},
-			})
-			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+			uintValue, err := strconv.ParseUint(fmt.Sprint(v), 10, fieldType.Bits())
+			if err != nil {
+				valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "params.value_invalid",
+					TemplateData: map[string]interface{}{
+						"name": fieldType.Name(),
+						"type": "uint uint8 uint16 uint32 uint64",
+					},
+				})
+				return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+			}
+			field.SetUint(uintValue)
 		}
 	case reflect.Float32, reflect.Float64:
 		switch v := value.(type) {
