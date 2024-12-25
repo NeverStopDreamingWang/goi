@@ -40,27 +40,26 @@ func Testlogin(request *goi.Request) interface{} {
 	fmt.Println("username", params.Username)
 	fmt.Println("password", params.Password)
 
-	header := map[string]interface{}{
-		"alg": "SHA256",
-		"typ": "JWT",
+	header := jwt.Header{
+		Alg: jwt.AlgHS256,
+		Typ: jwt.TypJWT,
 	}
 
 	// 设置过期时间
 	// 获取当前时间
 	now := time.Now()
 	// 增加两小时
-	// twoHoursLater := now.Add(2 * time.Hour)
-	twoHoursLater := now.Add(10 * time.Second)
-	// 格式化为字符串
-	expTime := twoHoursLater.Format("2006-01-02 15:04:05")
-	fmt.Println(expTime)
+	twoHoursLater := now.Add(2 * time.Hour)
+	// twoHoursLater := now.Add(10 * time.Second)
 
-	payloads := map[string]interface{}{
-		"user_id":  1,
-		"username": "wjh123",
-		"exp":      expTime,
+	payloads := example.Payloads{
+		Payloads: jwt.Payloads{
+			Exp: jwt.ExpTime{twoHoursLater},
+		},
+		User_id:  1,
+		Username: "admin",
 	}
-	token, err := jwt.NewJWT(header, payloads, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")
+	token, err := jwt.NewJWT(header, payloads, goi.Settings.SECRET_KEY)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusOK,

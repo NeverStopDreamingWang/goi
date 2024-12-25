@@ -1,8 +1,13 @@
 package middleware
 
 import (
+	"context"
+	"net/http"
+	"regexp"
+
 	"example/example"
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/jwt"
 )
 
 func init() {
@@ -18,17 +23,50 @@ func init() {
 // 请求中间件
 func RequestMiddleWare(request *goi.Request) interface{} {
 	// fmt.Println("请求中间件", request.Object.URL)
+
+	var apiList = []string{
+		"^/api",
+	}
+	var re *regexp.Regexp
+	for _, api := range apiList {
+		re = regexp.MustCompile(api)
+		// 跳过验证
+		if re.MatchString(request.Object.URL.Path) {
+			return nil
+		}
+	}
+
+	token := request.Object.Header.Get("Authorization")
+
+	payloads := &example.Payloads{}
+	err := jwt.CkeckToken(token, goi.Settings.SECRET_KEY, payloads)
+	if jwt.JwtDecodeError(err) { // token 解码错误
+		return goi.Data{
+			Code:    http.StatusUnauthorized,
+			Message: "token 解码错误",
+			Results: err,
+		}
+	} else if jwt.JwtExpiredSignatureError(err) { // token 已过期
+		return goi.Data{
+			Code:    http.StatusUnauthorized,
+			Message: "token 已过期",
+			Results: err,
+		}
+	}
+	ctx := context.WithValue(request.Object.Context(), "user_id", payloads.User_id)
+	request.WithContext(ctx)
+
 	return nil
 }
 
-// 请求中间件
+// 视图中间件
 func ViewMiddleWare(request *goi.Request) interface{} {
-	// fmt.Println("请求中间件", request.Object.URL)
+	// fmt.Println("视图中间件", request.Object.URL)
 	return nil
 }
 
-// 请求中间件
+// 响应中间件
 func ResponseMiddleWare(request *goi.Request, viewResponse interface{}) interface{} {
-	// fmt.Println("请求中间件", request.Object.URL)
+	// fmt.Println("响应中间件", request.Object.URL)
 	return nil
 }
