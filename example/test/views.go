@@ -20,7 +20,7 @@ func Test1(request *goi.Request) interface{} {
 
 func Test3(request *goi.Request) interface{} {
 	return goi.Data{
-		Status:  http.StatusOK,
+		Code:    http.StatusOK,
 		Message: "test3 OK",
 		Results: "OK",
 	}
@@ -39,7 +39,7 @@ func TestParams(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusCreated, // 返回指定响应状态码 404
 		Data: goi.Data{
-			Status:  http.StatusOK,
+			Code:    http.StatusOK,
 			Message: msg,
 			Results: "",
 		}, // 响应数据 ""
@@ -76,7 +76,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 		// return goi.Response{
 		// 	Status: http.StatusOK,
 		// 	Data: goi.Data{
-		// 		Status: http.StatusBadRequest,
+		// 		Code: http.StatusBadRequest,
 		// 		Message:    "参数错误",
 		// 		Results:   nil,
 		// 	},
@@ -86,7 +86,7 @@ func TestParamsValid(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status:  http.StatusOK,
+			Code:    http.StatusOK,
 			Message: "ok",
 			Results: nil,
 		},
@@ -122,7 +122,7 @@ func TestPathParamsStrs(request *goi.Request) interface{} {
 	fmt.Println(msg1)
 	fmt.Println(msg2)
 	return goi.Data{
-		Status:  http.StatusOK,
+		Code:    http.StatusOK,
 		Message: "ok",
 		Results: []string{msg1, msg2},
 	}
@@ -139,7 +139,7 @@ func TestConverterParamsStrs(request *goi.Request) interface{} {
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 	return goi.Data{
-		Status:  http.StatusOK,
+		Code:    http.StatusOK,
 		Message: "ok",
 		Results: msg,
 	}
@@ -149,11 +149,8 @@ func TestConverterParamsStrs(request *goi.Request) interface{} {
 func TestContext(request *goi.Request) interface{} {
 
 	// 请求上下文
-	// request.Object.Context() == request.Context
-	// fmt.Println(request.Object.Context())
-	// fmt.Println(request.Context)
-	// fmt.Println("requestID", request.Object.Context().Value("requestID"))
-	// fmt.Println("requestID", request.Context.Value("requestID"))
+	fmt.Println(request.Object.Context())
+	fmt.Println("requestID", request.Object.Context().Value("requestID"))
 	requestID := request.Object.Context().Value("requestID")
 
 	// fmt.Println("PathParams", request.PathParams)
@@ -176,7 +173,7 @@ func TestContext(request *goi.Request) interface{} {
 		Age:       12,
 	}
 	return goi.Data{
-		Status:  http.StatusOK,
+		Code:    http.StatusOK,
 		Message: msg,
 		Results: student,
 	}
@@ -190,7 +187,7 @@ func TestFile(request *goi.Request) interface{} {
 		_ = file.Close()
 		return goi.Response{
 			Status: http.StatusInternalServerError,
-			Data:   "读取文件失败！",
+			Data:   "读取文件失败",
 		}
 	}
 	// return file // 返回文件对象
@@ -211,7 +208,7 @@ func TestPanic(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusCreated, // 返回指定响应状态码 404
 		Data: goi.Data{
-			Status:  http.StatusOK,
+			Code:    http.StatusOK,
 			Message: msg,
 			Results: "",
 		}, // 响应数据 null

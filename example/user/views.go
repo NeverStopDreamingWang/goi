@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"example/example"
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/jwt"
 )
@@ -14,7 +15,7 @@ func UserTest(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status:  http.StatusOK,
+			Code:    http.StatusOK,
 			Message: "ok",
 			Results: nil,
 		},
@@ -64,7 +65,7 @@ func Testlogin(request *goi.Request) interface{} {
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status:  http.StatusInternalServerError,
+				Code:    http.StatusInternalServerError,
 				Message: "ok",
 				Results: err,
 			},
@@ -75,7 +76,7 @@ func Testlogin(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status:  http.StatusOK,
+			Code:    http.StatusOK,
 			Message: "ok",
 			Results: token,
 		},
@@ -85,22 +86,23 @@ func Testlogin(request *goi.Request) interface{} {
 func TestAuth(request *goi.Request) interface{} {
 	token := request.Object.Header.Get("Authorization")
 
-	payloads, err := jwt.CkeckToken(token, "#wrehta)a^x&ichxfrut&wdl8g&q&u2b#yh%^@1+1(bsyn498y")
-	if jwt.JwtDecodeError(err) { // token 解码错误！
+	payloads := &example.Payloads{}
+	err := jwt.CkeckToken(token, goi.Settings.SECRET_KEY, payloads)
+	if jwt.JwtDecodeError(err) { // token 解码错误
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status:  http.StatusUnauthorized,
-				Message: "token 解码错误！",
+				Code:    http.StatusUnauthorized,
+				Message: "token 解码错误",
 				Results: err,
 			},
 		}
-	} else if jwt.JwtExpiredSignatureError(err) { // token 已过期！
+	} else if jwt.JwtExpiredSignatureError(err) { // token 已过期
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
-				Status:  http.StatusUnauthorized,
-				Message: "token 已过期！",
+				Code:    http.StatusUnauthorized,
+				Message: "token 已过期",
 				Results: err,
 			},
 		}
@@ -109,7 +111,7 @@ func TestAuth(request *goi.Request) interface{} {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status:  http.StatusOK,
+			Code:    http.StatusOK,
 			Message: "ok",
 			Results: payloads,
 		},

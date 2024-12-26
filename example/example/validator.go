@@ -43,7 +43,7 @@ func (validationErr *exampleValidationError) Response() goi.Response {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Status:  validationErr.Status,
+			Code:    validationErr.Status,
 			Message: validationErr.Message,
 			Results: nil,
 		},
