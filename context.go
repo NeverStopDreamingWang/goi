@@ -19,8 +19,7 @@ type Data struct {
 
 type Request struct {
 	Object     *http.Request
-	Context    context.Context // 请求上下文
-	PathParams ParamsValues    // 路由参数
+	PathParams ParamsValues // 路由参数
 }
 
 // 解析 查询字符串参数
@@ -85,6 +84,12 @@ func (request *Request) BodyParams() BodyParamsValues {
 		}
 	}
 	return bodyParams
+}
+
+// 修改 Request 中的上下文
+func (request *Request) WithContext(ctx context.Context) {
+	// 创建一个新的 http.Request 并用新的上下文更新它
+	request.Object = request.Object.WithContext(ctx)
 }
 
 // 自定义响应
