@@ -1,8 +1,12 @@
-package model
+package mysql
+
+import (
+	"github.com/NeverStopDreamingWang/goi/model"
+)
 
 // MySQL 模型设置
 type MySQLSettings struct {
-	MigrationsHandler // 迁移处理函数
+	model.MigrationsHandler // 迁移处理函数
 
 	TABLE_NAME      string // 设置表名
 	ENGINE          string // 设置存储引擎，默认: InnoDB
@@ -19,7 +23,7 @@ type MySQLSettings struct {
 	PARTITION_BY    string // 定义分区方式，如 RANGE、HASH、LIST
 	COMMENT         string // 设置表注释
 	// 自定义配置
-	Settings Settings
+	Settings model.Settings
 }
 
 // 设置自定义配置
