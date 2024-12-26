@@ -27,5 +27,5 @@ func CheckPassword(password, encoded string) bool {
 		return false
 	}
 	encoded_2 := pbkdf2_sha256.Encode(password, Info.Salt, Info.Iterations)
-	return encoded != encoded_2
+	return encoded == encoded_2
 }
