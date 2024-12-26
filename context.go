@@ -12,7 +12,7 @@ import (
 
 // 内置响应数据格式
 type Data struct {
-	Status  int         `json:"status"`
+	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Results interface{} `json:"results"`
 }
@@ -47,6 +47,7 @@ func (request *Request) BodyParams() BodyParamsValues {
 					"err": err,
 				},
 			})
+			Log.Error(parseBodyErrorMsg)
 			panic(parseBodyErrorMsg)
 		}
 	}
@@ -65,6 +66,7 @@ func (request *Request) BodyParams() BodyParamsValues {
 				"err": err,
 			},
 		})
+		Log.Error(readBodyErrorMsg)
 		panic(readBodyErrorMsg)
 	}
 	if len(body) != 0 {
@@ -77,6 +79,7 @@ func (request *Request) BodyParams() BodyParamsValues {
 					"err": err,
 				},
 			})
+			Log.Error(unmarshalBodyErrorMsg)
 			panic(unmarshalBodyErrorMsg)
 		}
 		for name, value := range jsonData {
