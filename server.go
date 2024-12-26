@@ -123,7 +123,7 @@ func (engine *Engine) RunServer() {
 
 	for _, logger := range engine.Log.loggers {
 		logInfoMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.log_split_size",
+			MessageID: "server.log_info",
 			TemplateData: map[string]interface{}{
 				"name":       logger.Name,
 				"split_size": formatBytes(logger.SPLIT_SIZE),
