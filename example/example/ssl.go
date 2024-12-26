@@ -33,13 +33,16 @@ func generateCertificate(SSLPath string) {
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(SSLPath, 0755)
 		if err != nil {
-			panic(fmt.Sprintf("创建 SSL 目录错误: %v", err))
+			msg := fmt.Sprintf("创建 SSL 目录错误: %v", err)
+			goi.Log.Error(msg)
+			panic(msg)
 		}
 	}
 
 	// 生成 128 位随机序列号
 	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
+		goi.Log.Error(err)
 		panic(err)
 	}
 
@@ -57,8 +60,8 @@ func generateCertificate(SSLPath string) {
 			SerialNumber:       "",              // 证书持有者的序列号
 			CommonName:         "example",       //  证书的通用名称
 		},
-		NotBefore:             time.Now().In(Server.Settings.GetLocation()),
-		NotAfter:              time.Now().In(Server.Settings.GetLocation()).Add(365 * 24 * time.Hour),
+		NotBefore:             goi.GetTime(),
+		NotAfter:              goi.GetTime().Add(365 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
@@ -67,6 +70,8 @@ func generateCertificate(SSLPath string) {
 	err = goi.GenerateRSACertificate(2048, certificateTemplate, SSLPath) // RSA 算法
 	// err = GenerateECCCertificate(certificateTemplate, SSLPath) // ECC 算法
 	if err != nil {
-		panic(fmt.Sprintf("生成SSL证书和私钥时发生错误: %v", err))
+		msg := fmt.Sprintf("生成SSL证书和私钥时发生错误: %v", err)
+		goi.Log.Error(msg)
+		panic(msg)
 	}
 }

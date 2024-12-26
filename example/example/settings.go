@@ -33,14 +33,50 @@ func init() {
 	// 绑定域名
 	Server.Settings.BIND_DOMAIN = ""
 
-	// 项目 AES 密钥
-	Server.Settings.SECRET_KEY = "xxxxxxxxxxxxxxxxx"
+	// 密钥
+	Server.Settings.SECRET_KEY = "goi-insecure-mk*!m()hh&l^otrxt6*hl)2tfqxnx2cf5*=ndwe4e8z4wl&one"
 
-	// 项目 RSA 私钥
-	Server.Settings.PRIVATE_KEY = "xxxxxxxxxxxxxxxxx"
+	// RSA 私钥
+	Server.Settings.PRIVATE_KEY = `-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAyU5tYS7kvKP8QM5vjUQGpOXMKLeU62AbgwMX7nsDtIBQwvFU
+kporZNWld8GR4mLCcch7zZWeGd8FnxhUpxk2N9N/Mtm3GAsGfbRE69wBgbxFWkdO
+o0qG9LZakodhGFBmww6YKtIdGaxhHWWXnaVCmKj2F/aG0sGGZJRvn7rMWPtlu5+d
+l8oxHeq9n0ACDrhabPr9zrxLfRj/srdDy4KMl4u50nDGuCsACmWwWgr9sZswtfjn
+zonz4qBPkyuSURBExuqKeangGvAnOKGs4mvCnJk7hUT3zHnPyEU2vMr1VBGo1Qaa
+tGrIoCU0OonRgrDczwu38qt4ZleeebyLtbQKhwIDAQABAoIBAHynSefx58ZALUXc
+DwuE4jBd8+wKsfaGjsKzua/9ELBG/LuaQOp++Pv5p/reLH3o9csLgE4vpbUTeyGn
+KVRHsmEjYBKW6l/DBAP3Cu6aT3yMns1mdnV7AtKp0LAHkMJDlz6V3Pg3H7n0Gjbf
+3+DIotJxXeI80APVvmit2eko/Lzj5ZQAJT65kkSzgUejTGznvi6Y6Fk0gHQa+R5X
+w5TGyMKPKWsATvZ1wft+AE0HR9s277nsoW/pSCO19GcC8Xt+XGLWDViA+dEWnifO
+nRTR33aSYPE0eFNFnrjPrx5ybOoANofiJyOg9aEwriunVxfFhbn53a47XGhNc/hE
+pXSYm/ECgYEA9GHcNFXeXkERpUUGNw/Kw19qw09bjxliD1BrsbqWowKIM9TbgJbO
+NK1uabYlx6uUKeO6cUqAUBbHaDAtu8tef3mkuGdfZXRQDphW54PT5dxMdd+divBO
+l7mxy0/pCNwvk7FgTQEHNOR+ilUwXMrezYUl/VBx2Z+6lWdmed/4fvsCgYEA0uBU
++MBVKiQ1PuNwO4IDAYIepkD4vaW2+1OkVxsp7NQiXudhQbJ1oiMrj0qv7R9oHeQr
+cP+8utCkFAFBlcjaSGd8poQaCuggjIFggOQel2VWH7fp53fX4zIzvK/aeK9DHLib
+hct142EtONAOVT7jX2S/akQza+iT5kCFZUjlHOUCgYBJIa/gCYJN+nLpXkqJ17P5
+22f7opfnrtTleE+CFDBX/736pMw7IuX6ZZwRDm0n33SrRHbayEy1qttplmFZPXa9
+9w0QEf8+QRxkAbqf9ZdHxjErZQukNF2QkgVerj8yY5HpRL9oy9H4RhiIFQ4v9pXO
+MvY3ZAdt9JrFcvf7qMaYWQKBgQCoArHQirSP4c9GbsEBuIEal4hB36wOtVRHg4mB
+GRRbK1zDDkhPppbQeoL/JHtsSkSS5DK0Uh0VHpxLkACoDSHU5BbNOJzjKbSdHYs8
+xgOVjdiDZu2GTNaFnn7YC6fd1Y17+Z13iPZBFjCIfkOdKYDQhR141iO+Csyje66M
+Vvqr/QKBgQDwUUunJ0I7RB7bCBUZ6pI074agkPt3FtUQ9pdY0y6m4va14fLthvvr
+cveCPilBKyJP+r39FjpFQr0QVCC/PA7FPGhLcObegvJKQTB9cRnDf8JfgfDswStJ
+1tXmFFJ++yCVcZdFBMD2jolCuEDD+eXidBmy+Og4shUpQM3GgkgtOA==
+-----END RSA PRIVATE KEY-----
+`
 
-	// 项目 RSA 公钥
-	Server.Settings.PUBLIC_KEY = "xxxxxxxxxxxxxxxxx"
+	// RSA 公钥
+	Server.Settings.PUBLIC_KEY = `-----BEGIN RSA PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyU5tYS7kvKP8QM5vjUQG
+pOXMKLeU62AbgwMX7nsDtIBQwvFUkporZNWld8GR4mLCcch7zZWeGd8FnxhUpxk2
+N9N/Mtm3GAsGfbRE69wBgbxFWkdOo0qG9LZakodhGFBmww6YKtIdGaxhHWWXnaVC
+mKj2F/aG0sGGZJRvn7rMWPtlu5+dl8oxHeq9n0ACDrhabPr9zrxLfRj/srdDy4KM
+l4u50nDGuCsACmWwWgr9sZswtfjnzonz4qBPkyuSURBExuqKeangGvAnOKGs4mvC
+nJk7hUT3zHnPyEU2vMr1VBGo1QaatGrIoCU0OonRgrDczwu38qt4ZleeebyLtbQK
+hwIDAQAB
+-----END RSA PUBLIC KEY-----
+`
 
 	// 设置 SSL
 	Server.Settings.SSL = goi.MetaSSL{
@@ -54,28 +90,30 @@ func init() {
 	Server.Settings.DATABASES["default"] = &goi.DataBase{
 		ENGINE:         "mysql",
 		DataSourceName: "root:123123@tcp(127.0.0.1:3306)/test_goi",
-		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
+		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
 			mysqlDB, err := sql.Open(ENGINE, DataSourceName)
 			if err != nil {
+				goi.Log.Error(err)
 				panic(err)
 			}
 			// 设置连接池参数
 			mysqlDB.SetMaxOpenConns(10)           // 设置最大打开连接数
 			mysqlDB.SetMaxIdleConns(5)            // 设置最大空闲连接数
 			mysqlDB.SetConnMaxLifetime(time.Hour) // 设置连接的最大存活时间
-			return mysqlDB, nil
+			return mysqlDB
 		},
 	}
 	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
 		ENGINE:         "sqlite3",
 		DataSourceName: filepath.Join(Server.Settings.BASE_DIR, "data", "test_goi.db"),
-		Connect: func(ENGINE string, DataSourceName string) (*sql.DB, error) {
+		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
 			var sqliteDB *sql.DB
 			sqliteDB, err = sql.Open(ENGINE, DataSourceName)
 			if err != nil {
-				return nil, err
+				goi.Log.Error(err)
+				panic(err)
 			}
-			return sqliteDB, nil
+			return sqliteDB
 		},
 	}
 
@@ -84,7 +122,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	//  Server.Settings.GetLocation() 获取时区 Location
+	//  goi.Settings.GetLocation() 获取时区 Location
 
 	// 设置框架语言
 	Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
@@ -127,4 +165,11 @@ func init() {
 	// Server.Settings.Set(key string, value interface{})
 	// Server.Settings.Get(key string, dest interface{})
 
+	// 注册关闭回调处理程序
+	Server.RegisterShutdownHandler("关闭操作", Shutdown)
+}
+
+func Shutdown(engine *goi.Engine) error {
+	goi.Log.Info("关闭操作")
+	return nil
 }

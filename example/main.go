@@ -7,6 +7,8 @@ import (
 	"example/example"
 	"github.com/NeverStopDreamingWang/goi"
 
+	// 注册中间件
+	_ "example/middleware"
 	// 注册app
 	_ "example/test"
 	_ "example/user"
