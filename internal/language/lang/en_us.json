@@ -3,17 +3,18 @@
     "start": "Service Started",
     "start_time": "Starting Time: {{ .start_time }}",
     "goi_version": "goi Version: {{ .version }}",
-    "log_split_size": "Split Size: {{ .split_size }}",
-    "log_split_time": "Split Date: {{ .split_time }}",
     "current_time_zone": "Current Time Zone: {{ .time_zone }}",
+    "log_info": "- [{{ .name }}] Split Size: {{ .split_size }} Split Date: {{ .split_time }}",
     "cache": {
       "max_size": "Cache Max Size: {{ .max_size }}",
       "evict_policy": "- Evict Policy: {{ .evict_policy }}",
       "expiration_policy": "- Expiration Policy: {{ .expiration_policy }}",
       "noeviction": "The maximum cache exceeds: {{ .max_size }}"
     },
-    "invalid_operation": "Invalid Operation！",
+    "invalid_operation": "{{ .name }} Invalid Operation",
     "listen_address": "Listen Address: {{ .bind_address }}",
+    "shutdown_handler": "Shutdown service handler [{{ .name }}]...",
+    "shutdown_handler_error": "Shutdown service handler error: {{ .err }}",
     "close_database": "Close the database connection...",
     "close_database_error": "Close {{ .engine }} {{ .name }} error: {{ .err }}",
     "stop_time": "Stopping Time: {{ .stop_time }}",
@@ -56,11 +57,12 @@
     "invalid_level": "Level is invalid []\n",
     "invalid_file": "File is invalid nil\n",
     "invalid_object": "Logger is invalid nil\n",
-    "invalid_NewLoggerFunc": "NewLoggerFunc is invalid nil\n",
+    "invalid_nil": "{{ .name }} is invalid nil\n",
     "split_log_stat_error": "Log splitting-[{{ .name }}] Error Obtaining log file information: {{ .err }}\n",
     "split_log_rename_error": "Log splitting-[{{ .name }}] Log renaming error: {{ .err }}\n"
   },
   "database": {
+    "transaction_cannot_be_nested_error": "Transactions cannot be nested",
     "databases_not_error": "No \"{{ .name }}\" in DATABASES\n",
     "select_error": "{{ .engine }} DataBase \"{{ .db_name }}\" Query error: {{ .err }}\n",
     "before_migration": "Before migration BeforeHandler ...",
@@ -70,8 +72,17 @@
     "after_migration": "After migration AfterHandler ...",
     "after_migration_error": "After migration AfterHandler error: {{ .err }}\n",
     "not_SetModel_error": "Please set SetModel first\n",
+    "field_is_not_error": "{{ .name }} field does not exist\n",
+    "where_args_placeholder_error": "The number of arguments does not match the placeholder\n",
     "is_not_ptr": "{{ .name }} is not a pointer type",
     "is_not_struct_ptr": "{{ .name }} is not a struct pointer",
     "is_not_slice_ptr": "{{ .name }} is not a slice pointer"
+  },
+  "serializer": {
+    "is_not_struct_ptr": "{{ .name }} is not a struct pointer",
+    "field_tag_field_type_error": "The '{{ .name }}' field label `field_type` is undefined\n",
+    "field_is_not_null_error": "field cannot be empty",
+    "field_type_string_error": "field is not a string type",
+    "varchar_len_error": "contains more than {{ .length }} character"
   }
 }

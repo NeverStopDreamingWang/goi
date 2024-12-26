@@ -3,17 +3,18 @@
     "start": "服务已启动",
     "start_time": "启动时间: {{ .start_time }}",
     "goi_version": "goi 版本: {{ .version }}",
-    "log_split_size": "切割大小: {{ .split_size }}",
-    "log_split_time": "切割日期: {{ .split_time }}",
     "current_time_zone": "当前时区: {{ .time_zone }}",
+    "log_info": "- [{{ .name }}] 切割大小: {{ .split_size }} 切割日期: {{ .split_time }}",
     "cache": {
       "max_size": "缓存大小: {{ .max_size }}",
       "evict_policy": "- 淘汰策略: {{ .evict_policy }}",
       "expiration_policy": "- 过期策略: {{ .expiration_policy }}",
       "noeviction": "超出设置最大缓存: {{ .max_size }}"
     },
-    "invalid_operation": "无效操作！",
+    "invalid_operation": "{{ .name }} 无效操作",
     "listen_address": "监听地址: {{ .bind_address }}",
+    "shutdown_handler": "正在执行关闭服务处理程序 [{{ .name }}]...",
+    "shutdown_handler_error": "关闭服务处理程序错误: {{ .err }}",
     "close_database": "正在关闭数据库连接...",
     "close_database_error": "关闭 {{ .engine }} {{ .name }} 错误: {{ .err }}",
     "stop_time": "停止时间: {{ .stop_time }}",
@@ -56,11 +57,12 @@
     "invalid_level": "Level 为无效的 []\n",
     "invalid_file": "File 为无效的 nil\n",
     "invalid_object": "Logger 为无效的 nil\n",
-    "invalid_NewLoggerFunc": "NewLoggerFunc 为无效的 nil\n",
+    "invalid_nil": "{{ .name }} 为无效的 nil\n",
     "split_log_stat_error": "日志切割-[{{ .name }}] 获取日志文件信息错误: {{ .err }}\n",
     "split_log_rename_error": "日志切割-[{{ .name }}] 日志重命名错误: {{ .err }}\n"
   },
   "database": {
+    "transaction_cannot_be_nested_error": "不可嵌套事务",
     "databases_not_error": "DATABASES 中没有 “{{ .name }}”\n",
     "select_error": "{{ .engine }} 数据库 “{{ .db_name }}” 查询错误: {{ .err }}\n",
     "before_migration": "迁移之前 BeforeHandler...",
@@ -69,9 +71,18 @@
     "migration_error": "迁移错误: {{ .err }}\n",
     "after_migration": "迁移之后 AfterHandler...",
     "after_migration_error": "迁移之后 AfterHandler 错误： {{ .err }}\n",
-    "not_SetModel_error": "请先设置 SetModel",
+    "not_SetModel_error": "请先设置 SetModel\n",
+    "field_is_not_error": "{{ .name }} 字段不存在\n",
+    "where_args_placeholder_error": "参数个数与占位符不匹配\n",
     "is_not_ptr": "{{ .name }} 不是指针类型",
     "is_not_struct_ptr": "{{ .name }} 不是结构体指针",
     "is_not_slice_ptr": "{{ .name }} 不是切片指针"
+  },
+  "serializer": {
+    "is_not_struct_ptr": "{{ .name }} 不是结构体指针",
+    "field_tag_field_type_error": "'{{ .name }}' 字段标签 `field_type` 未定义\n",
+    "field_is_not_null_error": "字段不允许为空",
+    "field_type_string_error": "字段不是字符串类型",
+    "varchar_len_error": "长度超过 {{ .length }} 字符"
   }
 }
