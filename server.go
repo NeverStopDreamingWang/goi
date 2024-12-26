@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"sync"
 	"syscall"
 	"time"
 
@@ -52,6 +53,9 @@ type Engine struct {
 	Log                     *metaLog           // 日志
 	Validator               *metaValidator     // 验证器
 	ShutdownCallbackHandler []ShutdownCallback // 用户定义的关闭服务回调处理程序
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	waitGroup               *sync.WaitGroup
 }
 
 // 创建一个 Http 服务
@@ -60,6 +64,7 @@ func NewHttpServer() *Engine {
 	Cache = newCache()
 	Log = newLog()
 	Validator = newValidator()
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Engine{
 		startTime:   nil,
 		server:      http.Server{},
@@ -69,6 +74,9 @@ func NewHttpServer() *Engine {
 		Cache:       Cache,
 		Log:         Log,
 		Validator:   Validator,
+		ctx:         ctx,
+		cancel:      cancel,
+		waitGroup:   &sync.WaitGroup{},
 	}
 }
 
@@ -78,8 +86,8 @@ func (engine *Engine) RunServer() {
 	startTime := time.Now().In(engine.Settings.GetLocation())
 	engine.startTime = &startTime
 
-	// 初始化日志
-	engine.Log.InitLogger()
+	// 日志切割
+	go engine.Log.splitLogger(engine.ctx, engine.waitGroup)
 
 	startMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.start",
@@ -100,33 +108,12 @@ func (engine *Engine) RunServer() {
 		},
 	})
 	engine.Log.Log(meta, goiVersionMsg)
+
 	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
-	for _, logger := range engine.Log.loggers {
-		log := fmt.Sprintf("- [%v]", logger.Name)
-		if logger.SPLIT_SIZE != 0 {
-			logSplitSizeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "server.log_split_size",
-				TemplateData: map[string]interface{}{
-					"split_size": formatBytes(logger.SPLIT_SIZE),
-				},
-			})
-			log += " " + logSplitSizeMsg
-		}
-		if logger.SPLIT_TIME != "" {
-			logSplitSizeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "server.log_split_size",
-				TemplateData: map[string]interface{}{
-					"split_size": logger.SPLIT_TIME,
-				},
-			})
-			log += " " + logSplitSizeMsg
-		}
-		engine.Log.Log(meta, log)
-	}
 
 	if engine.Settings.GetTimeZone() != "" {
 		currentTimeZoneMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.log_split_size",
+			MessageID: "server.current_time_zone",
 			TemplateData: map[string]interface{}{
 				"time_zone": engine.Settings.GetTimeZone(),
 			},
@@ -134,8 +121,23 @@ func (engine *Engine) RunServer() {
 		engine.Log.Log(meta, currentTimeZoneMsg)
 	}
 
+	for _, logger := range engine.Log.loggers {
+		logInfoMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.log_split_size",
+			TemplateData: map[string]interface{}{
+				"name":       logger.Name,
+				"split_size": formatBytes(logger.SPLIT_SIZE),
+				"split_time": logger.SPLIT_TIME,
+			},
+		})
+		engine.Log.Log(meta, logInfoMsg)
+	}
+
 	// 初始化缓存
 	engine.Cache.initCache()
+	if engine.Cache.EXPIRATION_POLICY == PERIODIC {
+		go engine.Cache.cachePeriodicDeleteExpires(engine.ctx, engine.waitGroup)
+	}
 
 	// 注册关闭信号
 	signal.Notify(serverChan, os.Interrupt, os.Kill, syscall.SIGTERM)
@@ -146,7 +148,8 @@ func (engine *Engine) RunServer() {
 		switch sig {
 		case os.Kill, os.Interrupt, syscall.SIGTERM:
 			err = engine.StopServer()
-			engine.Log.Error(err)
+			panic(err)
+			return
 		default:
 			invalidOperationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "server.invalid_operation",
@@ -155,6 +158,7 @@ func (engine *Engine) RunServer() {
 				},
 			})
 			engine.Log.Log(meta, invalidOperationMsg)
+			return
 		}
 	}()
 
@@ -278,6 +282,11 @@ func (engine *Engine) StopServer() error {
 			engine.Log.Log(meta, closeDatabaseErrorMsg)
 		}
 	}
+
+	// 取消所有 goroutine 任务
+	engine.cancel()
+	// 等待所有 goroutine 任务结束
+	engine.waitGroup.Wait()
 
 	stopTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.stop_time",

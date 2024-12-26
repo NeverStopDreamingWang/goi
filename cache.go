@@ -3,6 +3,7 @@ package goi
 import (
 	"bytes"
 	"container/list"
+	"context"
 	"encoding/gob"
 	"math/rand"
 	"reflect"
@@ -58,7 +59,6 @@ type metaCache struct {
 	EVICT_POLICY      EvictPolicy      // 缓存淘汰策略
 	EXPIRATION_POLICY ExpirationPolicy // 过期策略
 	MAX_SIZE          int64
-	is_periodic       bool
 	used_size         int64
 	list              *list.List
 	dict              map[string]*list.Element
@@ -94,21 +94,21 @@ func (cache *metaCache) initCache() {
 	MaxSizeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.cache.max_size",
 		TemplateData: map[string]interface{}{
-			"max_size": formatBytes(Cache.MAX_SIZE),
+			"max_size": formatBytes(cache.MAX_SIZE),
 		},
 	})
 	Log.Log(meta, MaxSizeMsg)
 	EvictPolicyMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.cache.evict_policy",
 		TemplateData: map[string]interface{}{
-			"evict_policy": evictPolicyNames[Cache.EVICT_POLICY],
+			"evict_policy": evictPolicyNames[cache.EVICT_POLICY],
 		},
 	})
 	Log.Log(meta, EvictPolicyMsg)
 	ExpirationPolicyMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.cache.expiration_policy",
 		TemplateData: map[string]interface{}{
-			"expiration_policy": expirationPolicyNames[Cache.EXPIRATION_POLICY],
+			"expiration_policy": expirationPolicyNames[cache.EXPIRATION_POLICY],
 		},
 	})
 	Log.Log(meta, ExpirationPolicyMsg)
@@ -142,8 +142,10 @@ func (cache *metaCache) del(element *list.Element) {
 }
 
 // Has 检查值是否存在
-func (cache metaCache) Has(key string) bool {
-	_, ok := cache.get(key)
+func (cache *metaCache) Has(key string) bool {
+	cache.lock.RLock()
+	_, ok := cache.dict[key]
+	cache.lock.RUnlock()
 	return ok
 }
 
@@ -186,17 +188,13 @@ func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 	var expiresTime time.Time
 	if expires > 0 {
 		expiresTime = time.Now().In(Settings.GetLocation()).Add(time.Second * time.Duration(expires)) // 获取过期时间
-
-		if cache.EXPIRATION_POLICY == SCHEDULED { // 定时删除
+		if cache.EXPIRATION_POLICY == SCHEDULED {                                                     // 定时删除
 			time.AfterFunc(time.Duration(expires), func() { cache.DelExp(key) })
-		} else if cache.EXPIRATION_POLICY == PERIODIC && cache.is_periodic == false {
-			go cache.cachePeriodicDeleteExpires()
 		}
 	}
 	if element, ok := cache.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
 		cacheItem.mutex.Lock()
-
 		cache.used_size += int64(buffer.Len() - len(cacheItem.bytes))
 		cacheItem.valueType = reflect.TypeOf(value)
 		cacheItem.bytes = buffer.Bytes()
@@ -256,6 +254,7 @@ func (cache *metaCache) cacheEvict() {
 				"max_size": formatBytes(Cache.MAX_SIZE),
 			},
 		})
+		Log.Error(NoEvictionMsg)
 		panic(NoEvictionMsg)
 	case ALLKEYS_RANDOM: // 所有的键 随机移除 key
 		var elementRemove []*list.Element
@@ -525,36 +524,45 @@ func (cache *metaCache) cacheEvict() {
 }
 
 // 定期删除
-func (cache *metaCache) cachePeriodicDeleteExpires() {
-	cache.is_periodic = true
-	for cache.EXPIRATION_POLICY == PERIODIC {
-		if len(cache.dict) == 0 {
+func (cache *metaCache) cachePeriodicDeleteExpires(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if cache.EXPIRATION_POLICY != PERIODIC {
+				return
+			}
+			cache.lock.RLock()
+			cacheCount := len(cache.dict)
+			if cacheCount <= 0 {
+				cache.lock.RUnlock()
+				time.Sleep(3 * time.Second)
+				continue
+			}
+			count := rand.Intn(cacheCount)
+			var elementRemove []*list.Element
+			for _, element := range cache.dict {
+				if count <= 0 {
+					break
+				}
+				cacheItem := element.Value.(*cacheItems)
+
+				nowTime := time.Now().In(Settings.GetLocation()) // 获取当前时间
+				if !cacheItem.expires.IsZero() && cacheItem.expires.Before(nowTime) {
+					elementRemove = append(elementRemove, element)
+				}
+				count--
+			}
+			cache.lock.RUnlock()
+			for _, element := range elementRemove {
+				cache.del(element)
+			}
 			time.Sleep(3 * time.Second)
-			continue
 		}
-		count := rand.Intn(len(cache.dict))
-
-		var elementRemove []*list.Element
-		cache.lock.RLock()
-		for _, element := range cache.dict {
-			if count <= 0 {
-				break
-			}
-			cacheItem := element.Value.(*cacheItems)
-
-			nowTime := time.Now().In(Settings.GetLocation()) // 获取当前时间
-			if !cacheItem.expires.IsZero() && cacheItem.expires.Before(nowTime) {
-				elementRemove = append(elementRemove, element)
-			}
-			count--
-		}
-		cache.lock.RUnlock()
-		for _, element := range elementRemove {
-			cache.del(element)
-		}
-		time.Sleep(3 * time.Second)
 	}
-	cache.is_periodic = false
 }
 
 const (
