@@ -40,7 +40,8 @@ func SQLite3Connect(UseDataBases string) *SQLite3DB {
 				"name": UseDataBases,
 			},
 		})
-		panic(errors.New(databasesNotErrorMsg))
+		goi.Log.Error(databasesNotErrorMsg)
+		panic(databasesNotErrorMsg)
 	}
 	return &SQLite3DB{
 		name:      UseDataBases,
@@ -133,6 +134,7 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 				"err":     row.Err(),
 			},
 		})
+		goi.Log.Error(selectErrorMsg)
 		panic(selectErrorMsg)
 	}
 	var count int
@@ -146,6 +148,7 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 				"err":     err,
 			},
 		})
+		goi.Log.Error(selectErrorMsg)
 		panic(selectErrorMsg)
 	}
 
@@ -181,6 +184,7 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 						"err": err,
 					},
 				})
+				goi.Log.Error(beforeMigrationErrorMsg)
 				panic(beforeMigrationErrorMsg)
 			}
 		}
@@ -202,6 +206,7 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 					"err": err,
 				},
 			})
+			goi.Log.Error(migrationErrorMsg)
 			panic(migrationErrorMsg)
 		}
 
@@ -218,6 +223,7 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 						"err": err,
 					},
 				})
+				goi.Log.Error(afterMigrationErrorMsg)
 				panic(afterMigrationErrorMsg)
 			}
 		}
@@ -230,7 +236,8 @@ func (sqlite3DB *SQLite3DB) isSetModel() {
 		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.not_SetModel_error",
 		})
-		panic(errors.New(notSetModelErrorMsg))
+		goi.Log.Error(notSetModelErrorMsg)
+		panic(notSetModelErrorMsg)
 	}
 }
 
@@ -275,6 +282,7 @@ func (sqlite3DB *SQLite3DB) Fields(fields ...string) *SQLite3DB {
 					"name": fieldName,
 				},
 			})
+			goi.Log.Error(fieldIsNotErrorMsg)
 			panic(fieldIsNotErrorMsg)
 		}
 		sqlite3DB.fields[i] = field.Name
@@ -328,6 +336,7 @@ func (sqlite3DB *SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB 
 		whereArgsPlaceholderErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.where_args_placeholder_error",
 		})
+		goi.Log.Error(whereArgsPlaceholderErrorMsg)
 		panic(whereArgsPlaceholderErrorMsg)
 	}
 

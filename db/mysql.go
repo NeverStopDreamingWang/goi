@@ -40,7 +40,8 @@ func MySQLConnect(UseDataBases string) *MySQLDB {
 				"name": UseDataBases,
 			},
 		})
-		panic(errors.New(databasesNotErrorMsg))
+		goi.Log.Error(databasesNotErrorMsg)
+		panic(databasesNotErrorMsg)
 	}
 	return &MySQLDB{
 		name:      UseDataBases,
@@ -133,6 +134,7 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 				"err":     row.Err(),
 			},
 		})
+		goi.Log.Error(selectErrorMsg)
 		panic(selectErrorMsg)
 	}
 	var count int
@@ -146,6 +148,7 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 				"err":     err,
 			},
 		})
+		goi.Log.Error(selectErrorMsg)
 		panic(selectErrorMsg)
 	}
 
@@ -220,6 +223,7 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 						"err": err,
 					},
 				})
+				goi.Log.Error(beforeMigrationErrorMsg)
 				panic(beforeMigrationErrorMsg)
 			}
 		}
@@ -241,6 +245,7 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 					"err": err,
 				},
 			})
+			goi.Log.Error(migrationErrorMsg)
 			panic(migrationErrorMsg)
 		}
 
@@ -257,6 +262,7 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 						"err": err,
 					},
 				})
+				goi.Log.Error(afterMigrationErrorMsg)
 				panic(afterMigrationErrorMsg)
 			}
 		}
@@ -269,7 +275,8 @@ func (mysqlDB *MySQLDB) isSetModel() {
 		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.not_SetModel_error",
 		})
-		panic(errors.New(notSetModelErrorMsg))
+		goi.Log.Error(notSetModelErrorMsg)
+		panic(notSetModelErrorMsg)
 	}
 }
 
@@ -314,6 +321,7 @@ func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
 					"name": fieldName,
 				},
 			})
+			goi.Log.Error(fieldIsNotErrorMsg)
 			panic(fieldIsNotErrorMsg)
 		}
 		mysqlDB.fields[i] = field.Name
@@ -367,6 +375,7 @@ func (mysqlDB *MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
 		whereArgsPlaceholderErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.where_args_placeholder_error",
 		})
+		goi.Log.Error(whereArgsPlaceholderErrorMsg)
 		panic(whereArgsPlaceholderErrorMsg)
 	}
 
