@@ -10,7 +10,7 @@ import (
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/NeverStopDreamingWang/goi/model"
+	"github.com/NeverStopDreamingWang/goi/model/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
@@ -19,7 +19,7 @@ type MySQLDB struct {
 	name        string           // 连接名称
 	DB          *sql.DB          // 数据库连接对象
 	transaction *sql.Tx          // 事务
-	model       model.MySQLModel // 模型
+	model       mysql.MySQLModel // 模型
 	fields      []string         // 模型字段
 	field_sql   []string         // 表字段
 	where_sql   []string         // 条件语句
@@ -119,7 +119,7 @@ func (mysqlDB *MySQLDB) Query(query string, args ...interface{}) (*sql.Rows, err
 }
 
 // 模型迁移
-func (mysqlDB *MySQLDB) Migrate(db_name string, model model.MySQLModel) {
+func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 	var err error
 	modelSettings := model.ModelSet()
 
@@ -274,7 +274,7 @@ func (mysqlDB *MySQLDB) isSetModel() {
 }
 
 // 设置使用模型
-func (mysqlDB *MySQLDB) SetModel(model model.MySQLModel) *MySQLDB {
+func (mysqlDB *MySQLDB) SetModel(model mysql.MySQLModel) *MySQLDB {
 	mysqlDB.model = model
 	ModelType := reflect.TypeOf(mysqlDB.model)
 	// 获取字段
@@ -328,7 +328,7 @@ func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
 }
 
 // 插入数据库
-func (mysqlDB *MySQLDB) Insert(ModelData model.MySQLModel) (sql.Result, error) {
+func (mysqlDB *MySQLDB) Insert(ModelData mysql.MySQLModel) (sql.Result, error) {
 	mysqlDB.isSetModel()
 
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
@@ -535,7 +535,12 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		item := reflect.New(ItemType).Elem()
 
 		for i, fieldName := range mysqlDB.fields {
-			values[i] = item.FieldByName(fieldName).Addr().Interface()
+			fieldValue := item.FieldByName(fieldName)
+			if !fieldValue.IsValid() {
+				values[i] = new(interface{})
+			} else {
+				values[i] = fieldValue.Addr().Interface()
+			}
 		}
 
 		err = rows.Scan(values...)
@@ -610,7 +615,12 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 
 	values := make([]interface{}, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
-		values[i] = result.FieldByName(fieldName).Addr().Interface()
+		fieldValue := result.FieldByName(fieldName)
+		if !fieldValue.IsValid() {
+			values[i] = new(interface{})
+		} else {
+			values[i] = fieldValue.Addr().Interface()
+		}
 	}
 
 	err := row.Scan(values...)
@@ -647,7 +657,7 @@ func (mysqlDB *MySQLDB) Count() (int, error) {
 }
 
 // 更新数据，返回操作条数
-func (mysqlDB *MySQLDB) Update(ModelData model.MySQLModel) (sql.Result, error) {
+func (mysqlDB *MySQLDB) Update(ModelData mysql.MySQLModel) (sql.Result, error) {
 	mysqlDB.isSetModel()
 
 	defer func() {

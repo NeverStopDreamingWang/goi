@@ -10,24 +10,24 @@ import (
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/NeverStopDreamingWang/goi/model"
+	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 type SQLite3DB struct {
-	name        string             // 连接名称
-	DB          *sql.DB            // 数据库连接对象
-	transaction *sql.Tx            // 事务
-	model       model.SQLite3Model // 模型
-	fields      []string           // 模型字段
-	field_sql   []string           // 表字段
-	where_sql   []string           // 条件语句
-	limit_sql   string             // 分页
-	group_sql   string             // 分组
-	order_sql   string             // 排序
-	sql         string             // 执行 sql
-	args        []interface{}      // 条件参数
+	name        string               // 连接名称
+	DB          *sql.DB              // 数据库连接对象
+	transaction *sql.Tx              // 事务
+	model       sqlite3.SQLite3Model // 模型
+	fields      []string             // 模型字段
+	field_sql   []string             // 表字段
+	where_sql   []string             // 条件语句
+	limit_sql   string               // 分页
+	group_sql   string               // 分组
+	order_sql   string               // 排序
+	sql         string               // 执行 sql
+	args        []interface{}        // 条件参数
 }
 
 // 连接 SQLite3 数据库
@@ -119,7 +119,7 @@ func (sqlite3DB *SQLite3DB) Query(query string, args ...interface{}) (*sql.Rows,
 }
 
 // 模型迁移
-func (sqlite3DB *SQLite3DB) Migrate(db_name string, model model.SQLite3Model) {
+func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) {
 	var err error
 	modelSettings := model.ModelSet()
 
@@ -235,7 +235,7 @@ func (sqlite3DB *SQLite3DB) isSetModel() {
 }
 
 // 设置使用模型
-func (sqlite3DB *SQLite3DB) SetModel(model model.SQLite3Model) *SQLite3DB {
+func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 	sqlite3DB.model = model
 	ModelType := reflect.TypeOf(sqlite3DB.model)
 	// 获取字段
@@ -289,7 +289,7 @@ func (sqlite3DB *SQLite3DB) Fields(fields ...string) *SQLite3DB {
 }
 
 // 插入数据库
-func (sqlite3DB *SQLite3DB) Insert(ModelData model.SQLite3Model) (sql.Result, error) {
+func (sqlite3DB *SQLite3DB) Insert(ModelData sqlite3.SQLite3Model) (sql.Result, error) {
 	sqlite3DB.isSetModel()
 
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
@@ -496,7 +496,12 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		item := reflect.New(ItemType).Elem()
 
 		for i, fieldName := range sqlite3DB.fields {
-			values[i] = item.FieldByName(fieldName).Addr().Interface()
+			fieldValue := item.FieldByName(fieldName)
+			if !fieldValue.IsValid() {
+				values[i] = new(interface{})
+			} else {
+				values[i] = fieldValue.Addr().Interface()
+			}
 		}
 
 		err = rows.Scan(values...)
@@ -571,7 +576,12 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 
 	values := make([]interface{}, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
-		values[i] = result.FieldByName(fieldName).Addr().Interface()
+		fieldValue := result.FieldByName(fieldName)
+		if !fieldValue.IsValid() {
+			values[i] = new(interface{})
+		} else {
+			values[i] = fieldValue.Addr().Interface()
+		}
 	}
 
 	err := row.Scan(values...)
@@ -608,7 +618,7 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 }
 
 // 更新数据，返回操作条数
-func (sqlite3DB *SQLite3DB) Update(ModelData model.SQLite3Model) (sql.Result, error) {
+func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, error) {
 	sqlite3DB.isSetModel()
 
 	defer func() {
