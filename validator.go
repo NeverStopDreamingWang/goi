@@ -2,6 +2,7 @@ package goi
 
 import (
 	"net/http"
+	"reflect"
 	"regexp"
 
 	"github.com/NeverStopDreamingWang/goi/internal/language"
@@ -57,7 +58,7 @@ func (validationErr *defaultValidationError) Response() Response {
 }
 
 // 验证器处理函数
-type validateFunc func(value string) ValidationError
+type validateFunc func(value interface{}) ValidationError
 
 var metaValidate = map[string]validateFunc{
 	"bool":   boolValidate,
@@ -74,7 +75,7 @@ func RegisterValidate(name string, validate validateFunc) {
 	metaValidate[name] = validate
 }
 
-func validateValue(validator_name string, value string) ValidationError {
+func validateValue(validator_name string, value interface{}) ValidationError {
 	validate, ok := metaValidate[validator_name]
 	if ok == false {
 		validatorIsNotValidateFuncMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -89,10 +90,24 @@ func validateValue(validator_name string, value string) ValidationError {
 }
 
 // bool 类型
-func boolValidate(value string) ValidationError {
-	var BoolRe = `^(true|false)$`
-	re := regexp.MustCompile(BoolRe)
-	if re.MatchString(value) == false {
+func boolValidate(value interface{}) ValidationError {
+	switch typeValue := value.(type) {
+	case bool:
+		return nil
+	case string:
+		var reStr = `^(true|false)$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "validator.params_error",
+				TemplateData: map[string]interface{}{
+					"err": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
+		}
+		return nil
+	default:
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "validator.params_error",
 			TemplateData: map[string]interface{}{
@@ -101,14 +116,27 @@ func boolValidate(value string) ValidationError {
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
-	return nil
 }
 
 // int 类型
-func intValidate(value string) ValidationError {
-	var IntRe = `^([0-9]+)$`
-	re := regexp.MustCompile(IntRe)
-	if re.MatchString(value) == false {
+func intValidate(value interface{}) ValidationError {
+	switch typeValue := value.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return nil
+	case string:
+		var reStr = `^([0-9]+)$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "validator.params_error",
+				TemplateData: map[string]interface{}{
+					"err": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
+		}
+		return nil
+	default:
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "validator.params_error",
 			TemplateData: map[string]interface{}{
@@ -117,14 +145,14 @@ func intValidate(value string) ValidationError {
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
-	return nil
 }
 
 // string 类型
-func stringValidate(value string) ValidationError {
-	var IntRe = `^(.*)$`
-	re := regexp.MustCompile(IntRe)
-	if re.MatchString(value) == false {
+func stringValidate(value interface{}) ValidationError {
+	switch value.(type) {
+	case string:
+		return nil
+	default:
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "validator.params_error",
 			TemplateData: map[string]interface{}{
@@ -133,14 +161,33 @@ func stringValidate(value string) ValidationError {
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
-	return nil
 }
 
 // slice 类型
-func sliceValidate(value string) ValidationError {
-	var IntRe = `^(\[.*\])$`
-	re := regexp.MustCompile(IntRe)
-	if re.MatchString(value) == false {
+func sliceValidate(value interface{}) ValidationError {
+	switch typeValue := value.(type) {
+	case string:
+		var reStr = `^(\[.*\])$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "validator.params_error",
+				TemplateData: map[string]interface{}{
+					"err": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
+		}
+		return nil
+	default:
+		valueType := reflect.TypeOf(value)
+		if valueType.Kind() == reflect.Ptr {
+			valueType = valueType.Elem()
+		}
+		// 判断是否为切片类型
+		if valueType.Kind() == reflect.Slice {
+			return nil
+		}
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "validator.params_error",
 			TemplateData: map[string]interface{}{
@@ -149,14 +196,33 @@ func sliceValidate(value string) ValidationError {
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
-	return nil
 }
 
 // map 类型
-func mapValidate(value string) ValidationError {
-	var IntRe = `^(\{.*\})$`
-	re := regexp.MustCompile(IntRe)
-	if re.MatchString(value) == false {
+func mapValidate(value interface{}) ValidationError {
+	switch typeValue := value.(type) {
+	case string:
+		var reStr = `^(\{.*\})$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "validator.params_error",
+				TemplateData: map[string]interface{}{
+					"err": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
+		}
+		return nil
+	default:
+		valueType := reflect.TypeOf(value)
+		if valueType.Kind() == reflect.Ptr {
+			valueType = valueType.Elem()
+		}
+		// 判断是否为切片类型
+		if valueType.Kind() == reflect.Map {
+			return nil
+		}
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "validator.params_error",
 			TemplateData: map[string]interface{}{
@@ -165,14 +231,26 @@ func mapValidate(value string) ValidationError {
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
-	return nil
+
 }
 
 // slug 类型
-func slugValidate(value string) ValidationError {
-	var IntRe = `^([-a-zA-Z0-9_]+)`
-	re := regexp.MustCompile(IntRe)
-	if re.MatchString(value) == false {
+func slugValidate(value interface{}) ValidationError {
+	switch typeValue := value.(type) {
+	case string:
+		var reStr = `^([-a-zA-Z0-9_]+)`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "validator.params_error",
+				TemplateData: map[string]interface{}{
+					"err": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
+		}
+		return nil
+	default:
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "validator.params_error",
 			TemplateData: map[string]interface{}{
@@ -181,14 +259,25 @@ func slugValidate(value string) ValidationError {
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
-	return nil
 }
 
 // uuid 类型
-func uuidValidate(value string) ValidationError {
-	var IntRe = `^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`
-	re := regexp.MustCompile(IntRe)
-	if re.MatchString(value) == false {
+func uuidValidate(value interface{}) ValidationError {
+	switch typeValue := value.(type) {
+	case string:
+		var reStr = `^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "validator.params_error",
+				TemplateData: map[string]interface{}{
+					"err": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
+		}
+		return nil
+	default:
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "validator.params_error",
 			TemplateData: map[string]interface{}{
@@ -197,5 +286,4 @@ func uuidValidate(value string) ValidationError {
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
-	return nil
 }

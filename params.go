@@ -196,6 +196,8 @@ func (values ParamsValues) setFieldValue(field reflect.Value, value string) Vali
 	fieldType := field.Type()
 	// 尝试将值转换为目标变量的类型并赋值给目标变量
 	switch fieldType.Kind() {
+	case reflect.Interface:
+		field.Set(reflect.ValueOf(value))
 	case reflect.Bool:
 		boolValue, err := strconv.ParseBool(value)
 		if err != nil {
@@ -421,8 +423,7 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 			if value == nil {
 				continue
 			}
-			stringValue := fmt.Sprint(value)
-			validationErr = validateValue(validator_name, stringValue)
+			validationErr = validateValue(validator_name, value)
 			if validationErr != nil {
 				return validationErr
 			}
@@ -475,6 +476,8 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 	fieldType := field.Type()
 	// 尝试将值转换为目标变量的类型并赋值给目标变量
 	switch fieldType.Kind() {
+	case reflect.Interface:
+		field.Set(reflect.ValueOf(value))
 	case reflect.Bool:
 		var boolValue bool
 		switch v := value.(type) {
