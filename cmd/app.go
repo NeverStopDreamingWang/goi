@@ -185,11 +185,11 @@ func (serializer MyModelSerializer) Create(mysqlDB *db.MySQLDB, validated_data *
 	mysqlDB.SetModel(*validated_data)
 	result, err := mysqlDB.Insert(*validated_data)
 	if err != nil {
-		return goi.NewValidationError(http.StatusInternalServerError, "添加错误")
+		return goi.NewValidationError(http.StatusInternalServerError, "添加失败")
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		return goi.NewValidationError(http.StatusInternalServerError, "添加错误")
+		return goi.NewValidationError(http.StatusInternalServerError, "添加失败")
 	}
 	validated_data.Id = &id
 	return nil
@@ -211,7 +211,7 @@ func (serializer MyModelSerializer) Update(mysqlDB *db.MySQLDB, instance *MyMode
 
 	_, err = mysqlDB.Where("` + "`" + `id` + "`" + ` = ?", serializer.Instance.Id).Update(validated_data)
 	if err != nil {
-		return goi.NewValidationError(http.StatusInternalServerError, "修改错误")
+		return goi.NewValidationError(http.StatusInternalServerError, "修改失败")
 	}
 
 	// 更新 instance
@@ -293,7 +293,7 @@ func listView(request *goi.Request) interface{} {
 
 // 参数验证
 type createValidParams struct {
-	name string            ` + "`" + `name:"name" required:"string"` + "`" + `
+	Name string            ` + "`" + `name:"name" required:"string"` + "`" + `
 }
 func createView(request *goi.Request) interface{} {
 	var params createValidParams
@@ -330,7 +330,7 @@ func retrieveView(request *goi.Request) interface{} {
 
 // 参数验证
 type updateValidParams struct {
-	name *string            ` + "`" + `name:"name" optional:"string"` + "`" + `
+	Name *string            ` + "`" + `name:"name" optional:"string"` + "`" + `
 }
 func updateView(request *goi.Request) interface{} {
 	var pk int64
