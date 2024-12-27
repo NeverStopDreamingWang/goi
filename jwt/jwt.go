@@ -190,7 +190,7 @@ func checkExpField(payloadsDest interface{}) error {
 		}
 
 		// 判断过期时间
-		if expTime.Time.Before(time.Now().In(goi.Settings.GetLocation())) {
+		if expTime.Time.Before(goi.GetTime()) {
 			return jwtExpiredSignatureError
 		}
 		return nil // Exp 时间有效

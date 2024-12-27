@@ -3,7 +3,6 @@ package goi
 import (
 	"net/http"
 	"os"
-	"time"
 )
 
 // 静态文件处理函数
@@ -58,6 +57,6 @@ func metaResponseStatic(file os.File, request *Request, response http.ResponseWr
 		response.WriteHeader(http.StatusNotFound)
 	} else {
 		response.WriteHeader(http.StatusOK)
-		http.ServeContent(response, request.Object, fileInfo.Name(), time.Now().In(Settings.GetLocation()), &file)
+		http.ServeContent(response, request.Object, fileInfo.Name(), GetTime(), &file)
 	}
 }

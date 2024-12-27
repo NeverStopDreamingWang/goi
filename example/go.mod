@@ -9,7 +9,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.1 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 )
 
 replace github.com/NeverStopDreamingWang/goi v1.3.1 => ../../goi

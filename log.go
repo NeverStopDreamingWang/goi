@@ -126,7 +126,7 @@ func (metaLog *metaLog) Log(level Level, logs ...interface{}) {
 				Level:           []Level{DEBUG, INFO, WARNING, ERROR},
 				Logger:          log.New(os.Stdout, "", 0),
 				File:            nil,
-				CreateTime:      time.Now().In(Settings.GetLocation()),
+				CreateTime:      GetTime(),
 				SPLIT_SIZE:      0,
 				SPLIT_TIME:      "",
 				GetFileFunc:     nil,
@@ -180,7 +180,7 @@ func (metaLog *metaLog) splitLogger(ctx context.Context, wg *sync.WaitGroup) {
 
 // 默认日志输出格式
 func defaultLoggerPrint(logger *MetaLogger, level Level, logs ...interface{}) {
-	timeStr := fmt.Sprintf("[%v]", time.Now().In(Settings.GetLocation()).Format("2006-01-02 15:04:05"))
+	timeStr := fmt.Sprintf("[%v]", GetTime().Format("2006-01-02 15:04:05"))
 	if level != "" {
 		timeStr += fmt.Sprintf(" %v", level)
 	}

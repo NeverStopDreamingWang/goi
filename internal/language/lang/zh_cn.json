@@ -57,9 +57,7 @@
     "invalid_level": "Level 为无效的 []\n",
     "invalid_file": "File 为无效的 nil\n",
     "invalid_object": "Logger 为无效的 nil\n",
-    "invalid_nil": "{{ .name }} 为无效的 nil\n",
-    "split_log_stat_error": "日志切割-[{{ .name }}] 获取日志文件信息错误: {{ .err }}\n",
-    "split_log_rename_error": "日志切割-[{{ .name }}] 日志重命名错误: {{ .err }}\n"
+    "split_log_stat_error": "日志切割-[{{ .name }}] 获取日志文件信息错误: {{ .err }}\n"
   },
   "database": {
     "transaction_cannot_be_nested_error": "不可嵌套事务",
