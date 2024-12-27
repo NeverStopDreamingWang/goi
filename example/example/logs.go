@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
@@ -21,7 +20,7 @@ func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
 	logger.Logger.Println(logs...)
 }
 
-// 创建 *os.File 对象
+// 获取 *os.File 对象
 func getFileFunc(filePath string) (*os.File, error) {
 	var file *os.File
 	var err error
@@ -73,7 +72,7 @@ func newDefaultLog() *goi.MetaLogger {
 		SPLIT_SIZE:      1024 * 1024 * 10, // 切割大小
 		SPLIT_TIME:      "2006-01-02",     // 切割日期，每天
 		GetFileFunc:     getFileFunc,      // 创建文件对象方法
-		SplitLoggerFunc: nil,              // 自定义日志切割：符合切割条件时，传入日志对象，关闭旧文件对象，Logger.SetOutput 设置新的输出对象
+		SplitLoggerFunc: nil,              // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
 	}
 	defaultLog.File, err = getFileFunc(defaultLog.Path)
 	if err != nil {
@@ -157,43 +156,31 @@ func newErrorLog() *goi.MetaLogger {
 }
 
 // 自定义日志切割
-func mySplitLoggerFunc(metaLog *goi.MetaLogger) error {
-	var err error
-
+func mySplitLoggerFunc(metaLogger *goi.MetaLogger) (*os.File, error) {
 	var (
 		fileName string
 		fileExt  string
 		fileDir  string
+		err      error
 	)
 
-	fileName = filepath.Base(metaLog.Path)
-	fileDir = filepath.Dir(metaLog.Path)
+	fileName = filepath.Base(metaLogger.Path)
+	fileDir = filepath.Dir(metaLogger.Path)
 
-	// 获取文件扩展名
-	fileExt = filepath.Ext(fileName) // 提取扩展名，包括点 (".txt")
-	// 去掉扩展名后的文件名
-	baseName := strings.TrimSuffix(fileName, fileExt) // 去掉 ".txt"
-
+	for i := len(fileName) - 1; i >= 0 && !os.IsPathSeparator(fileName[i]); i-- {
+		if fileName[i] == '.' {
+			fileName = fileName[:i]
+			fileExt = fileName[i:]
+			break
+		}
+	}
 	// 自动加 _n
-	oldInfoFile := path.Join(fileDir, fmt.Sprintf("%v_%v%v", baseName, metaLog.CreateTime.Format(metaLog.SPLIT_TIME), fileExt))
-	_, err = os.Stat(oldInfoFile)
-	for idx := 1; os.IsNotExist(err) == true; idx++ {
-		oldInfoFile = path.Join(fileDir, fmt.Sprintf("%v_%v(%v)%v", baseName, metaLog.CreateTime.Format(metaLog.SPLIT_TIME), idx, fileExt))
-		_, err = os.Stat(oldInfoFile)
+	newFilePath := path.Join(fileDir, fmt.Sprintf("%v_%v%v", fileName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), fileExt))
+	_, err = os.Stat(newFilePath)
+	for idx := 1; err == nil || os.IsNotExist(err) == false; idx++ {
+		newFilePath = path.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", fileName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), idx, fileExt))
+		_, err = os.Stat(newFilePath)
 	}
-
-	_ = metaLog.File.Close()
-	err = os.Rename(metaLog.Path, oldInfoFile)
-	if err != nil {
-		panic(fmt.Sprintf("日志切割-[%v]日志重命名错误: %v", metaLog.Name, err))
-	}
-
 	// 初始化新的文件对象
-	metaLog.File, err = metaLog.GetFileFunc(metaLog.Path)
-	if err != nil {
-		panic(fmt.Sprintf("初始化[%v]日志错误: %v", metaLog.Name, err))
-	}
-	// 设置新的输出对象
-	metaLog.Logger.SetOutput(metaLog.File)
-	return nil
+	return getFileFunc(newFilePath)
 }

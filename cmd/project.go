@@ -399,9 +399,21 @@ func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
 func getFileFunc(filePath string) (*os.File, error) {
 	var file *os.File
 	var err error
-	file, err = os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
-	if err != nil {
-		panic(fmt.Sprintf("初始化[%%v]日志错误: %%v", filePath, err))
+
+	_, err = os.Stat(filePath)
+	if os.IsNotExist(err) { // 不存在则创建
+		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	} else {
+		// 文件存在，打开文件
+		file, err = os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0755)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return file, nil
 }
@@ -436,7 +448,7 @@ func newDefaultLog() *goi.MetaLogger {
 		SPLIT_SIZE:      1024 * 5,     // 切割大小
 		SPLIT_TIME:      "2006-01-02", // 切割日期，每天
 		GetFileFunc:     getFileFunc,  // 创建文件对象方法
-		SplitLoggerFunc: nil,          // 自定义日志切割：符合切割条件时，传入日志对象，关闭旧文件对象，Logger.SetOutput 设置新的输出对象
+		SplitLoggerFunc: nil,          // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
 	}
 	defaultLog.File, err = getFileFunc(defaultLog.Path)
 	if err != nil {
