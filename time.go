@@ -6,5 +6,5 @@ import (
 
 // 获取当前时区时间
 func GetTime() time.Time {
-	return time.Now().In(Settings.location)
+	return time.Now().In(Settings.GetLocation())
 }

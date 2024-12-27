@@ -83,7 +83,7 @@ func NewHttpServer() *Engine {
 // 启动 http 服务
 func (engine *Engine) RunServer() {
 	var err error
-	startTime := time.Now().In(engine.Settings.GetLocation())
+	startTime := GetTime()
 	engine.startTime = &startTime
 
 	// 日志切割
@@ -291,7 +291,7 @@ func (engine *Engine) StopServer() error {
 	stopTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.stop_time",
 		TemplateData: map[string]interface{}{
-			"stop_time": time.Now().In(engine.Settings.GetLocation()).Format("2006-01-02 15:04:05"),
+			"stop_time": GetTime().Format("2006-01-02 15:04:05"),
 		},
 	})
 	engine.Log.Log(meta, stopTimeMsg)
@@ -317,7 +317,7 @@ func (engine *Engine) StopServer() error {
 // 获取当前运行时间 返回时间间隔
 func (engine *Engine) RunTime() time.Duration {
 	// 获取当前时间并设置时区
-	currentTime := time.Now().In(engine.Settings.GetLocation())
+	currentTime := GetTime()
 
 	// 计算时间间隔
 	return currentTime.Sub(*engine.startTime)
@@ -362,7 +362,7 @@ func (engine *Engine) runTimeStr() string {
 
 // 实现 ServeHTTP 接口
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	requestID := time.Now().In(engine.Settings.GetLocation())
+	requestID := GetTime()
 	ctx := context.WithValue(r.Context(), "requestID", requestID)
 	r = r.WithContext(ctx)
 
