@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/NeverStopDreamingWang/goi"
@@ -175,10 +174,10 @@ func mySplitLoggerFunc(metaLogger *goi.MetaLogger) (*os.File, error) {
 		}
 	}
 	// 自动加 _n
-	newFilePath := path.Join(fileDir, fmt.Sprintf("%v_%v%v", fileName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), fileExt))
+	newFilePath := filepath.Join(fileDir, fmt.Sprintf("%v_%v%v", fileName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), fileExt))
 	_, err = os.Stat(newFilePath)
 	for idx := 1; err == nil || os.IsNotExist(err) == false; idx++ {
-		newFilePath = path.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", fileName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), idx, fileExt))
+		newFilePath = filepath.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", fileName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), idx, fileExt))
 		_, err = os.Stat(newFilePath)
 	}
 	// 初始化新的文件对象

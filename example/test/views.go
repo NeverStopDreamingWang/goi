@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
@@ -181,7 +181,7 @@ func TestContext(request *goi.Request) interface{} {
 
 // 返回文件
 func TestFile(request *goi.Request) interface{} {
-	absolutePath := path.Join(goi.Settings.BASE_DIR, "template/test.txt")
+	absolutePath := filepath.Join(goi.Settings.BASE_DIR, "template/test.txt")
 	file, err := os.Open(absolutePath)
 	if err != nil {
 		_ = file.Close()

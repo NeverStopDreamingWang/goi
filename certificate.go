@@ -9,7 +9,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 func GenerateRSACertificate(bits int, certificateTemplate x509.Certificate, outPath string) error {
@@ -21,7 +21,7 @@ func GenerateRSACertificate(bits int, certificateTemplate x509.Certificate, outP
 
 	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
 
-	privateKeyFile, err := os.Create(path.Join(outPath, certificateTemplate.Subject.CommonName+".key"))
+	privateKeyFile, err := os.Create(filepath.Join(outPath, certificateTemplate.Subject.CommonName+".key"))
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func GenerateRSACertificate(bits int, certificateTemplate x509.Certificate, outP
 		return err
 	}
 
-	certificateFile, err := os.Create(path.Join(outPath, certificateTemplate.Subject.CommonName+".crt"))
+	certificateFile, err := os.Create(filepath.Join(outPath, certificateTemplate.Subject.CommonName+".crt"))
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func GenerateRSACertificate(bits int, certificateTemplate x509.Certificate, outP
 		return err
 	}
 
-	certificatePemFile, err := os.Create(path.Join(outPath, certificateTemplate.Subject.CommonName+".pem"))
+	certificatePemFile, err := os.Create(filepath.Join(outPath, certificateTemplate.Subject.CommonName+".pem"))
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func GenerateRSACertificate(bits int, certificateTemplate x509.Certificate, outP
 		return err
 	}
 
-	csrFile, err := os.Create(path.Join(outPath, certificateTemplate.Subject.CommonName+".csr"))
+	csrFile, err := os.Create(filepath.Join(outPath, certificateTemplate.Subject.CommonName+".csr"))
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func GenerateECCCertificate(certificateTemplate x509.Certificate, outPath string
 		return err
 	}
 
-	privateKeyFile, err := os.Create(path.Join(outPath, certificateTemplate.Subject.CommonName+".key"))
+	privateKeyFile, err := os.Create(filepath.Join(outPath, certificateTemplate.Subject.CommonName+".key"))
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func GenerateECCCertificate(certificateTemplate x509.Certificate, outPath string
 		return err
 	}
 
-	certificateFile, err := os.Create(path.Join(outPath, certificateTemplate.Subject.CommonName+".crt"))
+	certificateFile, err := os.Create(filepath.Join(outPath, certificateTemplate.Subject.CommonName+".crt"))
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func GenerateECCCertificate(certificateTemplate x509.Certificate, outPath string
 		return err
 	}
 
-	certificatePemFile, err := os.Create(path.Join(outPath, certificateTemplate.Subject.CommonName+".pem"))
+	certificatePemFile, err := os.Create(filepath.Join(outPath, certificateTemplate.Subject.CommonName+".pem"))
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func GenerateECCCertificate(certificateTemplate x509.Certificate, outPath string
 		return err
 	}
 
-	csrFile, err := os.Create(path.Join(outPath, certificateTemplate.Subject.CommonName+".csr"))
+	csrFile, err := os.Create(filepath.Join(outPath, certificateTemplate.Subject.CommonName+".csr"))
 	if err != nil {
 		return err
 	}
