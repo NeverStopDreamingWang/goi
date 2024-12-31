@@ -1,6 +1,7 @@
 package example
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -158,6 +159,7 @@ func newErrorLog() *goi.MetaLogger {
 func mySplitLoggerFunc(metaLogger *goi.MetaLogger) (*os.File, error) {
 	var (
 		fileName string
+		baseName string
 		fileExt  string
 		fileDir  string
 		err      error
@@ -168,18 +170,22 @@ func mySplitLoggerFunc(metaLogger *goi.MetaLogger) (*os.File, error) {
 
 	for i := len(fileName) - 1; i >= 0 && !os.IsPathSeparator(fileName[i]); i-- {
 		if fileName[i] == '.' {
-			fileName = fileName[:i]
+			baseName = fileName[:i]
 			fileExt = fileName[i:]
 			break
 		}
 	}
 	// 自动加 _n
-	newFilePath := filepath.Join(fileDir, fmt.Sprintf("%v_%v%v", fileName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), fileExt))
-	_, err = os.Stat(newFilePath)
+	oldFilePath := filepath.Join(fileDir, fmt.Sprintf("%v_%v%v", baseName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), fileExt))
+	_, err = os.Stat(oldFilePath)
 	for idx := 1; err == nil || os.IsNotExist(err) == false; idx++ {
-		newFilePath = filepath.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", fileName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), idx, fileExt))
-		_, err = os.Stat(newFilePath)
+		oldFilePath = filepath.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", baseName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), idx, fileExt))
+		_, err = os.Stat(oldFilePath)
+	}
+	err = os.Rename(metaLogger.Path, oldFilePath)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("日志切割-[%v]日志重命名错误: %v", metaLogger.Name, err))
 	}
 	// 初始化新的文件对象
-	return getFileFunc(newFilePath)
+	return getFileFunc(metaLogger.Path)
 }

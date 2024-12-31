@@ -57,7 +57,8 @@
     "invalid_level": "Level is invalid []\n",
     "invalid_file": "File is invalid nil\n",
     "invalid_object": "Logger is invalid nil\n",
-    "split_log_stat_error": "Log splitting-[{{ .name }}] Error Obtaining log file information: {{ .err }}\n"
+    "split_log_stat_error": "Log splitting-[{{ .name }}] Error Obtaining log file information: {{ .err }}\n",
+    "split_log_rename_error": "Log splitting-[{{ .name }}] Log renaming error: {{ .err }}\n"
   },
   "database": {
     "transaction_cannot_be_nested_error": "Transactions cannot be nested",
