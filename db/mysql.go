@@ -59,12 +59,12 @@ func MySQLConnect(UseDataBases string) *MySQLDB {
 }
 
 // 获取数据库别名
-func (mysqlDB *MySQLDB) Name() string {
+func (mysqlDB MySQLDB) Name() string {
 	return mysqlDB.name
 }
 
 // 获取SQL语句
-func (mysqlDB *MySQLDB) GetSQL() string {
+func (mysqlDB MySQLDB) GetSQL() string {
 	return mysqlDB.sql
 }
 
@@ -269,7 +269,7 @@ func (mysqlDB *MySQLDB) isSetModel() {
 	}
 }
 
-// 设置使用模型
+// 设置使用模型  return 当前 *MySQLDB 本身
 func (mysqlDB *MySQLDB) SetModel(model mysql.MySQLModel) *MySQLDB {
 	mysqlDB.model = model
 	ModelType := reflect.TypeOf(mysqlDB.model)
@@ -295,8 +295,8 @@ func (mysqlDB *MySQLDB) SetModel(model mysql.MySQLModel) *MySQLDB {
 	return mysqlDB
 }
 
-// 设置查询字段
-func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
+// 设置查询结果字段  return 当前 *MySQLDB 的副本指针
+func (mysqlDB MySQLDB) Fields(fields ...string) *MySQLDB {
 	ModelType := reflect.TypeOf(mysqlDB.model)
 	// 获取字段
 	mysqlDB.fields = make([]string, len(fields))
@@ -321,10 +321,10 @@ func (mysqlDB *MySQLDB) Fields(fields ...string) *MySQLDB {
 		}
 		mysqlDB.field_sql[i] = field_name
 	}
-	return mysqlDB
+	return &mysqlDB
 }
 
-// 插入数据库
+// 插入到数据库
 func (mysqlDB *MySQLDB) Insert(ModelData mysql.MySQLModel) (sql.Result, error) {
 	mysqlDB.isSetModel()
 
@@ -357,8 +357,8 @@ func (mysqlDB *MySQLDB) Insert(ModelData mysql.MySQLModel) (sql.Result, error) {
 	return mysqlDB.Execute(mysqlDB.sql, insertValues...)
 }
 
-// 查询语句
-func (mysqlDB *MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
+// 设置条件查询语句  return 当前 *MySQLDB 的副本指针
+func (mysqlDB MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
 	queryParts := strings.Split(query, "?")
 	if len(queryParts)-1 != len(args) {
 		whereArgsPlaceholderErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -394,11 +394,11 @@ func (mysqlDB *MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
 		queryBuilder.WriteString(queryParts[i+1])
 	}
 	mysqlDB.where_sql = append(mysqlDB.where_sql, queryBuilder.String())
-	return mysqlDB
+	return &mysqlDB
 }
 
-// 分组
-func (mysqlDB *MySQLDB) GroupBy(groups ...string) *MySQLDB {
+// 分组  return 当前 *MySQLDB 的副本指针
+func (mysqlDB MySQLDB) GroupBy(groups ...string) *MySQLDB {
 	var groupFields []string
 	for _, group := range groups {
 		group = strings.Trim(group, " `'\"")
@@ -412,11 +412,11 @@ func (mysqlDB *MySQLDB) GroupBy(groups ...string) *MySQLDB {
 	} else {
 		mysqlDB.group_sql = ""
 	}
-	return mysqlDB
+	return &mysqlDB
 }
 
-// 排序
-func (mysqlDB *MySQLDB) OrderBy(orders ...string) *MySQLDB {
+// 排序  return 当前 *MySQLDB 的副本指针
+func (mysqlDB MySQLDB) OrderBy(orders ...string) *MySQLDB {
 	var orderFields []string
 	for _, order := range orders {
 		order = strings.Trim(order, " `'\"")
@@ -440,7 +440,7 @@ func (mysqlDB *MySQLDB) OrderBy(orders ...string) *MySQLDB {
 	} else {
 		mysqlDB.order_sql = ""
 	}
-	return mysqlDB
+	return &mysqlDB
 }
 
 // 分页
@@ -657,7 +657,6 @@ func (mysqlDB *MySQLDB) Exists() (bool, error) {
 
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 
-	// 检查查询是否有错误
 	var exists int
 	err := row.Scan(&exists)
 	if err != nil {

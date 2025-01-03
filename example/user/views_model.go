@@ -32,10 +32,10 @@ func listView(request *goi.Request) interface{} {
 	mysqlDB.SetModel(UserModel{}) // 设置操作表
 
 	if params.Username != "" {
-		mysqlDB.Where("`username` like ?", "%"+params.Username+"%")
+		mysqlDB = mysqlDB.Where("`username` like ?", "%"+params.Username+"%")
 	}
 
-	mysqlDB.Fields("Id", "Username", "Password").Where("id>?", 1).OrderBy("-id")
+	mysqlDB = mysqlDB.Where("id>?", 1).OrderBy("-id")
 	total, page_number, err := mysqlDB.Page(params.Page, params.Pagesize)
 	if err != nil {
 		return goi.Response{
@@ -45,7 +45,7 @@ func listView(request *goi.Request) interface{} {
 	}
 
 	var userList []UserModel
-	err = mysqlDB.Select(&userList)
+	err = mysqlDB.Fields("Id", "Username", "Password").Select(&userList)
 	if err != nil {
 		return goi.Response{
 			Status: http.StatusInternalServerError,

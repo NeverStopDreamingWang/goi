@@ -59,12 +59,12 @@ func SQLite3Connect(UseDataBases string) *SQLite3DB {
 }
 
 // 获取数据库别名
-func (sqlite3DB *SQLite3DB) Name() string {
+func (sqlite3DB SQLite3DB) Name() string {
 	return sqlite3DB.name
 }
 
 // 获取SQL语句
-func (sqlite3DB *SQLite3DB) GetSQL() string {
+func (sqlite3DB SQLite3DB) GetSQL() string {
 	return sqlite3DB.sql
 }
 
@@ -230,7 +230,7 @@ func (sqlite3DB *SQLite3DB) isSetModel() {
 	}
 }
 
-// 设置使用模型
+// 设置使用模型  return 当前 *SQLite3DB 本身
 func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 	sqlite3DB.model = model
 	ModelType := reflect.TypeOf(sqlite3DB.model)
@@ -256,8 +256,8 @@ func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 	return sqlite3DB
 }
 
-// 设置查询字段
-func (sqlite3DB *SQLite3DB) Fields(fields ...string) *SQLite3DB {
+// 设置查询结果字段  return 当前 *SQLite3DB 的副本指针
+func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 	ModelType := reflect.TypeOf(sqlite3DB.model)
 	// 获取字段
 	sqlite3DB.fields = make([]string, len(fields))
@@ -282,7 +282,7 @@ func (sqlite3DB *SQLite3DB) Fields(fields ...string) *SQLite3DB {
 		}
 		sqlite3DB.field_sql[i] = field_name
 	}
-	return sqlite3DB
+	return &sqlite3DB
 }
 
 // 插入数据库
@@ -318,8 +318,8 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData sqlite3.SQLite3Model) (sql.Result, 
 	return sqlite3DB.Execute(sqlite3DB.sql, insertValues...)
 }
 
-// 查询语句
-func (sqlite3DB *SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
+// 设置条件查询语句  return 当前 *SQLite3DB 的副本指针
+func (sqlite3DB SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
 	queryParts := strings.Split(query, "?")
 	if len(queryParts)-1 != len(args) {
 		whereArgsPlaceholderErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -355,11 +355,11 @@ func (sqlite3DB *SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB 
 		queryBuilder.WriteString(queryParts[i+1])
 	}
 	sqlite3DB.where_sql = append(sqlite3DB.where_sql, queryBuilder.String())
-	return sqlite3DB
+	return &sqlite3DB
 }
 
-// 分组
-func (sqlite3DB *SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
+// 分组  return 当前 *SQLite3DB 的副本指针
+func (sqlite3DB SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
 	var groupFields []string
 	for _, group := range groups {
 		group = strings.Trim(group, " `'\"")
@@ -373,11 +373,11 @@ func (sqlite3DB *SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
 	} else {
 		sqlite3DB.group_sql = ""
 	}
-	return sqlite3DB
+	return &sqlite3DB
 }
 
-// 排序
-func (sqlite3DB *SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
+// 排序  return 当前 *SQLite3DB 的副本指针
+func (sqlite3DB SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 	var orderFields []string
 	for _, order := range orders {
 		order = strings.Trim(order, " `'\"")
@@ -401,7 +401,7 @@ func (sqlite3DB *SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 	} else {
 		sqlite3DB.order_sql = ""
 	}
-	return sqlite3DB
+	return &sqlite3DB
 }
 
 // 分页
