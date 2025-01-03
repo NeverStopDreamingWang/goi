@@ -124,21 +124,10 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 	var err error
 	modelSettings := model.ModelSet()
 
-	row := mysqlDB.DB.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=? AND table_name=?;", db_name, modelSettings.TABLE_NAME)
-	if row.Err() != nil {
-		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.select_error",
-			TemplateData: map[string]interface{}{
-				"engine":  "MySQL",
-				"db_name": mysqlDB.name,
-				"err":     row.Err(),
-			},
-		})
-		goi.Log.Error(selectErrorMsg)
-		panic(selectErrorMsg)
-	}
-	var count int
-	err = row.Scan(&count)
+	row := mysqlDB.DB.QueryRow("SELECT 1 FROM information_schema.tables WHERE table_schema=? AND table_name=?;", db_name, modelSettings.TABLE_NAME)
+
+	var exists int
+	err = row.Scan(&exists)
 	if err != nil {
 		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.select_error",
@@ -209,7 +198,7 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 		createSql += fmt.Sprintf(" COMMENT='%v'", modelSettings.COMMENT)
 	}
 
-	if count == 0 { // 创建表
+	if exists != 1 { // 创建表
 		if modelSettings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
 			beforeMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "database.before_migration",
@@ -616,11 +605,6 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		mysqlDB.sql += mysqlDB.limit_sql
 	}
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
-	if row == nil {
-		return nil
-	} else if row.Err() != nil {
-		return row.Err()
-	}
 
 	values := make([]interface{}, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
@@ -651,11 +635,6 @@ func (mysqlDB *MySQLDB) Count() (int, error) {
 	}
 
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
-	if row == nil {
-		return 0, nil
-	} else if row.Err() != nil {
-		return 0, row.Err()
-	}
 
 	var count int
 	err := row.Scan(&count)
@@ -663,6 +642,28 @@ func (mysqlDB *MySQLDB) Count() (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// 是否存在
+func (mysqlDB *MySQLDB) Exists() (bool, error) {
+	mysqlDB.isSetModel()
+
+	TableName := mysqlDB.model.ModelSet().TABLE_NAME
+
+	mysqlDB.sql = fmt.Sprintf("SELECT 1 FROM `%v`", TableName)
+	if len(mysqlDB.where_sql) > 0 {
+		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
+	}
+
+	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
+
+	// 检查查询是否有错误
+	var exists int
+	err := row.Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists == 1, nil
 }
 
 // 更新数据，返回操作条数
