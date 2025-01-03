@@ -124,21 +124,10 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 	var err error
 	modelSettings := model.ModelSet()
 
-	row := sqlite3DB.DB.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name =?;", modelSettings.TABLE_NAME)
-	if row.Err() != nil {
-		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.select_error",
-			TemplateData: map[string]interface{}{
-				"engine":  "SQLite3",
-				"db_name": sqlite3DB.name,
-				"err":     row.Err(),
-			},
-		})
-		goi.Log.Error(selectErrorMsg)
-		panic(selectErrorMsg)
-	}
-	var count int
-	err = row.Scan(&count)
+	row := sqlite3DB.DB.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name =?;", modelSettings.TABLE_NAME)
+
+	var exists int
+	err = row.Scan(&exists)
 	if err != nil {
 		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.select_error",
@@ -170,7 +159,7 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 	}
 	createSql := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", modelSettings.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
 
-	if count == 0 { // 创建表
+	if exists != 1 { // 创建表
 		if modelSettings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
 			beforeMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "database.before_migration",
@@ -577,11 +566,6 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		sqlite3DB.sql += sqlite3DB.limit_sql
 	}
 	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
-	if row == nil {
-		return nil
-	} else if row.Err() != nil {
-		return row.Err()
-	}
 
 	values := make([]interface{}, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
@@ -612,11 +596,6 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 	}
 
 	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
-	if row == nil {
-		return 0, nil
-	} else if row.Err() != nil {
-		return 0, row.Err()
-	}
 
 	var count int
 	err := row.Scan(&count)
@@ -624,6 +603,27 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 		return 0, err
 	}
 	return count, nil
+}
+
+// 是否存在
+func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
+	sqlite3DB.isSetModel()
+
+	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
+
+	sqlite3DB.sql = fmt.Sprintf("SELECT 1 FROM `%v`", TableName)
+	if len(sqlite3DB.where_sql) > 0 {
+		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	}
+
+	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+
+	var exists int
+	err := row.Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists == 1, nil
 }
 
 // 更新数据，返回操作条数
