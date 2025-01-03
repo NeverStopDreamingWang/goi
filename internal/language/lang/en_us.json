@@ -50,7 +50,7 @@
     "is_not_required_or_optional": "There must be a required and optional label for the \"{{ .name }}\" field",
     "params_is_not_can_set": "\"{{ .name }}\" is a value that cannot be assigned",
     "params_type_is_unsupported": "Unsupported variable types",
-    "value_invalid": "The type of \"{{ .name }}\" {{ .type }} is invalid"
+    "value_invalid": "The type of \"{{ .name }}\" is invalid"
   },
   "log": {
     "invalid_path": "Path is invalid: \"\"\n",
