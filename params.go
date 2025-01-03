@@ -1,8 +1,6 @@
 package goi
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -172,7 +170,6 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 
 // 将值设置到结构体字段中
 func (values ParamsValues) setFieldValue(field reflect.Value, value string) ValidationError {
-	var validationErr ValidationError
 	// 检查字段是否为指针类型
 	if field.Kind() == reflect.Ptr {
 		// 检查字段值是否是零值
@@ -224,63 +221,6 @@ func (values ParamsValues) setFieldValue(field reflect.Value, value string) Vali
 			return NewValidationError(http.StatusInternalServerError, err.Error())
 		}
 		field.SetFloat(floatValue)
-	case reflect.Slice:
-		jsonData := make([]interface{}, 0, 0)
-		err := json.Unmarshal([]byte(value), &jsonData)
-		if err != nil {
-			return NewValidationError(http.StatusBadRequest, err.Error())
-		}
-		// 获取切片元素的类型
-		elementType := fieldType.Elem()
-		// 创建一个新的切片，长度为0，容量为0
-		sliceValue := reflect.MakeSlice(fieldType, 0, len(jsonData))
-		for _, itemValue := range jsonData {
-			elemValue := reflect.New(elementType).Elem()
-			stringItemValue, ok := itemValue.(string)
-			if !ok {
-				// 如果无法转换为字符串，则使用 fmt.Sprint 将其转换为字符串
-				stringItemValue = fmt.Sprint(itemValue)
-			}
-			validationErr = values.setFieldValue(elemValue, stringItemValue)
-			if validationErr != nil {
-				return validationErr
-			}
-			sliceValue = reflect.Append(sliceValue, elemValue)
-		}
-		field.Set(sliceValue)
-	case reflect.Map:
-		jsonData := make(map[string]interface{})
-		err := json.Unmarshal([]byte(value), &jsonData)
-		if err != nil {
-			return NewValidationError(http.StatusBadRequest, err.Error())
-		}
-
-		// 获取映射键和值的类型
-		keyType := fieldType.Key()
-		valueType := fieldType.Elem()
-
-		// 创建一个新的映射
-		mapValue := reflect.MakeMap(field.Type())
-
-		for itemName, itemValue := range jsonData {
-			keyValue := reflect.New(keyType).Elem()
-			valueValue := reflect.New(valueType).Elem()
-			validationErr = values.setFieldValue(keyValue, itemName)
-			if validationErr != nil {
-				return validationErr
-			}
-			stringItemValue, ok := itemValue.(string)
-			if !ok {
-				// 如果无法转换为字符串，则使用 fmt.Sprint 将其转换为字符串
-				stringItemValue = fmt.Sprint(itemValue)
-			}
-			validationErr = values.setFieldValue(valueValue, stringItemValue)
-			if validationErr != nil {
-				return validationErr
-			}
-			mapValue.SetMapIndex(keyValue, valueValue)
-		}
-		field.Set(mapValue)
 	default:
 		paramsTypeIsNotMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.params_type_is_unsupported",
@@ -452,7 +392,6 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 
 // 将值设置到结构体字段中
 func (values BodyParamsValues) setFieldValue(field reflect.Value, value interface{}) ValidationError {
-	var validationErr ValidationError
 	// 检查字段是否为指针类型
 	if field.Kind() == reflect.Ptr {
 		// 检查字段值是否是零值
@@ -474,207 +413,91 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 	}
 
 	fieldType := field.Type()
-	// 尝试将值转换为目标变量的类型并赋值给目标变量
-	switch fieldType.Kind() {
-	case reflect.Interface:
-		field.Set(reflect.ValueOf(value))
-	case reflect.Bool:
-		var boolValue bool
-		switch v := value.(type) {
-		case bool:
-			boolValue = v
-		case string:
-			var err error
-			boolValue, err = strconv.ParseBool(v)
-			if err != nil {
-				return NewValidationError(http.StatusInternalServerError, err.Error())
-			}
-		default:
-			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.value_invalid",
-				TemplateData: map[string]interface{}{
-					"name": fieldType.Name(),
-					"type": "bool",
-				},
-			})
-			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
-		}
-		field.SetBool(boolValue)
-	case reflect.String:
-		if strValue, ok := value.(string); ok {
-			field.SetString(strValue)
-		} else {
-			field.SetString(fmt.Sprint(value))
-		}
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		switch v := value.(type) {
-		case string:
-			intValue, err := strconv.ParseInt(v, 10, fieldType.Bits())
-			if err != nil {
-				return NewValidationError(http.StatusInternalServerError, err.Error())
-			}
-			field.SetInt(intValue)
-		case int:
-			field.SetInt(int64(v))
-		case int64:
-			field.SetInt(v)
-		case float64:
-			field.SetInt(int64(v))
-		default:
-			intValue, err := strconv.ParseInt(fmt.Sprint(v), 10, fieldType.Bits())
-			if err != nil {
-				valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "params.value_invalid",
-					TemplateData: map[string]interface{}{
-						"name": fieldType.Name(),
-						"type": "int int8 int16 int32 int64",
-					},
-				})
-				return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
-			}
-			field.SetInt(intValue)
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		switch v := value.(type) {
-		case string:
-			uintValue, err := strconv.ParseUint(v, 10, fieldType.Bits())
-			if err != nil {
-				return NewValidationError(http.StatusInternalServerError, err.Error())
-			}
-			field.SetUint(uintValue)
-		case int:
-			field.SetUint(uint64(v))
-		case uint64:
-			field.SetUint(v)
-		case float64:
-			field.SetUint(uint64(v))
-		default:
-			uintValue, err := strconv.ParseUint(fmt.Sprint(v), 10, fieldType.Bits())
-			if err != nil {
-				valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "params.value_invalid",
-					TemplateData: map[string]interface{}{
-						"name": fieldType.Name(),
-						"type": "uint uint8 uint16 uint32 uint64",
-					},
-				})
-				return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
-			}
-			field.SetUint(uintValue)
-		}
-	case reflect.Float32, reflect.Float64:
-		switch v := value.(type) {
-		case float32:
-			field.SetFloat(float64(v))
-		case float64:
-			field.SetFloat(v)
-		case string:
-			floatValue, err := strconv.ParseFloat(v, fieldType.Bits())
-			if err != nil {
-				return NewValidationError(http.StatusInternalServerError, err.Error())
-			}
-			field.SetFloat(floatValue)
-		default:
-			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.value_invalid",
-				TemplateData: map[string]interface{}{
-					"name": fieldType.Name(),
-					"type": "float32 float64",
-				},
-			})
-			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
-		}
-	case reflect.Slice:
-		jsonData := make([]interface{}, 0, 0)
-		switch v := value.(type) {
-		case []interface{}:
-			jsonData = v
-		case string:
-			err := json.Unmarshal([]byte(v), &jsonData)
-			if err != nil {
-				return NewValidationError(http.StatusBadRequest, err.Error())
-			}
-		default:
-			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.value_invalid",
-				TemplateData: map[string]interface{}{
-					"name": fieldType.Name(),
-					"type": "slice",
-				},
-			})
-			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
-		}
 
-		// 获取切片元素的类型
-		elementType := fieldType.Elem()
-		// 创建一个新的切片，长度为0，容量为0
-		sliceValue := reflect.MakeSlice(fieldType, 0, len(jsonData))
-		for _, itemValue := range jsonData {
-			elemValue := reflect.New(elementType).Elem()
-			stringItemValue, ok := itemValue.(string)
-			if !ok {
-				// 如果无法转换为字符串，则使用 fmt.Sprint 将其转换为字符串
-				stringItemValue = fmt.Sprint(itemValue)
-			}
-			validationErr = values.setFieldValue(elemValue, stringItemValue)
-			if validationErr != nil {
-				return validationErr
-			}
-			sliceValue = reflect.Append(sliceValue, elemValue)
-		}
-		field.Set(sliceValue)
-	case reflect.Map:
-		jsonData := make(map[string]interface{})
-		switch v := value.(type) {
-		case map[string]interface{}:
-			jsonData = v
-		case string:
-			err := json.Unmarshal([]byte(v), &jsonData)
-			if err != nil {
-				return NewValidationError(http.StatusBadRequest, err.Error())
-			}
-		default:
-			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.value_invalid",
-				TemplateData: map[string]interface{}{
-					"name": fieldType.Name(),
-					"type": "map",
-				},
-			})
-			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
-		}
+	valueInterface := reflect.ValueOf(value)
+	valueType := valueInterface.Type()
 
-		// 获取映射键和值的类型
-		keyType := fieldType.Key()
-		valueType := fieldType.Elem()
-
-		// 创建一个新的映射
-		mapValue := reflect.MakeMap(field.Type())
-
-		for itemName, itemValue := range jsonData {
-			keyValue := reflect.New(keyType).Elem()
-			valueValue := reflect.New(valueType).Elem()
-			validationErr = values.setFieldValue(keyValue, itemName)
-			if validationErr != nil {
-				return validationErr
-			}
-			stringItemValue, ok := itemValue.(string)
-			if !ok {
-				// 如果无法转换为字符串，则使用 fmt.Sprint 将其转换为字符串
-				stringItemValue = fmt.Sprint(itemValue)
-			}
-			validationErr = values.setFieldValue(valueValue, stringItemValue)
-			if validationErr != nil {
-				return validationErr
-			}
-			mapValue.SetMapIndex(keyValue, valueValue)
-		}
-		field.Set(mapValue)
-	default:
-		paramsTypeIsNotMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "params.params_type_is_unsupported",
-		})
-		return NewValidationError(http.StatusBadRequest, paramsTypeIsNotMsg)
+	// 如果类型直接匹配
+	if valueType.AssignableTo(fieldType) {
+		field.Set(valueInterface)
+		return nil
 	}
-	return nil
+
+	switch fieldType.Kind() {
+	case reflect.Map:
+		if valueType.Kind() != reflect.Map {
+			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.value_invalid",
+				TemplateData: map[string]interface{}{
+					"name": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+		}
+
+		if field.IsNil() {
+			field.Set(reflect.MakeMap(fieldType))
+		}
+		keyType := fieldType.Key()
+		valueTypeElem := fieldType.Elem()
+		for _, key := range valueInterface.MapKeys() {
+			// 确保键和值的类型兼容
+			if key.Type().AssignableTo(keyType) == false {
+				valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "params.value_invalid",
+					TemplateData: map[string]interface{}{
+						"name": value,
+					},
+				})
+				return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+			}
+
+			valueVal := valueInterface.MapIndex(key)
+			if valueVal.Type().AssignableTo(valueTypeElem) {
+				field.SetMapIndex(key, valueVal)
+			} else {
+				// 创建目标 Map 的值，并递归调用 setFieldValue 进行赋值
+				val := reflect.New(valueTypeElem).Elem()
+				err := values.setFieldValue(val, valueVal.Interface())
+				if err != nil {
+					return err
+				}
+				field.SetMapIndex(key, val)
+			}
+		}
+		return nil
+	case reflect.Slice:
+		if valueType.Kind() != reflect.Slice {
+			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.value_invalid",
+				TemplateData: map[string]interface{}{
+					"name": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+		}
+
+		// 如果目标切片的长度小于源切片的长度，扩展目标切片
+		if field.Len() < valueInterface.Len() {
+			// 创建一个新的切片并设置给 field
+			newSlice := reflect.MakeSlice(fieldType, valueInterface.Len(), valueInterface.Len())
+			field.Set(newSlice)
+		}
+
+		for i := 0; i < valueInterface.Len(); i++ {
+			err := values.setFieldValue(field.Index(i), valueInterface.Index(i).Interface())
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "params.value_invalid",
+			TemplateData: map[string]interface{}{
+				"name": value,
+			},
+		})
+		return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+	}
 }

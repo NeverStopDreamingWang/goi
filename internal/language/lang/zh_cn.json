@@ -50,7 +50,7 @@
     "is_not_required_or_optional": "“{{ .name }}” 字段标签 required 与 optional 必须存在一个",
     "params_is_not_can_set": "“{{ .name }}” 是不可赋值的值",
     "params_type_is_unsupported": "不支持的变量类型",
-    "value_invalid": "“{{ .name }}” {{ .type }} 的类型无效"
+    "value_invalid": "“{{ .name }}” 的类型无效"
   },
   "log": {
     "invalid_path": "Path 为无效的: \"\"\n",
