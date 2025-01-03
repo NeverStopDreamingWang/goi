@@ -27,15 +27,15 @@ func (serializer UserModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs UserMo
 	mysqlDB.SetModel(UserModel{})
 
 	if serializer.Instance != nil {
-		mysqlDB.Where("`id` != ?", serializer.Instance.Id)
+		mysqlDB = mysqlDB.Where("`id` != ?", serializer.Instance.Id)
 	}
 
 	if attrs.Username != nil {
-		flag, err := mysqlDB.Where("`username` = ?", attrs.Username).Count()
+		flag, err := mysqlDB.Where("`username` = ?", attrs.Username).Exists()
 		if err != nil {
 			return goi.NewValidationError(http.StatusBadRequest, "查询数据库错误")
 		}
-		if flag > 0 {
+		if flag == true {
 			return goi.NewValidationError(http.StatusBadRequest, "用户名重复")
 		}
 	}
