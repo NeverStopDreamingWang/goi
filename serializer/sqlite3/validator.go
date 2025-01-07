@@ -2,17 +2,15 @@ package mysql
 
 import (
 	"errors"
-	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-func validateField(field reflect.StructField, fieldValue reflect.Value) goi.ValidationError {
+func validateField(field reflect.StructField, fieldValue reflect.Value) error {
 	field_name, ok := field.Tag.Lookup("field_name")
 	if !ok {
 		field_name = strings.ToLower(field.Name)
@@ -30,7 +28,7 @@ func validateField(field reflect.StructField, fieldValue reflect.Value) goi.Vali
 
 	err := validateFieldType(fieldType, fieldValue)
 	if err != nil {
-		return goi.NewValidationError(http.StatusBadRequest, field_name+err.Error())
+		return errors.New(field_name + err.Error())
 	}
 	return nil
 }
