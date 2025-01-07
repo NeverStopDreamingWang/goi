@@ -84,17 +84,30 @@ func createView(request *goi.Request) interface{} {
 	mysqlDB := db.MySQLConnect("default")
 
 	Create_Time := goi.GetTime().Format("2006-01-02 15:04:05")
-	user := UserModel{
+	user := &UserModel{
 		Username:    &params.Username,
 		Password:    &params.Password,
 		Create_time: &Create_Time,
 	}
 
 	userSer := UserModelSerializer{}
+	// 参数验证
+	err := userSer.Validate(mysqlDB, *user, false)
+	if err != nil {
+		return goi.Data{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+			Results: nil,
+		}
+	}
 	// 添加
-	validationErr = userSer.Create(mysqlDB, &user)
-	if validationErr != nil {
-		return validationErr.Response()
+	err = userSer.Create(mysqlDB, user)
+	if err != nil {
+		return goi.Data{
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+			Results: nil,
+		}
 	}
 
 	return goi.Data{
@@ -156,9 +169,9 @@ func updateView(request *goi.Request) interface{} {
 
 	mysqlDB := db.MySQLConnect("default")
 
-	instance := UserModel{}
+	instance := &UserModel{}
 	mysqlDB.SetModel(UserModel{})
-	err := mysqlDB.Where("`id` = ?", pk).First(&instance)
+	err := mysqlDB.Where("`id` = ?", pk).First(instance)
 	if err != nil {
 		return goi.Data{
 			Code:    http.StatusInternalServerError,
@@ -167,16 +180,29 @@ func updateView(request *goi.Request) interface{} {
 	}
 
 	Update_time := goi.GetTime().Format("2006-01-02 15:04:05")
-	user := UserModel{
+	user := &UserModel{
 		Username:    params.Username,
 		Password:    params.Password,
 		Update_time: &Update_time,
 	}
-	userSer := UserModelSerializer{}
+	userSer := UserModelSerializer{Instance: instance}
+	// 参数验证
+	err = userSer.Validate(mysqlDB, *user, true)
+	if err != nil {
+		return goi.Data{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+			Results: nil,
+		}
+	}
 	// 修改
-	validationErr = userSer.Update(mysqlDB, &instance, &user)
-	if validationErr != nil {
-		return validationErr.Response()
+	err = userSer.Update(mysqlDB, user)
+	if err != nil {
+		return goi.Data{
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+			Results: nil,
+		}
 	}
 	return goi.Data{
 		Code:    http.StatusOK,

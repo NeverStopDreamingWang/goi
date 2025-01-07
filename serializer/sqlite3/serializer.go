@@ -1,10 +1,9 @@
 package mysql
 
 import (
-	"net/http"
+	"errors"
 	"reflect"
 
-	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -15,7 +14,7 @@ type ModelSerializer struct {
 	Instance db.SQLite3DB
 }
 
-func (modelSerializer ModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs db.SQLite3DB, partial bool) goi.ValidationError {
+func (modelSerializer ModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs db.SQLite3DB, partial bool) error {
 	validatedDataValue := reflect.ValueOf(attrs)
 	modelType := validatedDataValue.Type()
 
@@ -29,7 +28,7 @@ func (modelSerializer ModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs db.SQ
 				"name": "ModelSerializer.model",
 			},
 		})
-		return goi.NewValidationError(http.StatusBadRequest, isNotStructPtrErrorMsg)
+		return errors.New(isNotStructPtrErrorMsg)
 	}
 
 	for i := 0; i < modelType.NumField(); i++ {

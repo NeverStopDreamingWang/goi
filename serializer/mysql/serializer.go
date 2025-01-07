@@ -1,10 +1,9 @@
 package mysql
 
 import (
-	"net/http"
+	"errors"
 	"reflect"
 
-	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/NeverStopDreamingWang/goi/model/mysql"
@@ -16,7 +15,7 @@ type ModelSerializer struct {
 	Instance mysql.MySQLModel
 }
 
-func (modelSerializer ModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs mysql.MySQLModel, partial bool) goi.ValidationError {
+func (modelSerializer ModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs mysql.MySQLModel, partial bool) error {
 	validatedDataValue := reflect.ValueOf(attrs)
 	modelType := validatedDataValue.Type()
 
@@ -30,7 +29,7 @@ func (modelSerializer ModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs mysql
 				"name": "ModelSerializer.model",
 			},
 		})
-		return goi.NewValidationError(http.StatusBadRequest, isNotStructPtrErrorMsg)
+		return errors.New(isNotStructPtrErrorMsg)
 	}
 
 	for i := 0; i < modelType.NumField(); i++ {
