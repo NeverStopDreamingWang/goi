@@ -195,7 +195,7 @@ func updateView(request *goi.Request) interface{} {
 			Results: nil,
 		}
 	}
-	// 修改
+	// 更新
 	err = userSer.Update(mysqlDB, user)
 	if err != nil {
 		return goi.Data{
