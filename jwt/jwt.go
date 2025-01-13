@@ -75,12 +75,12 @@ func (expTime *ExpTime) UnmarshalJSON(data []byte) error {
 
 // 签名过期
 func JwtExpiredSignatureError(err error) bool {
-	return err == jwtExpiredSignatureError
+	return errors.Is(err, jwtExpiredSignatureError)
 }
 
 // Jwt 解码错误
 func JwtDecodeError(err error) bool {
-	return err == jwtDecodeError
+	return errors.Is(err, jwtDecodeError)
 }
 
 // 生成 token
