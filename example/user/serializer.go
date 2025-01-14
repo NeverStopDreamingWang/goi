@@ -3,6 +3,7 @@ package user
 import (
 	"errors"
 
+	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/auth"
 	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/serializer/mysql"
@@ -44,6 +45,12 @@ func (serializer UserModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs UserMo
 
 func (serializer UserModelSerializer) Create(mysqlDB *db.MySQLDB, validated_data *UserModel) error {
 	var err error
+
+	if validated_data.Create_time == nil {
+		Create_time := goi.GetTime().Format("2006-01-02 15:04:05")
+		validated_data.Create_time = &Create_time
+	}
+
 	// 密码加密
 	encryptPassword, err := auth.MakePassword(*validated_data.Password)
 	if err != nil {
@@ -66,6 +73,9 @@ func (serializer UserModelSerializer) Create(mysqlDB *db.MySQLDB, validated_data
 
 func (serializer UserModelSerializer) Update(mysqlDB *db.MySQLDB, validated_data *UserModel) error {
 	var err error
+
+	Update_time := goi.GetTime().Format("2006-01-02 15:04:05")
+	validated_data.Update_time = &Update_time
 
 	if validated_data.Password != nil {
 		// 密码加密
