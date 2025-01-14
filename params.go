@@ -1,6 +1,8 @@
 package goi
 
 import (
+	"fmt"
+	"math"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -170,7 +172,7 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 
 // 将值设置到结构体字段中
 func (values ParamsValues) setFieldValue(field reflect.Value, value string) ValidationError {
-	// 检查字段是否为指针类型
+	// 处理指针类型
 	if field.Kind() == reflect.Ptr {
 		// 检查字段值是否是零值
 		if field.IsNil() {
@@ -179,7 +181,7 @@ func (values ParamsValues) setFieldValue(field reflect.Value, value string) Vali
 		}
 		field = field.Elem()
 	}
-	// 检查是否为可分配值
+
 	if !field.CanSet() {
 		paramsIsNotCanSetMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.params_is_not_can_set",
@@ -191,7 +193,15 @@ func (values ParamsValues) setFieldValue(field reflect.Value, value string) Vali
 	}
 
 	fieldType := field.Type()
-	// 尝试将值转换为目标变量的类型并赋值给目标变量
+	valueInterface := reflect.ValueOf(value)
+
+	// 直接类型匹配
+	if valueInterface.Type().AssignableTo(fieldType) {
+		field.Set(valueInterface)
+		return nil
+	}
+
+	// 类型转换处理
 	switch fieldType.Kind() {
 	case reflect.Interface:
 		field.Set(reflect.ValueOf(value))
@@ -392,7 +402,7 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 
 // 将值设置到结构体字段中
 func (values BodyParamsValues) setFieldValue(field reflect.Value, value interface{}) ValidationError {
-	// 检查字段是否为指针类型
+	// 处理指针类型
 	if field.Kind() == reflect.Ptr {
 		// 检查字段值是否是零值
 		if field.IsNil() {
@@ -401,7 +411,7 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 		}
 		field = field.Elem()
 	}
-	// 检查是否为可分配值
+
 	if !field.CanSet() {
 		paramsIsNotCanSetMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.params_is_not_can_set",
@@ -413,19 +423,129 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 	}
 
 	fieldType := field.Type()
-
 	valueInterface := reflect.ValueOf(value)
-	valueType := valueInterface.Type()
 
-	// 如果类型直接匹配
-	if valueType.AssignableTo(fieldType) {
+	// 处理 nil 值
+	if value == nil {
+		field.Set(reflect.Zero(fieldType))
+		return nil
+	}
+
+	// 直接类型匹配
+	if valueInterface.Type().AssignableTo(fieldType) {
 		field.Set(valueInterface)
 		return nil
 	}
 
+	// 类型转换处理
 	switch fieldType.Kind() {
+	case reflect.Bool:
+		switch v := value.(type) {
+		case bool:
+			field.SetBool(v)
+		case string:
+			boolValue, err := strconv.ParseBool(v)
+			if err != nil {
+				return NewValidationError(http.StatusInternalServerError, err.Error())
+			}
+			field.SetBool(boolValue)
+		default:
+			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.value_invalid",
+				TemplateData: map[string]interface{}{
+					"name": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+		}
+	case reflect.String:
+		switch v := value.(type) {
+		case string:
+			field.SetString(v)
+		default:
+			field.SetString(fmt.Sprint(value))
+		}
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		switch v := value.(type) {
+		case int, int8, int16, int32, int64:
+			field.SetInt(reflect.ValueOf(v).Int())
+		case uint, uint8, uint16, uint32, uint64:
+			field.SetInt(int64(reflect.ValueOf(v).Uint()))
+		case float32, float64:
+			floatVal := reflect.ValueOf(v).Float()
+			if floatVal > float64(math.MaxInt64) || floatVal < float64(math.MinInt64) {
+				valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "params.value_invalid",
+					TemplateData: map[string]interface{}{
+						"name": value,
+					},
+				})
+				return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+			}
+			field.SetInt(int64(floatVal))
+		case string:
+			intValue, err := strconv.ParseInt(v, 10, fieldType.Bits())
+			if err != nil {
+				return NewValidationError(http.StatusInternalServerError, err.Error())
+			}
+			field.SetInt(intValue)
+		default:
+			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.value_invalid",
+				TemplateData: map[string]interface{}{
+					"name": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+		}
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		switch v := value.(type) {
+		case uint, uint8, uint16, uint32, uint64:
+			field.SetUint(reflect.ValueOf(v).Uint())
+		case int, int8, int16, int32, int64:
+			field.SetUint(uint64(reflect.ValueOf(v).Int()))
+		case float32, float64:
+			field.SetUint(uint64(reflect.ValueOf(v).Float()))
+		case string:
+			uintValue, err := strconv.ParseUint(v, 10, fieldType.Bits())
+			if err != nil {
+				return NewValidationError(http.StatusInternalServerError, err.Error())
+			}
+			field.SetUint(uintValue)
+		default:
+			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.value_invalid",
+				TemplateData: map[string]interface{}{
+					"name": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+		}
+	case reflect.Float32, reflect.Float64:
+		switch v := value.(type) {
+		case float32, float64:
+			field.SetFloat(reflect.ValueOf(v).Float())
+		case int, int8, int16, int32, int64:
+			field.SetFloat(float64(reflect.ValueOf(v).Int()))
+		case uint, uint8, uint16, uint32, uint64:
+			field.SetFloat(float64(reflect.ValueOf(v).Uint()))
+		case string:
+			floatValue, err := strconv.ParseFloat(v, fieldType.Bits())
+			if err != nil {
+				return NewValidationError(http.StatusInternalServerError, err.Error())
+			}
+			field.SetFloat(floatValue)
+		default:
+			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.value_invalid",
+				TemplateData: map[string]interface{}{
+					"name": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+		}
 	case reflect.Map:
-		if valueType.Kind() != reflect.Map {
+		if valueInterface.Kind() != reflect.Map {
 			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "params.value_invalid",
 				TemplateData: map[string]interface{}{
@@ -467,7 +587,7 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 		}
 		return nil
 	case reflect.Slice:
-		if valueType.Kind() != reflect.Slice {
+		if valueInterface.Kind() != reflect.Slice {
 			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "params.value_invalid",
 				TemplateData: map[string]interface{}{
@@ -500,4 +620,5 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 		})
 		return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
 	}
+	return nil
 }
