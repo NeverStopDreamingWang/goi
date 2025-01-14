@@ -14,7 +14,10 @@ type ModelSerializer struct {
 	Instance db.SQLite3DB
 }
 
-func (modelSerializer ModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs db.SQLite3DB, partial bool) error {
+// sqlite3DB *db.SQLite3DB 数据库对象
+// attrs 验证数据
+// partial 是否仅验证提供的非零值字段，零值字段跳过不验证必填选项
+func (modelSerializer ModelSerializer) Validate(sqlite3DB *db.SQLite3DB, attrs db.SQLite3DB, partial bool) error {
 	validatedDataValue := reflect.ValueOf(attrs)
 	modelType := validatedDataValue.Type()
 
