@@ -20,7 +20,7 @@ import (
 )
 
 // Http 服务
-var version = "v1.3.3"
+var version = "v1.4.0"
 var Settings *metaSettings
 var Cache *metaCache
 var Log *metaLog
