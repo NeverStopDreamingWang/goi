@@ -611,6 +611,41 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 			}
 		}
 		return nil
+	case reflect.Struct:
+		// 处理结构体类型
+		if valueInterface.Kind() != reflect.Map {
+			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.value_invalid",
+				TemplateData: map[string]interface{}{
+					"name": value,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, valueInvalidMsg)
+		}
+
+		// 处理 map[string]interface{} 类型
+		for i := 0; i < fieldType.NumField(); i++ {
+			structField := field.Field(i)
+			fieldName := fieldType.Field(i).Name
+			// 尝试获取 tag 中的 name，如果没有则使用字段名
+			tagName := fieldType.Field(i).Tag.Get("json")
+			if tagName == "" {
+				tagName = strings.ToLower(fieldName)
+			}
+			// 先尝试使用 tag name 获取值，如果没有则尝试使用字段名
+			mapValue := valueInterface.MapIndex(reflect.ValueOf(tagName))
+			if !mapValue.IsValid() {
+				mapValue = valueInterface.MapIndex(reflect.ValueOf(fieldName))
+			}
+
+			if mapValue.IsValid() && structField.CanSet() {
+				err := values.setFieldValue(structField, mapValue.Interface())
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
 	default:
 		valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.value_invalid",
