@@ -68,8 +68,8 @@ func (mysqlDB MySQLDB) GetSQL() string {
 	return mysqlDB.sql
 }
 
-// 事务
-func (mysqlDB *MySQLDB) WithTransaction(transactionFunc func(mysqlDB *MySQLDB, args ...interface{}) error, args ...interface{}) error {
+// 根据当前对象副本创建一个事务
+func (mysqlDB MySQLDB) WithTransaction(transactionFunc func(mysqlDB *MySQLDB, args ...interface{}) error, args ...interface{}) error {
 	var err error
 	if mysqlDB.transaction != nil {
 		transactionCannotBeNestedErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -78,15 +78,11 @@ func (mysqlDB *MySQLDB) WithTransaction(transactionFunc func(mysqlDB *MySQLDB, a
 		return errors.New(transactionCannotBeNestedErrorMsg)
 	}
 
-	defer func() {
-		mysqlDB.transaction = nil
-	}()
-
 	mysqlDB.transaction, err = mysqlDB.DB.Begin()
 	if err != nil {
 		return err
 	}
-	err = transactionFunc(mysqlDB, args...)
+	err = transactionFunc(&mysqlDB, args...)
 	if err != nil {
 		_ = mysqlDB.transaction.Rollback()
 		return err
@@ -128,7 +124,7 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 
 	var exists int
 	err = row.Scan(&exists)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) == false && err != nil {
 		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.select_error",
 			TemplateData: map[string]interface{}{
@@ -462,13 +458,6 @@ func (mysqlDB *MySQLDB) Page(page int, pagesize int) (int, int, error) {
 func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 	mysqlDB.isSetModel()
 
-	defer func() {
-		mysqlDB.where_sql = nil
-		mysqlDB.limit_sql = ""
-		mysqlDB.group_sql = ""
-		mysqlDB.order_sql = ""
-		mysqlDB.args = nil
-	}()
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	var (
@@ -558,13 +547,6 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	mysqlDB.isSetModel()
 
-	defer func() {
-		mysqlDB.where_sql = nil
-		mysqlDB.limit_sql = ""
-		mysqlDB.group_sql = ""
-		mysqlDB.order_sql = ""
-		mysqlDB.args = nil
-	}()
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
@@ -605,6 +587,10 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		mysqlDB.sql += mysqlDB.limit_sql
 	}
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
+	err := row.Err()
+	if err != nil {
+		return err
+	}
 
 	values := make([]interface{}, len(mysqlDB.fields))
 	for i, fieldName := range mysqlDB.fields {
@@ -616,7 +602,7 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		}
 	}
 
-	err := row.Scan(values...)
+	err = row.Scan(values...)
 	if err != nil {
 		return err
 	}
@@ -635,9 +621,13 @@ func (mysqlDB *MySQLDB) Count() (int, error) {
 	}
 
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
+	err := row.Err()
+	if err != nil {
+		return 0, err
+	}
 
 	var count int
-	err := row.Scan(&count)
+	err = row.Scan(&count)
 	if err != nil {
 		return 0, err
 	}
@@ -656,10 +646,18 @@ func (mysqlDB *MySQLDB) Exists() (bool, error) {
 	}
 
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
+	err := row.Err()
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
 
 	var exists int
-	err := row.Scan(&exists)
-	if err != nil {
+	err = row.Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	} else if err != nil {
 		return false, err
 	}
 	return exists == 1, nil
@@ -669,10 +667,6 @@ func (mysqlDB *MySQLDB) Exists() (bool, error) {
 func (mysqlDB *MySQLDB) Update(ModelData mysql.MySQLModel) (sql.Result, error) {
 	mysqlDB.isSetModel()
 
-	defer func() {
-		mysqlDB.where_sql = nil
-		mysqlDB.args = nil
-	}()
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
@@ -710,10 +704,6 @@ func (mysqlDB *MySQLDB) Update(ModelData mysql.MySQLModel) (sql.Result, error) {
 func (mysqlDB *MySQLDB) Delete() (sql.Result, error) {
 	mysqlDB.isSetModel()
 
-	defer func() {
-		mysqlDB.where_sql = nil
-		mysqlDB.args = nil
-	}()
 	TableName := mysqlDB.model.ModelSet().TABLE_NAME
 	mysqlDB.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
 	if len(mysqlDB.where_sql) > 0 {
