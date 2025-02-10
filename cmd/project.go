@@ -54,8 +54,7 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	secretKey = crypto.SECRET_KEY_INSECURE_PREFIX + randomSecretKey
 
 	// 生成 RSA 密钥
-	var privateKeyBytes, publicKeyBytes []byte
-	err = crypto.GenerateRSA(2048, &privateKeyBytes, &publicKeyBytes)
+	privateKeyBytes, publicKeyBytes, err := crypto.GenerateRSA(2048)
 	if err != nil {
 		return err
 	}
