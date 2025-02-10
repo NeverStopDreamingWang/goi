@@ -69,7 +69,7 @@ func (sqlite3DB SQLite3DB) GetSQL() string {
 }
 
 // 事务
-func (sqlite3DB *SQLite3DB) WithTransaction(transactionFunc func(sqlite3DB *SQLite3DB, args ...interface{}) error, args ...interface{}) error {
+func (sqlite3DB SQLite3DB) WithTransaction(transactionFunc func(sqlite3DB *SQLite3DB, args ...interface{}) error, args ...interface{}) error {
 	var err error
 	if sqlite3DB.transaction != nil {
 		transactionCannotBeNestedErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -78,15 +78,11 @@ func (sqlite3DB *SQLite3DB) WithTransaction(transactionFunc func(sqlite3DB *SQLi
 		return errors.New(transactionCannotBeNestedErrorMsg)
 	}
 
-	defer func() {
-		sqlite3DB.transaction = nil
-	}()
-
 	sqlite3DB.transaction, err = sqlite3DB.DB.Begin()
 	if err != nil {
 		return err
 	}
-	err = transactionFunc(sqlite3DB, args...)
+	err = transactionFunc(&sqlite3DB, args...)
 	if err != nil {
 		_ = sqlite3DB.transaction.Rollback()
 		return err
@@ -128,7 +124,7 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 
 	var exists int
 	err = row.Scan(&exists)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) == false && err != nil {
 		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.select_error",
 			TemplateData: map[string]interface{}{
@@ -423,13 +419,6 @@ func (sqlite3DB *SQLite3DB) Page(page int, pagesize int) (int, int, error) {
 func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	sqlite3DB.isSetModel()
 
-	defer func() {
-		sqlite3DB.where_sql = nil
-		sqlite3DB.limit_sql = ""
-		sqlite3DB.group_sql = ""
-		sqlite3DB.order_sql = ""
-		sqlite3DB.args = nil
-	}()
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	var (
@@ -519,13 +508,6 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	sqlite3DB.isSetModel()
 
-	defer func() {
-		sqlite3DB.where_sql = nil
-		sqlite3DB.limit_sql = ""
-		sqlite3DB.group_sql = ""
-		sqlite3DB.order_sql = ""
-		sqlite3DB.args = nil
-	}()
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
@@ -566,6 +548,10 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		sqlite3DB.sql += sqlite3DB.limit_sql
 	}
 	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	err := row.Err()
+	if err != nil {
+		return err
+	}
 
 	values := make([]interface{}, len(sqlite3DB.fields))
 	for i, fieldName := range sqlite3DB.fields {
@@ -577,7 +563,7 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		}
 	}
 
-	err := row.Scan(values...)
+	err = row.Scan(values...)
 	if err != nil {
 		return err
 	}
@@ -596,9 +582,13 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 	}
 
 	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	err := row.Err()
+	if err != nil {
+		return 0, err
+	}
 
 	var count int
-	err := row.Scan(&count)
+	err = row.Scan(&count)
 	if err != nil {
 		return 0, err
 	}
@@ -617,10 +607,18 @@ func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
 	}
 
 	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	err := row.Err()
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
 
 	var exists int
-	err := row.Scan(&exists)
-	if err != nil {
+	err = row.Scan(&exists)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	} else if err != nil {
 		return false, err
 	}
 	return exists == 1, nil
@@ -630,10 +628,6 @@ func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
 func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, error) {
 	sqlite3DB.isSetModel()
 
-	defer func() {
-		sqlite3DB.where_sql = nil
-		sqlite3DB.args = nil
-	}()
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	ModelValue := reflect.ValueOf(ModelData)
@@ -671,10 +665,6 @@ func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, 
 func (sqlite3DB *SQLite3DB) Delete() (sql.Result, error) {
 	sqlite3DB.isSetModel()
 
-	defer func() {
-		sqlite3DB.where_sql = nil
-		sqlite3DB.args = nil
-	}()
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 	sqlite3DB.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
 	if len(sqlite3DB.where_sql) > 0 {
