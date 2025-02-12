@@ -468,6 +468,15 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		isPtr = true
 		ItemType = ItemType.Elem()
 	}
+	if kind := ItemType.Kind(); kind != reflect.Struct && kind != reflect.Map {
+		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "database.is_not_slice_struct_ptr_or_map",
+			TemplateData: map[string]interface{}{
+				"name": "queryResult",
+			},
+		})
+		return errors.New(isNotStructPtrErrorMsg)
+	}
 
 	fieldsSQl := strings.Join(sqlite3DB.field_sql, "`,`")
 
@@ -496,14 +505,26 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	for rows.Next() {
 		values := make([]interface{}, len(sqlite3DB.fields))
 
-		item := reflect.New(ItemType).Elem()
+		var item reflect.Value
+		if ItemType.Kind() == reflect.Struct {
+			// 如果是结构体类型，使用 New 创建
+			item = reflect.New(ItemType).Elem()
 
-		for i, fieldName := range sqlite3DB.fields {
-			fieldValue := item.FieldByName(fieldName)
-			if !fieldValue.IsValid() {
-				values[i] = new(interface{})
-			} else {
-				values[i] = fieldValue.Addr().Interface()
+			for i, fieldName := range sqlite3DB.fields {
+				fieldValue := item.FieldByName(fieldName)
+				if !fieldValue.IsValid() {
+					values[i] = new(interface{})
+				} else {
+					values[i] = fieldValue.Addr().Interface()
+				}
+			}
+		} else {
+			ModelType := reflect.TypeOf(sqlite3DB.model)
+
+			for i, fieldName := range sqlite3DB.fields {
+				field, _ := ModelType.FieldByName(fieldName)
+				val := reflect.New(field.Type) // 获取模型字段类型
+				values[i] = val.Interface()
 			}
 		}
 
@@ -511,6 +532,16 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		if err != nil {
 			return err
 		}
+
+		// 设置 map 值
+		if ItemType.Kind() == reflect.Map {
+			item = reflect.MakeMap(ItemType)
+			for i, field_name := range sqlite3DB.field_sql {
+				val := reflect.ValueOf(values[i])
+				item.SetMapIndex(reflect.ValueOf(field_name), val.Elem())
+			}
+		}
+
 		if isPtr == true {
 			result.Set(reflect.Append(result, item.Addr()))
 		} else {
@@ -527,20 +558,22 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
-	if result.Kind() != reflect.Ptr {
-		isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.is_not_ptr",
-			TemplateData: map[string]interface{}{
-				"name": "queryResult",
-			},
-		})
-		return errors.New(isNotPtrErrorMsg)
+	if result.Kind() != reflect.Map {
+		if result.Kind() != reflect.Ptr {
+			isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "database.is_not_ptr",
+				TemplateData: map[string]interface{}{
+					"name": "queryResult",
+				},
+			})
+			return errors.New(isNotPtrErrorMsg)
+		}
+		result = result.Elem()
 	}
-	result = result.Elem()
 
-	if kind := result.Kind(); kind != reflect.Struct {
+	if kind := result.Kind(); kind != reflect.Struct && kind != reflect.Map {
 		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.is_not_struct_ptr",
+			MessageID: "database.is_not_struct_ptr_or_map",
 			TemplateData: map[string]interface{}{
 				"name": "queryResult",
 			},
@@ -570,12 +603,22 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	}
 
 	values := make([]interface{}, len(sqlite3DB.fields))
-	for i, fieldName := range sqlite3DB.fields {
-		fieldValue := result.FieldByName(fieldName)
-		if !fieldValue.IsValid() {
-			values[i] = new(interface{})
-		} else {
-			values[i] = fieldValue.Addr().Interface()
+	if result.Kind() == reflect.Struct {
+		for i, fieldName := range sqlite3DB.fields {
+			fieldValue := result.FieldByName(fieldName)
+			if !fieldValue.IsValid() {
+				values[i] = new(interface{})
+			} else {
+				values[i] = fieldValue.Addr().Interface()
+			}
+		}
+	} else {
+		ModelType := reflect.TypeOf(sqlite3DB.model)
+
+		for i, fieldName := range sqlite3DB.fields {
+			field, _ := ModelType.FieldByName(fieldName)
+			val := reflect.New(field.Type) // 获取模型字段类型
+			values[i] = val.Interface()
 		}
 	}
 
@@ -583,6 +626,15 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	// 更新实际扫描到的值
+	if result.Kind() == reflect.Map {
+		for i, field_name := range sqlite3DB.field_sql {
+			val := reflect.ValueOf(values[i])
+			result.SetMapIndex(reflect.ValueOf(field_name), val.Elem())
+		}
+	}
+
 	return nil
 }
 
