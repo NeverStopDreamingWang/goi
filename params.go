@@ -39,7 +39,7 @@ func (values ParamsValues) Has(key string) bool {
 func (values ParamsValues) Get(key string, dest interface{}) ValidationError {
 	var validationErr ValidationError
 	value_list, ok := values[key]
-	if ok == false {
+	if !ok {
 		requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.required_params",
 			TemplateData: map[string]interface{}{
@@ -115,7 +115,7 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 		value_list, ok := values[fieldName]
 		if validator_name = field.Tag.Get("required"); validator_name != "" {
 			is_required = true
-			if ok == false {
+			if !ok {
 				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "params.required_params",
 					TemplateData: map[string]interface{}{
@@ -125,7 +125,7 @@ func (values ParamsValues) ParseParams(paramsDest interface{}) ValidationError {
 				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 			}
 		} else if validator_name = field.Tag.Get("optional"); validator_name != "" {
-			if ok == false {
+			if !ok {
 				continue
 			}
 		} else {
@@ -268,7 +268,7 @@ func (values BodyParamsValues) Has(key string) bool {
 func (values BodyParamsValues) Get(key string, dest interface{}) ValidationError {
 	var validationErr ValidationError
 	value_list, ok := values[key]
-	if ok == false {
+	if !ok {
 		requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.required_params",
 			TemplateData: map[string]interface{}{
@@ -345,7 +345,7 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 		value_list, ok := values[fieldName]
 		if validator_name = field.Tag.Get("required"); validator_name != "" {
 			is_required = true
-			if ok == false {
+			if !ok {
 				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "params.required_params",
 					TemplateData: map[string]interface{}{
@@ -355,7 +355,7 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 			}
 		} else if validator_name = field.Tag.Get("optional"); validator_name != "" {
-			if ok == false {
+			if !ok {
 				continue
 			}
 		} else {

@@ -33,7 +33,7 @@ type MySQLDB struct {
 // 连接 MySQL 数据库
 func MySQLConnect(UseDataBases string) *MySQLDB {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
-	if ok == false {
+	if !ok {
 		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.databases_not_error",
 			TemplateData: map[string]interface{}{
@@ -299,7 +299,7 @@ func (mysqlDB MySQLDB) Fields(fields ...string) *MySQLDB {
 	mysqlDB.field_sql = make([]string, len(fields))
 	for i, fieldName := range fields {
 		field, ok := ModelType.FieldByName(fieldName)
-		if ok == false {
+		if !ok {
 			fieldIsNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "database.field_is_not_error",
 				TemplateData: map[string]interface{}{

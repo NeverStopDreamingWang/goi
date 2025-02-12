@@ -33,7 +33,7 @@ type SQLite3DB struct {
 // 连接 SQLite3 数据库
 func SQLite3Connect(UseDataBases string) *SQLite3DB {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
-	if ok == false {
+	if !ok {
 		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "database.databases_not_error",
 			TemplateData: map[string]interface{}{
@@ -260,7 +260,7 @@ func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 	sqlite3DB.field_sql = make([]string, len(fields))
 	for i, fieldName := range fields {
 		field, ok := ModelType.FieldByName(fieldName)
-		if ok == false {
+		if !ok {
 			fieldIsNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "database.field_is_not_error",
 				TemplateData: map[string]interface{}{
