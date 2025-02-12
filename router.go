@@ -252,7 +252,7 @@ func routerParse(path string) ([]routerParam, string) {
 	for _, paramsSlice := range result {
 		if len(paramsSlice) == 3 {
 			converter, ok := metaConverter[paramsSlice[1]]
-			if ok == false {
+			if !ok {
 				converterIsNotExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "router.converter_is_not_exists",
 					TemplateData: map[string]interface{}{

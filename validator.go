@@ -77,7 +77,7 @@ func RegisterValidate(name string, validate validateFunc) {
 
 func validateValue(validator_name string, value interface{}) ValidationError {
 	validate, ok := metaValidate[validator_name]
-	if ok == false {
+	if !ok {
 		validatorIsNotValidateFuncMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "validator.validator_is_not_validateFunc",
 			TemplateData: map[string]interface{}{

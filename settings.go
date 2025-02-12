@@ -117,7 +117,7 @@ func (settings metaSettings) Get(key string, dest interface{}) error {
 	}
 
 	value, ok := settings.mySettings[key]
-	if ok == false {
+	if !ok {
 		return errors.New(fmt.Sprintf("%s 不存在", key))
 	}
 	// 获取值的类型

@@ -185,7 +185,7 @@ func checkExpField(payloadsDest interface{}) error {
 			return jwtDecodeError
 		}
 		expTime, ok := expField.Interface().(ExpTime)
-		if ok == false {
+		if !ok {
 			return jwtDecodeError
 		}
 
