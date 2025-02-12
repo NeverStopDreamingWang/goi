@@ -141,17 +141,20 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 	if modelType.Kind() == reflect.Ptr {
 		modelType = modelType.Elem()
 	}
-	tampFieldMap := make(map[string]bool)
-	fieldSqlSlice := make([]string, modelType.NumField(), modelType.NumField())
+
+	var fieldSqlSlice []string
 	for i := 0; i < modelType.NumField(); i++ {
 		field := modelType.Field(i)
+		fieldType, ok := field.Tag.Lookup("field_type")
+		if !ok {
+			continue
+		}
 		fieldName, ok := field.Tag.Lookup("field_name")
 		if !ok {
 			fieldName = strings.ToLower(field.Name)
 		}
-		fieldType, ok := field.Tag.Lookup("field_type")
-		tampFieldMap[fieldName] = true
-		fieldSqlSlice[i] = fmt.Sprintf("  `%v` %v", fieldName, fieldType)
+
+		fieldSqlSlice = append(fieldSqlSlice, fmt.Sprintf("  `%v` %v", fieldName, fieldType))
 	}
 	createSql := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", modelSettings.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
 
@@ -231,24 +234,30 @@ func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 	sqlite3DB.model = model
 	ModelType := reflect.TypeOf(sqlite3DB.model)
 	// 获取字段
-	sqlite3DB.fields = make([]string, ModelType.NumField())
-	sqlite3DB.field_sql = make([]string, ModelType.NumField())
-	for i := 0; i < ModelType.NumField(); i++ {
-		field := ModelType.Field(i)
-		sqlite3DB.fields[i] = field.Name
-
-		field_name, ok := field.Tag.Lookup("field_name")
-		if !ok {
-			field_name = strings.ToLower(field.Name)
-		}
-		sqlite3DB.field_sql[i] = field_name
-	}
+	sqlite3DB.fields = nil
+	sqlite3DB.field_sql = nil
 	sqlite3DB.where_sql = nil
 	sqlite3DB.limit_sql = ""
 	sqlite3DB.group_sql = ""
 	sqlite3DB.order_sql = ""
 	sqlite3DB.sql = ""
 	sqlite3DB.args = nil
+
+	for i := 0; i < ModelType.NumField(); i++ {
+		field := ModelType.Field(i)
+
+		_, ok := field.Tag.Lookup("field_type")
+		if !ok {
+			continue
+		}
+
+		sqlite3DB.fields = append(sqlite3DB.fields, field.Name)
+		field_name, ok := field.Tag.Lookup("field_name")
+		if !ok {
+			field_name = strings.ToLower(field.Name)
+		}
+		sqlite3DB.field_sql = append(sqlite3DB.field_sql, field_name)
+	}
 	return sqlite3DB
 }
 
@@ -256,9 +265,10 @@ func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 	ModelType := reflect.TypeOf(sqlite3DB.model)
 	// 获取字段
-	sqlite3DB.fields = make([]string, len(fields))
-	sqlite3DB.field_sql = make([]string, len(fields))
-	for i, fieldName := range fields {
+	sqlite3DB.fields = nil
+	sqlite3DB.field_sql = nil
+
+	for _, fieldName := range fields {
 		field, ok := ModelType.FieldByName(fieldName)
 		if !ok {
 			fieldIsNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -270,13 +280,19 @@ func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 			goi.Log.Error(fieldIsNotErrorMsg)
 			panic(fieldIsNotErrorMsg)
 		}
-		sqlite3DB.fields[i] = field.Name
+
+		_, ok = field.Tag.Lookup("field_type")
+		if !ok {
+			continue
+		}
+
+		sqlite3DB.fields = append(sqlite3DB.fields, field.Name)
 
 		field_name, ok := field.Tag.Lookup("field_name")
 		if !ok {
 			field_name = strings.ToLower(field.Name)
 		}
-		sqlite3DB.field_sql[i] = field_name
+		sqlite3DB.field_sql = append(sqlite3DB.field_sql, field_name)
 	}
 	return &sqlite3DB
 }
