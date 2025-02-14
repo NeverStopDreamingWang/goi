@@ -1,4 +1,4 @@
-package mysql
+package sqlite3
 
 import (
 	"errors"
