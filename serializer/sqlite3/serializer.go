@@ -1,4 +1,4 @@
-package mysql
+package sqlite3
 
 import (
 	"errors"
@@ -6,18 +6,19 @@ import (
 
 	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // 模型类
 type ModelSerializer struct {
-	Instance db.SQLite3DB
+	Instance sqlite3.SQLite3Model
 }
 
 // sqlite3DB *db.SQLite3DB 数据库对象
 // attrs 验证数据
 // partial 是否仅验证提供的非零值字段，零值字段跳过不验证必填选项
-func (modelSerializer ModelSerializer) Validate(sqlite3DB *db.SQLite3DB, attrs db.SQLite3DB, partial bool) error {
+func (modelSerializer ModelSerializer) Validate(sqlite3DB *db.SQLite3DB, attrs sqlite3.SQLite3Model, partial bool) error {
 	validatedDataValue := reflect.ValueOf(attrs)
 	modelType := validatedDataValue.Type()
 
@@ -50,7 +51,7 @@ func (modelSerializer ModelSerializer) Validate(sqlite3DB *db.SQLite3DB, attrs d
 	return nil
 }
 
-func (modelSerializer ModelSerializer) Update(instance db.SQLite3DB, validated_data db.SQLite3DB) {
+func (modelSerializer ModelSerializer) Update(instance sqlite3.SQLite3Model, validated_data sqlite3.SQLite3Model) {
 	instanceValue := reflect.ValueOf(instance)
 	validatedDataValue := reflect.ValueOf(validated_data)
 
