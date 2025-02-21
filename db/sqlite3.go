@@ -350,7 +350,7 @@ func (sqlite3DB SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
 			paramValue = paramValue.Elem()
 		}
 
-		if paramValue.Kind() == reflect.Slice {
+		if paramValue.Kind() == reflect.Slice && paramValue.Len() != 0 {
 			placeholders := "(" + strings.Repeat("?,", paramValue.Len()-1) + "?" + ")"
 			queryBuilder.WriteString(placeholders)
 
