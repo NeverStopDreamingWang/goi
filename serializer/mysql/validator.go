@@ -11,14 +11,21 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-func getCommentName(fieldType string) string {
-	var commentRe = `(?i)COMMENT\s+['"]([^'"]+)['"]`
-	re := regexp.MustCompile(commentRe)
-	matches := re.FindStringSubmatch(fieldType)
-	if len(matches) < 2 {
-		return ""
+func getComment(field reflect.StructField) string {
+	fieldComment, ok := field.Tag.Lookup("comment")
+	if ok {
+		return fieldComment
 	}
-	return matches[1]
+	fieldType, ok := field.Tag.Lookup("field_type")
+	if !ok {
+		var commentRe = `(?i)COMMENT\s+['"]([^'"]+)['"]`
+		re := regexp.MustCompile(commentRe)
+		matches := re.FindStringSubmatch(fieldType)
+		if len(matches) > 1 {
+			return matches[1]
+		}
+	}
+	return ""
 }
 
 func validateField(field reflect.StructField, fieldValue reflect.Value) error {
@@ -39,11 +46,11 @@ func validateField(field reflect.StructField, fieldValue reflect.Value) error {
 
 	err := validateFieldType(fieldType, fieldValue)
 	if err != nil {
-		comment_name := getCommentName(fieldType)
-		if comment_name == "" {
-			comment_name = field_name
+		comment := getComment(field)
+		if comment == "" {
+			comment = field_name
 		}
-		return errors.New(comment_name + err.Error())
+		return errors.New(comment + err.Error())
 	}
 	return nil
 }
