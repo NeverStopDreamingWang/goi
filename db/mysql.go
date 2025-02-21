@@ -389,7 +389,7 @@ func (mysqlDB MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
 			paramValue = paramValue.Elem()
 		}
 
-		if paramValue.Kind() == reflect.Slice {
+		if paramValue.Kind() == reflect.Slice && paramValue.Len() != 0 {
 			placeholders := "(" + strings.Repeat("?,", paramValue.Len()-1) + "?" + ")"
 			queryBuilder.WriteString(placeholders)
 
