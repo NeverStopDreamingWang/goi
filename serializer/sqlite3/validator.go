@@ -10,6 +10,14 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
+func getComment(field reflect.StructField) string {
+	fieldComment, ok := field.Tag.Lookup("comment")
+	if ok {
+		return fieldComment
+	}
+	return ""
+}
+
 func validateField(field reflect.StructField, fieldValue reflect.Value) error {
 	field_name, ok := field.Tag.Lookup("field_name")
 	if !ok {
@@ -28,7 +36,11 @@ func validateField(field reflect.StructField, fieldValue reflect.Value) error {
 
 	err := validateFieldType(fieldType, fieldValue)
 	if err != nil {
-		return errors.New(field_name + err.Error())
+		comment := getComment(field)
+		if comment == "" {
+			comment = field_name
+		}
+		return errors.New(comment + err.Error())
 	}
 	return nil
 }
