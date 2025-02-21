@@ -798,26 +798,38 @@ func TestWithTransaction(request *goi.Request) interface{} {
 * 生成 Token
 
 ```go
-header := map[string]interface{}{
-    "alg": "SHA256",
-    "typ": "JWT",
+type Payloads struct {
+jwt.Payloads
+User_id  int64  `json:"user_id"`
+Username string `json:"username"`
 }
 
-payloads := map[string]interface{}{
-    "user_id":  1,
-    "username": "wjh123",
-    "exp":      expTime,
+header := jwt.Header{
+Alg: jwt.AlgHS256,
+Typ: jwt.TypJWT,
 }
-token, err := jwt.NewJWT(header, payloads, "xxxxxx")
+
+// 设置过期时间
+twoHoursLater := goi.GetTime().Add(24 * 15 * time.Hour)
+
+payloads := Payloads{ // 包含 jwt.Payloads
+Payloads: jwt.Payloads{
+Exp: jwt.ExpTime{twoHoursLater},
+},
+User_id:  *userInfo.Id,
+Username: *userInfo.Username,
+}
+token, err := jwt.NewJWT(header, payloads, goi.Settings.SECRET_KEY)
 ```
 
 * 验证 Token
 
 ```go
-payloads, err := jwt.CkeckToken(token, "xxxxxx")
-if jwt.JwtDecodeError(err) { // token 解码错误！
+payloads := &auth.Payloads{}
+err := jwt.CkeckToken(token, goi.Settings.SECRET_KEY, payloads)
+if jwt.JwtDecodeError(err) { // token 解码错误
     pass
-}else if jwt.JwtExpiredSignatureError(err) { // token 已过期
+} else if jwt.JwtExpiredSignatureError(err) { // token 已过期
     pass
 }
 ```
