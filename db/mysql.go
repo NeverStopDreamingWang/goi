@@ -500,7 +500,7 @@ func (mysqlDB MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
 			paramValue = paramValue.Elem()
 		}
 
-		if paramValue.Kind() == reflect.Slice && paramValue.Len() != 0 {
+		if (paramValue.Kind() == reflect.Slice || paramValue.Kind() == reflect.Array) && paramValue.Len() != 0 {
 			placeholders := "(" + strings.Repeat("?,", paramValue.Len()-1) + "?" + ")"
 			queryBuilder.WriteString(placeholders)
 
@@ -656,9 +656,10 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 	}
 	result = result.Elem()
 
-	if kind := result.Kind(); kind != reflect.Slice {
+	kind := result.Kind()
+	if kind != reflect.Slice && kind != reflect.Array {
 		isNotSlicePtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.is_not_slice_ptr",
+			MessageID: "database.is_not_slice_or_array",
 			TemplateData: map[string]interface{}{
 				"name": "queryResult",
 			},
