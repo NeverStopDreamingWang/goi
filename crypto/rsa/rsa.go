@@ -6,6 +6,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // GenerateKey 生成 RSA 密钥对
@@ -67,17 +70,30 @@ func Encrypt(publicKeyBytes []byte, plaintext []byte) ([]byte, error) {
 	// 解析PEM格式的公钥
 	block, _ := pem.Decode(publicKeyBytes)
 	if block == nil {
-		return nil, errors.New("公钥解码失败")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.rsa.public_key_decode_error",
+		})
+		return nil, errors.New(errMsg)
 	}
 
 	// 解析公钥
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, err
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.rsa.public_key_parse_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return nil, errors.New(errMsg)
 	}
+
 	publicKey, ok := pub.(*rsa.PublicKey)
 	if !ok {
-		return nil, errors.New("公钥类型转换失败")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.rsa.public_key_type_error",
+		})
+		return nil, errors.New(errMsg)
 	}
 
 	// 加密
@@ -102,13 +118,22 @@ func Decrypt(privateKeyBytes []byte, ciphertext []byte) ([]byte, error) {
 	// 解析PEM格式的私钥
 	block, _ := pem.Decode(privateKeyBytes)
 	if block == nil {
-		return nil, errors.New("私钥解码失败")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.rsa.private_key_decode_error",
+		})
+		return nil, errors.New(errMsg)
 	}
 
 	// 解析私钥
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		return nil, errors.New("私钥解析失败")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.rsa.private_key_parse_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return nil, errors.New(errMsg)
 	}
 
 	// 解密
