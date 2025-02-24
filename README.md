@@ -799,25 +799,25 @@ func TestWithTransaction(request *goi.Request) interface{} {
 
 ```go
 type Payloads struct {
-jwt.Payloads
-User_id  int64  `json:"user_id"`
-Username string `json:"username"`
+    jwt.Payloads
+    User_id  int64  `json:"user_id"`
+    Username string `json:"username"`
 }
 
 header := jwt.Header{
-Alg: jwt.AlgHS256,
-Typ: jwt.TypJWT,
+    Alg: jwt.AlgHS256,
+    Typ: jwt.TypJWT,
 }
 
 // 设置过期时间
 twoHoursLater := goi.GetTime().Add(24 * 15 * time.Hour)
 
 payloads := Payloads{ // 包含 jwt.Payloads
-Payloads: jwt.Payloads{
-Exp: jwt.ExpTime{twoHoursLater},
-},
-User_id:  *userInfo.Id,
-Username: *userInfo.Username,
+    Payloads: jwt.Payloads{
+        Exp: jwt.ExpTime{twoHoursLater},
+    },
+    User_id:  *userInfo.Id,
+    Username: *userInfo.Username,
 }
 token, err := jwt.NewJWT(header, payloads, goi.Settings.SECRET_KEY)
 ```
