@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // JWT 算法
@@ -39,9 +41,13 @@ const (
 
 var (
 	// 解码错误
-	ErrDecode = errors.New("Decode Error")
+	ErrDecode = errors.New(language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "jwt.decode_error",
+	}))
 	// 过期错误
-	ErrExpiredSignature = errors.New("Expired Signature Error")
+	ErrExpiredSignature = errors.New(language.I18n.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: "jwt.expired_signature",
+	}))
 )
 
 // Header JWT头部结构
@@ -145,7 +151,13 @@ func CkeckToken(token string, key string, payloadsDest interface{}) error {
 	// 检查 signature
 	signatureStr, err := sha256Str(key, headerBase64+"."+payloadBase64)
 	if err != nil {
-		return ErrDecode
+		signatureErrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "jwt.signature_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return errors.New(signatureErrMsg)
 	}
 	signatureStr, err = base64Encode(signatureStr)
 	if err != nil {
@@ -157,14 +169,33 @@ func CkeckToken(token string, key string, payloadsDest interface{}) error {
 	header := &Header{}
 	err = base64Decode(headerBase64, header)
 	if err != nil {
-		return err
+		decodeErrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "jwt.header_decode_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return errors.New(decodeErrMsg)
 	}
 	if header.Alg != AlgHS256 || header.Typ != TypJWT {
-		return ErrDecode
+		invalidHeaderMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "jwt.invalid_header",
+			TemplateData: map[string]interface{}{
+				"alg": header.Alg,
+				"typ": header.Typ,
+			},
+		})
+		return errors.New(invalidHeaderMsg)
 	}
 	err = base64Decode(payloadBase64, payloadsDest)
 	if err != nil {
-		return ErrDecode
+		payloadDecodeErrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "jwt.payload_decode_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return errors.New(payloadDecodeErrMsg)
 	}
 
 	// 检查嵌套的 Payloads 字段并验证 Exp
@@ -244,7 +275,13 @@ func base64Encode(data interface{}) (string, error) {
 	default:
 		dataByte, err = json.Marshal(value)
 		if err != nil {
-			return "", err
+			encodeErrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "jwt.encode_error",
+				TemplateData: map[string]interface{}{
+					"err": err,
+				},
+			})
+			return "", errors.New(encodeErrMsg)
 		}
 	}
 	dataBase64Encode := base64.URLEncoding.EncodeToString(dataByte)
