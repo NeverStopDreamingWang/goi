@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/crypto/pbkdf2"
 )
 
@@ -32,20 +34,36 @@ func Decode(encoded string, Info *Crypto) error {
 	var err error
 	parts := strings.SplitN(encoded, "$", 4)
 	if len(parts) != 4 {
-		return errors.New("invalid encoded string")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.pbkdf2.invalid_format",
+		})
+		return errors.New(errMsg)
 	}
 
 	Info.Algorithm = parts[0]
 	iterations64, err := strconv.ParseInt(parts[1], 10, 64) // 10 表示十进制，64 表示结果为 int64
 	if err != nil {
-		return err
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.pbkdf2.invalid_iterations",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return errors.New(errMsg)
 	}
+
 	Info.Iterations = int(iterations64)
 	Info.Hash = parts[3]
 
 	Info.Salt, err = base64.StdEncoding.DecodeString(parts[2])
 	if err != nil {
-		return err
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.pbkdf2.invalid_salt",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return errors.New(errMsg)
 	}
 	return nil
 }
