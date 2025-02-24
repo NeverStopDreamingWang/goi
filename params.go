@@ -370,7 +370,11 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 
 		var flag bool
 		for _, value := range value_list {
-			if value == nil {
+			// 获取该类型的零值
+			zeroValue := reflect.Zero(reflect.ValueOf(value).Type()).Interface()
+
+			// 比较实际值与零值是否相等
+			if reflect.DeepEqual(value, zeroValue) {
 				continue
 			}
 			validationErr = validateValue(validator_name, value)
