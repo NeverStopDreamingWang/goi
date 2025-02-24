@@ -19,7 +19,7 @@
     "close_database_error": "关闭 {{ .engine }} {{ .name }} 错误: {{ .err }}",
     "stop_time": "停止时间: {{ .stop_time }}",
     "run_time": "运行时间: {{ .run_time }}",
-    "stop": "服务已停止",
+    "stop": "服务已停止\n",
     "response_json_error": "响应 json 数据错误: {{ .err }}\n",
     "response_error": "响应错误: {{ .err }}\n",
     "url_not_allowed": "URL没有找到 “{{ .path }}” 。",
@@ -84,5 +84,31 @@
     "field_is_not_null_error": "字段不允许为空",
     "field_type_string_error": "字段不是字符串类型",
     "varchar_len_error": "长度超过 {{ .length }} 字符"
+  },
+  "auth": {
+    "empty_password": "密码不能为空",
+    "salt_generation_error": "生成密码盐值失败：{{ .err }}"
+  },
+  "crypto": {
+    "aes": {
+      "empty_data": "数据长度为0",
+      "invalid_padding_length": "填充长度无效",
+      "invalid_padding": "填充无效",
+      "base64_decode_error": "Base64解码失败: {{.err}}",
+      "new_cipher_error": "创建加密器失败: {{.err}}",
+      "invalid_ciphertext_length": "密文长度无效"
+    },
+    "pbkdf2": {
+      "invalid_format": "无效的编码字符串格式",
+      "invalid_iterations": "无效的迭代次数：{{ .err }}",
+      "invalid_salt": "无效的盐值：{{ .err }}"
+    },
+    "rsa": {
+      "public_key_decode_error": "公钥解码失败",
+      "public_key_parse_error": "公钥解析失败：{{ .err }}",
+      "public_key_type_error": "公钥类型转换失败",
+      "private_key_decode_error": "私钥解码失败",
+      "private_key_parse_error": "私钥解析失败：{{ .err }}"
+    }
   }
 }
