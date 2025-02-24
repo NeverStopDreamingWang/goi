@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"regexp"
 
@@ -40,13 +41,13 @@ func RequestMiddleWare(request *goi.Request) interface{} {
 
 	payloads := &example.Payloads{}
 	err := jwt.CkeckToken(token, goi.Settings.SECRET_KEY, payloads)
-	if jwt.JwtDecodeError(err) { // token 解码错误
+	if errors.Is(err, jwt.ErrDecode) { // token 解码错误
 		return goi.Data{
 			Code:    http.StatusUnauthorized,
 			Message: "token 解码错误",
 			Results: err,
 		}
-	} else if jwt.JwtExpiredSignatureError(err) { // token 已过期
+	} else if errors.Is(err, jwt.ErrExpiredSignature) { // token 已过期
 		return goi.Data{
 			Code:    http.StatusUnauthorized,
 			Message: "token 已过期",
