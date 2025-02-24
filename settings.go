@@ -120,26 +120,28 @@ func (settings metaSettings) Get(key string, dest interface{}) error {
 	if !ok {
 		return errors.New(fmt.Sprintf("%s 不存在", key))
 	}
+	valueValue := reflect.ValueOf(value)
 	// 获取值的类型
-	valueType := reflect.TypeOf(value)
+	valueType := valueValue.Type()
 
-	destKind := destValue.Type().Kind()
-	valueKind := valueType.Kind()
-	if destKind != valueKind {
-		return errors.New(fmt.Sprintf("无法将 %s 类型的值赋给 %s 类型的 dest 变量", valueKind.String(), destKind.String()))
+	// 直接类型匹配
+	if valueType.AssignableTo(destValue.Type()) {
+		destValue.Set(valueValue)
+		return nil
 	}
-	switch valueKind {
+
+	switch valueType.Kind() {
 	case reflect.Bool:
-		destValue.SetBool(reflect.ValueOf(value).Bool())
+		destValue.SetBool(valueValue.Bool())
 	case reflect.String:
-		destValue.SetString(reflect.ValueOf(value).String())
+		destValue.SetString(valueValue.String())
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		destValue.SetInt(reflect.ValueOf(value).Int())
+		destValue.SetInt(valueValue.Int())
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		destValue.SetUint(reflect.ValueOf(value).Uint())
+		destValue.SetUint(valueValue.Uint())
 	case reflect.Float32, reflect.Float64:
-		destValue.SetFloat(reflect.ValueOf(value).Float())
-	case reflect.Slice, reflect.Map:
+		destValue.SetFloat(valueValue.Float())
+	case reflect.Slice, reflect.Array, reflect.Map:
 		destValue.Set(reflect.ValueOf(value))
 	default:
 		return errors.New("不支持的目标变量类型")

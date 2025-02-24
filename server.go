@@ -126,7 +126,7 @@ func (engine *Engine) RunServer() {
 			MessageID: "server.log_info",
 			TemplateData: map[string]interface{}{
 				"name":       logger.Name,
-				"split_size": formatBytes(logger.SPLIT_SIZE),
+				"split_size": FormatBytes(logger.SPLIT_SIZE),
 				"split_time": logger.SPLIT_TIME,
 			},
 		})
