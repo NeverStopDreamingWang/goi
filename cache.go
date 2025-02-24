@@ -14,8 +14,11 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-type EvictPolicy uint8      // 缓存淘汰策略
-type ExpirationPolicy uint8 // 过期策略
+// EvictPolicy 缓存淘汰策略类型
+type EvictPolicy uint8
+
+// ExpirationPolicy 缓存过期策略类型
+type ExpirationPolicy uint8
 
 // 缓存淘汰策略
 const (
@@ -55,9 +58,19 @@ var expirationPolicyNames = map[ExpirationPolicy]string{
 	SCHEDULED: "SCHEDULED",
 }
 
+// metaCache 缓存管理器
+//
+// 字段:
+//   - EVICT_POLICY EvictPolicy: 缓存淘汰策略
+//   - EXPIRATION_POLICY ExpirationPolicy: 过期策略
+//   - MAX_SIZE int64: 缓存最大容量(字节)
+//   - used_size int64: 当前已使用容量
+//   - list *list.List: 缓存项双向链表
+//   - dict map[string]*list.Element: 缓存键值映射
+//   - lock sync.RWMutex: 读写锁
 type metaCache struct {
-	EVICT_POLICY      EvictPolicy      // 缓存淘汰策略
-	EXPIRATION_POLICY ExpirationPolicy // 过期策略
+	EVICT_POLICY      EvictPolicy
+	EXPIRATION_POLICY ExpirationPolicy
 	MAX_SIZE          int64
 	used_size         int64
 	list              *list.List
@@ -65,6 +78,16 @@ type metaCache struct {
 	lock              sync.RWMutex
 }
 
+// cacheItems 缓存项
+//
+// 字段:
+//   - key string: 缓存键
+//   - valueType reflect.Type: 值类型
+//   - bytes []byte: 序列化后的值
+//   - expires time.Time: 过期时间
+//   - mutex sync.Mutex: 互斥锁
+//   - lru time.Time: 最近访问时间
+//   - lfu uint8: 访问频率计数
 type cacheItems struct {
 	key       string
 	valueType reflect.Type
@@ -75,7 +98,10 @@ type cacheItems struct {
 	lfu       uint8
 }
 
-// 创建缓存
+// newCache 创建新的缓存管理器
+//
+// 返回:
+//   - *metaCache: 新创建的缓存管理器实例
 func newCache() *metaCache {
 	cache := &metaCache{
 		EVICT_POLICY:      NOEVICTION,
@@ -89,12 +115,12 @@ func newCache() *metaCache {
 	return cache
 }
 
-// 初始化缓存
+// initCache 初始化缓存配置
 func (cache *metaCache) initCache() {
 	MaxSizeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.cache.max_size",
 		TemplateData: map[string]interface{}{
-			"max_size": formatBytes(cache.MAX_SIZE),
+			"max_size": FormatBytes(cache.MAX_SIZE),
 		},
 	})
 	Log.Log(meta, MaxSizeMsg)
@@ -114,7 +140,14 @@ func (cache *metaCache) initCache() {
 	Log.Log(meta, ExpirationPolicyMsg)
 }
 
-// get 获取键值
+// get 获取缓存项
+//
+// 参数:
+//   - key string: 缓存键
+//
+// 返回:
+//   - *list.Element: 缓存项元素
+//   - bool: 是否存在该键
 func (cache *metaCache) get(key string) (*list.Element, bool) {
 	cache.lock.RLock()
 	element, ok := cache.dict[key]
@@ -122,7 +155,10 @@ func (cache *metaCache) get(key string) (*list.Element, bool) {
 	return element, ok
 }
 
-// set 设置键值
+// set 设置缓存项
+//
+// 参数:
+//   - cacheItem *cacheItems: 要设置的缓存项
 func (cache *metaCache) set(cacheItem *cacheItems) {
 	cache.lock.Lock()
 	element := cache.list.PushFront(cacheItem)
@@ -131,7 +167,10 @@ func (cache *metaCache) set(cacheItem *cacheItems) {
 	cache.lock.Unlock()
 }
 
-// del 删除键值
+// del 删除缓存项
+//
+// 参数:
+//   - element *list.Element: 要删除的缓存项元素
 func (cache *metaCache) del(element *list.Element) {
 	cacheItem := element.Value.(*cacheItems)
 	cache.lock.Lock()
@@ -141,7 +180,13 @@ func (cache *metaCache) del(element *list.Element) {
 	cache.lock.Unlock()
 }
 
-// Has 检查值是否存在
+// Has 检查键是否存在
+//
+// 参数:
+//   - key string: 要检查的键
+//
+// 返回:
+//   - bool: 是否存在该键
 func (cache *metaCache) Has(key string) bool {
 	cache.lock.RLock()
 	_, ok := cache.dict[key]
@@ -149,7 +194,14 @@ func (cache *metaCache) Has(key string) bool {
 	return ok
 }
 
-// Get 查找键的值
+// Get 获取缓存值
+//
+// 参数:
+//   - key string: 缓存键
+//   - value interface{}: 用于存储解码后的值的指针
+//
+// 返回:
+//   - error: 获取过程中的错误信息
 func (cache *metaCache) Get(key string, value interface{}) error {
 	if element, ok := cache.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
@@ -177,7 +229,15 @@ func (cache *metaCache) Get(key string, value interface{}) error {
 	return nil
 }
 
-// Set 设置键值
+// Set 设置缓存键值对
+//
+// 参数:
+//   - key string: 缓存键
+//   - value interface{}: 要缓存的值
+//   - expires int: 过期时间(秒)，0表示永不过期
+//
+// 返回:
+//   - error: 设置过程中的错误信息
 func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
@@ -219,14 +279,23 @@ func (cache *metaCache) Set(key string, value interface{}, expires int) error {
 	return nil
 }
 
-// Del 删除键值
+// Del 删除缓存键
+//
+// 参数:
+//   - key string: 要删除的缓存键
 func (cache *metaCache) Del(key string) {
 	if element, ok := cache.get(key); ok {
 		cache.del(element)
 	}
 }
 
-// DelExp 删除过期的 key， 如果 key 已过期则删除返回 true，未过期则不会删除返回 false
+// DelExp 删除过期的缓存键
+//
+// 参数:
+//   - key string: 要检查的缓存键
+//
+// 返回:
+//   - bool: 如果键已过期并被删除返回true，否则返回false
 func (cache *metaCache) DelExp(key string) bool {
 	if element, ok := cache.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
@@ -240,7 +309,7 @@ func (cache *metaCache) DelExp(key string) bool {
 	return false
 }
 
-// 缓存淘汰
+// cacheEvict 执行缓存淘汰
 func (cache *metaCache) cacheEvict() {
 	if len(cache.dict) == 0 {
 		return
@@ -251,7 +320,7 @@ func (cache *metaCache) cacheEvict() {
 		NoEvictionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "server.cache.noeviction",
 			TemplateData: map[string]interface{}{
-				"max_size": formatBytes(Cache.MAX_SIZE),
+				"max_size": FormatBytes(Cache.MAX_SIZE),
 			},
 		})
 		Log.Error(NoEvictionMsg)
@@ -523,7 +592,11 @@ func (cache *metaCache) cacheEvict() {
 	}
 }
 
-// 定期删除
+// cachePeriodicDeleteExpires 定期删除过期缓存项
+//
+// 参数:
+//   - ctx context.Context: 上下文对象，用于控制goroutine退出
+//   - wg *sync.WaitGroup: 等待组，用于同步goroutine
 func (cache *metaCache) cachePeriodicDeleteExpires(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done()
@@ -571,7 +644,13 @@ const (
 	MaxCounterValue = 255 // 计数器最大值
 )
 
-// 计算 LFU 递增值
+// LFULogIncr 计算LFU访问频率的递增值
+//
+// 参数:
+//   - counter uint8: 当前计数值
+//
+// 返回:
+//   - uint8: 更新后的计数值
 func LFULogIncr(counter uint8) uint8 {
 	if counter == MaxCounterValue {
 		return MaxCounterValue

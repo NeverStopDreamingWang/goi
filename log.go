@@ -14,6 +14,7 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
+// Level 日志等级类型
 type Level string
 
 // 日志等级
@@ -25,7 +26,7 @@ const (
 	ERROR   Level = "ERROR"
 )
 
-// 日志
+// MetaLogger 日志管理器
 type MetaLogger struct {
 	Name            string                                                    // 日志名称
 	Path            string                                                    // 日志输出路径
@@ -38,15 +39,25 @@ type MetaLogger struct {
 	SPLIT_TIME      string                                                    // 日志切割大小，默认按天切割
 	GetFileFunc     func(filePath string) (*os.File, error)                   // 创建文件对象方法
 	SplitLoggerFunc func(metaLogger *MetaLogger) (*os.File, error)            // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
-	lock            sync.Mutex
+	lock            sync.Mutex                                                // 互斥锁
 }
 
+// metaLog 日志系统管理器
+//
+// 字段:
+//   - DEBUG bool: 是否开启调试模式
+//   - console_logger *MetaLogger: 控制台日志器
+//   - loggers []*MetaLogger: 日志器列表
 type metaLog struct {
-	DEBUG          bool          // 默认为 true
+	DEBUG          bool          // 开发模式，开启后自动输出到控制台
 	console_logger *MetaLogger   // DEBUG 日志
 	loggers        []*MetaLogger // 日志列表
 }
 
+// newLog 创建新的日志系统管理器
+//
+// 返回:
+//   - *metaLog: 日志系统管理器实例
 func newLog() *metaLog {
 	return &metaLog{
 		DEBUG:   true,            // 开发模式，开启后自动输出到控制台
@@ -54,7 +65,13 @@ func newLog() *metaLog {
 	}
 }
 
-// 注册日志
+// RegisterLogger 注册日志器
+//
+// 参数:
+//   - logger *MetaLogger: 要注册的日志器
+//
+// 返回:
+//   - error: 注册过程中的错误信息
 func (metaLog *metaLog) RegisterLogger(logger *MetaLogger) error {
 	if logger.Path == "" {
 		invalidPathMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -90,22 +107,35 @@ func (metaLog *metaLog) RegisterLogger(logger *MetaLogger) error {
 	return nil
 }
 
-// Info 日志
+// Info 记录信息级别日志
+//
+// 参数:
+//   - log ...interface{}: 日志内容
 func (metaLog *metaLog) Info(log ...interface{}) {
 	metaLog.Log(INFO, log...)
 }
 
-// WARNING 日志
+// Warning 记录警告级别日志
+//
+// 参数:
+//   - log ...interface{}: 日志内容
 func (metaLog *metaLog) Warning(log ...interface{}) {
 	metaLog.Log(WARNING, log...)
 }
 
-// ERROR 日志
+// Error 记录错误级别日志
+//
+// 参数:
+//   - log ...interface{}: 日志内容
 func (metaLog *metaLog) Error(log ...interface{}) {
 	metaLog.Log(ERROR, log...)
 }
 
-// log 打印日志
+// Log 记录指定级别的日志
+//
+// 参数:
+//   - level Level: 日志级别
+//   - logs ...interface{}: 日志内容
 func (metaLog *metaLog) Log(level Level, logs ...interface{}) {
 	// DEBUG
 	if metaLog.DEBUG == true {
@@ -148,7 +178,11 @@ func (metaLog *metaLog) Log(level Level, logs ...interface{}) {
 	}
 }
 
-// 日志初始化
+// splitLogger 日志切割管理协程
+//
+// 参数:
+//   - ctx context.Context: 上下文对象，用于控制协程退出
+//   - wg *sync.WaitGroup: 等待组，用于同步协程
 func (metaLog *metaLog) splitLogger(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
@@ -169,7 +203,12 @@ func (metaLog *metaLog) splitLogger(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-// 默认日志输出格式
+// defaultLoggerPrint 默认日志打印格式化函数
+//
+// 参数:
+//   - logger *MetaLogger: 日志器
+//   - level Level: 日志级别
+//   - logs ...interface{}: 日志内容
 func defaultLoggerPrint(logger *MetaLogger, level Level, logs ...interface{}) {
 	timeStr := fmt.Sprintf("[%v]", GetTime().Format("2006-01-02 15:04:05"))
 	if level != "" {
@@ -179,7 +218,13 @@ func defaultLoggerPrint(logger *MetaLogger, level Level, logs ...interface{}) {
 	logger.Logger.Println(logs...)
 }
 
-// 检查日志切割
+// checkSplitLoggerFunc 检查是否需要进行日志切割
+//
+// 参数:
+//   - metaLogger *MetaLogger: 日志器
+//
+// 返回:
+//   - error: 检查过程中的错误信息
 func checkSplitLoggerFunc(metaLogger *MetaLogger) error {
 	var err error
 	nowTime := GetTime()
@@ -236,7 +281,14 @@ func checkSplitLoggerFunc(metaLogger *MetaLogger) error {
 	return nil
 }
 
-// 日志切割
+// defaultSplitLoggerFunc 默认日志切割实现
+//
+// 参数:
+//   - metaLogger *MetaLogger: 日志器
+//
+// 返回:
+//   - *os.File: 新的日志文件对象
+//   - error: 切割过程中的错误信息
 func defaultSplitLoggerFunc(metaLogger *MetaLogger) (*os.File, error) {
 	var (
 		fileName string
@@ -281,7 +333,14 @@ func defaultSplitLoggerFunc(metaLogger *MetaLogger) (*os.File, error) {
 	return defaultGetFileFunc(metaLogger.Path)
 }
 
-// 获取 *os.File 对象
+// defaultGetFileFunc 默认文件创建函数
+//
+// 参数:
+//   - filePath string: 文件路径
+//
+// 返回:
+//   - *os.File: 文件对象
+//   - error: 创建过程中的错误信息
 func defaultGetFileFunc(filePath string) (*os.File, error) {
 	var file *os.File
 	var err error
