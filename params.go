@@ -589,8 +589,8 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 			}
 		}
 		return nil
-	case reflect.Slice:
-		if valueInterface.Kind() != reflect.Slice {
+	case reflect.Slice, reflect.Array:
+		if valueInterface.Kind() != reflect.Slice && valueInterface.Kind() != reflect.Array {
 			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "params.value_invalid",
 				TemplateData: map[string]interface{}{
