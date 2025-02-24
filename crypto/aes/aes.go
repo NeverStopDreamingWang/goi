@@ -8,6 +8,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // adjustKeyLength 调整密钥到有效的 AES 密钥长度（16、24 或 32 字节）
@@ -93,7 +96,10 @@ func pkcs7Padding(data []byte, blockSize int) []byte {
 func pkcs7UnPadding(data []byte, blockSize int) ([]byte, error) {
 	length := len(data)
 	if length == 0 {
-		return nil, errors.New("数据长度为0")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.aes.empty_data",
+		})
+		return nil, errors.New(errMsg)
 	}
 
 	// 最后一个字节的值就是填充长度
@@ -101,13 +107,19 @@ func pkcs7UnPadding(data []byte, blockSize int) ([]byte, error) {
 
 	// 验证填充值的有效性
 	if padding == 0 || padding > blockSize {
-		return nil, errors.New("填充长度无效")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.aes.invalid_padding_length",
+		})
+		return nil, errors.New(errMsg)
 	}
 
 	// 验证所有填充字节是否相同
 	for i := 0; i < padding; i++ {
 		if int(data[length-1-i]) != padding {
-			return nil, errors.New("填充无效")
+			errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "crypto.aes.invalid_padding",
+			})
+			return nil, errors.New(errMsg)
 		}
 	}
 
@@ -191,19 +203,34 @@ func Decrypt(cipherTextBase64 string, keyBytes []byte) (string, error) {
 	// 解码 base64 密文
 	cipherText, err := base64.StdEncoding.DecodeString(cipherTextBase64)
 	if err != nil {
-		return "", err
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.aes.base64_decode_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return "", errors.New(errMsg)
 	}
 
 	// 创建 AES 加密块
 	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
-		return "", err
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.aes.new_cipher_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return "", errors.New(errMsg)
 	}
 
 	// 检查密文长度
 	blockSize := block.BlockSize()
 	if len(cipherText) < blockSize {
-		return "", errors.New("密文长度无效")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "crypto.aes.invalid_ciphertext_length",
+		})
+		return "", errors.New(errMsg)
 	}
 
 	// 提取 IV
