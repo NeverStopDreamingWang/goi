@@ -37,21 +37,29 @@ const (
 	TypJWT = "JWT" // JSON Web Token
 )
 
-// Jwt 验证错误
 var (
-	jwtExpiredSignatureError = errors.New("Expired Signature Error")
-	jwtDecodeError           = errors.New("Decode Error")
+	// 解码错误
+	ErrDecode = errors.New("Decode Error")
+	// 过期错误
+	ErrExpiredSignature = errors.New("Expired Signature Error")
 )
 
+// Header JWT头部结构
+// Alg 表示使用的签名算法
+// Typ 表示令牌的类型
 type Header struct {
 	Alg string `json:"alg"`
 	Typ string `json:"typ"`
 }
 
+// Payloads JWT负载基础结构
+// Exp 表示令牌的过期时间
 type Payloads struct {
 	Exp ExpTime `json:"exp"`
 }
 
+// ExpTime 自定义过期时间类型
+// 嵌入time.Time以扩展其功能
 type ExpTime struct {
 	time.Time
 }
@@ -66,24 +74,23 @@ func (expTime *ExpTime) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	expTime.Time, err = time.ParseInLocation(time.RFC3339, expTimeStr, goi.Settings.GetLocation())
+	expTime.Time, err = time.ParseInLocation(time.RFC3339, expTimeStr, goi.GetLocation())
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// 签名过期
-func JwtExpiredSignatureError(err error) bool {
-	return errors.Is(err, jwtExpiredSignatureError)
-}
-
-// Jwt 解码错误
-func JwtDecodeError(err error) bool {
-	return errors.Is(err, jwtDecodeError)
-}
-
-// 生成 token
+// NewJWT 生成新的JWT令牌
+//
+// 参数:
+//   - header interface{}: JWT头部信息，通常为 Header 结构体
+//   - payload interface{}: JWT负载信息，必须包含 Payloads 结构体
+//   - key string: 用于签名的密钥
+//
+// 返回:
+//   - string: 生成的token字符串，格式为: header.payload.signature
+//   - error: 生成过程中的错误
 func NewJWT(header interface{}, payload interface{}, key string) (string, error) {
 	var headerStr string
 	var payloadStr string
@@ -113,12 +120,23 @@ func NewJWT(header interface{}, payload interface{}, key string) (string, error)
 	return token, nil
 }
 
-// 验证 token
+// CkeckToken 验证JWT令牌的有效性
+//
+// 参数:
+//   - token string: 待验证的JWT令牌字符串
+//   - key string: 验证签名用的密钥
+//   - payloadsDest interface{}: 用于存储解码后payload的结构体指针，必须包含 Payloads 结构体
+//
+// 返回:
+//   - error: 验证过程中的错误，包括:
+//   - 令牌格式错误
+//   - 签名验证失败
+//   - 令牌已过期
 func CkeckToken(token string, key string, payloadsDest interface{}) error {
 	var err error
 	tokenSlice := strings.Split(token, ".")
 	if len(tokenSlice) != 3 {
-		return jwtDecodeError
+		return ErrDecode
 	}
 	headerBase64 := tokenSlice[0]
 	payloadBase64 := tokenSlice[1]
@@ -127,14 +145,14 @@ func CkeckToken(token string, key string, payloadsDest interface{}) error {
 	// 检查 signature
 	signatureStr, err := sha256Str(key, headerBase64+"."+payloadBase64)
 	if err != nil {
-		return jwtDecodeError
+		return ErrDecode
 	}
 	signatureStr, err = base64Encode(signatureStr)
 	if err != nil {
-		return jwtDecodeError
+		return ErrDecode
 	}
 	if signatureStr != signatureBase64 {
-		return jwtDecodeError
+		return ErrDecode
 	}
 	header := &Header{}
 	err = base64Decode(headerBase64, header)
@@ -142,11 +160,11 @@ func CkeckToken(token string, key string, payloadsDest interface{}) error {
 		return err
 	}
 	if header.Alg != AlgHS256 || header.Typ != TypJWT {
-		return jwtDecodeError
+		return ErrDecode
 	}
 	err = base64Decode(payloadBase64, payloadsDest)
 	if err != nil {
-		return jwtDecodeError
+		return ErrDecode
 	}
 
 	// 检查嵌套的 Payloads 字段并验证 Exp
@@ -157,7 +175,13 @@ func CkeckToken(token string, key string, payloadsDest interface{}) error {
 	return nil
 }
 
-// checkExpField 用于检查 payload 中的 Exp 字段
+// checkExpField 检查payload中的过期时间字段
+//
+// 参数:
+//   - payloadsDest interface{}: 包含 Payloads 结构体的接口值
+//
+// 返回:
+//   - error: 检查过程中的错误，如令牌已过期返回 ErrExpiredSignature
 func checkExpField(payloadsDest interface{}) error {
 	payloadsDestValue := reflect.ValueOf(payloadsDest)
 
@@ -165,7 +189,7 @@ func checkExpField(payloadsDest interface{}) error {
 		payloadsDestValue = payloadsDestValue.Elem()
 	}
 	if payloadsDestValue.Kind() != reflect.Struct {
-		return jwtDecodeError
+		return ErrDecode
 	}
 	// 获取 Payloads 类型
 	PayloadsType := reflect.TypeOf(Payloads{})
@@ -182,23 +206,33 @@ func checkExpField(payloadsDest interface{}) error {
 		// 直接获取嵌套的 Exp 字段
 		expField := field.FieldByName("Exp")
 		if expField.IsValid() == false {
-			return jwtDecodeError
+			return ErrDecode
 		}
 		expTime, ok := expField.Interface().(ExpTime)
 		if !ok {
-			return jwtDecodeError
+			return ErrDecode
 		}
 
 		// 判断过期时间
 		if expTime.Time.Before(goi.GetTime()) {
-			return jwtExpiredSignatureError
+			return ErrExpiredSignature
 		}
 		return nil // Exp 时间有效
 	}
-	return jwtDecodeError // 未找到有效的 Exp 字段
+	return ErrDecode // 未找到有效的 Exp 字段
 }
 
-// base64 编码
+// base64Encode 将数据进行base64 URL编码
+//
+// 参数:
+//   - data interface{}: 要编码的数据，支持类型:
+//   - string: 字符串类型
+//   - []byte: 字节切片类型
+//   - 其他可JSON序列化的类型
+//
+// 返回:
+//   - string: base64 URL编码后的字符串
+//   - error: 编码过程中的错误
 func base64Encode(data interface{}) (string, error) {
 	var dataByte []byte
 	var err error
@@ -218,7 +252,14 @@ func base64Encode(data interface{}) (string, error) {
 	return dataBase64Encode, nil
 }
 
-// base64 解码
+// base64Decode 将base64编码的字符串解码到目标结构体
+//
+// 参数:
+//   - dataStr string: base64编码的字符串
+//   - payloadsDest interface{}: 解码目标结构体的指针
+//
+// 返回:
+//   - error: 解码过程中的错误
 func base64Decode(dataStr string, payloadsDest interface{}) error {
 	// 补全字符串末尾的"="符号
 	remainder := len(dataStr) % 4
@@ -236,7 +277,15 @@ func base64Decode(dataStr string, payloadsDest interface{}) error {
 	return nil
 }
 
-// HS256
+// sha256Str 使用HMAC-SHA256算法计算数据的哈希值
+//
+// 参数:
+//   - key string: HMAC密钥
+//   - data string: 要计算哈希的数据
+//
+// 返回:
+//   - string: 十六进制格式的哈希字符串
+//   - error: 计算过程中的错误
 func sha256Str(key string, data string) (string, error) {
 	// 创建HS256哈希对象
 	hash := hmac.New(sha256.New, []byte(key))
