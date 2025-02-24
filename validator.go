@@ -9,33 +9,74 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-// 参数验证器返回错误
+// ValidationError 参数验证错误接口
+//
+// 方法:
+//   - NewValidationError: 创建参数验证错误
+//   - Response: 生成错误响应
 type ValidationError interface {
-	// 创建参数验证错误方法
+	// NewValidationError 创建参数验证错误
+	//
+	// 参数:
+	//   - status int: HTTP状态码
+	//   - message string: 错误消息
+	//   - args ...interface{}: 可选参数
+	//
+	// 返回:
+	//   - ValidationError: 验证错误实例
 	NewValidationError(status int, message string, args ...interface{}) ValidationError
-	// 参数验证错误响应格式方法
+
+	// Response 生成错误响应
+	//
+	// 返回:
+	//   - Response: 标准响应格式
 	Response() Response
 }
 
-// 框架全局创建参数验证错误
+// NewValidationError 创建全局参数验证错误
+//
+// 参数:
+//   - status int: HTTP状态码
+//   - message string: 错误消息
+//   - args ...interface{}: 可选参数
+//
+// 返回:
+//   - ValidationError: 验证错误实例
 func NewValidationError(status int, message string, args ...interface{}) ValidationError {
 	return Validator.validation_error.NewValidationError(status, message, args...)
 }
 
-type metaValidator struct {
-	validation_error ValidationError
-}
-
+// newValidator 创建新的验证器管理器
+//
+// 返回:
+//   - *metaValidator: 验证器管理器实例
 func newValidator() *metaValidator {
 	return &metaValidator{
 		validation_error: &defaultValidationError{}, // 使用默认参数验证错误
 	}
 }
+
+// metaValidator 验证器管理结构
+//
+// 字段:
+//   - validation_error ValidationError: 验证错误处理器
+type metaValidator struct {
+	validation_error ValidationError
+}
+
+// SetValidationError 设置验证错误处理器
+//
+// 参数:
+//   - validationError ValidationError: 自定义的验证错误处理器
 func (metaValidator *metaValidator) SetValidationError(validationError ValidationError) {
 	metaValidator.validation_error = validationError
 }
 
-// 默认参数验证错误
+// defaultValidationError 默认验证错误实现
+//
+// 字段:
+//   - Status int: HTTP状态码
+//   - Message string: 错误消息
 type defaultValidationError struct {
 	Status  int
 	Message string
@@ -57,7 +98,13 @@ func (validationErr *defaultValidationError) Response() Response {
 	}
 }
 
-// 验证器处理函数
+// validateFunc 验证器处理函数类型
+//
+// 参数:
+//   - value interface{}: 待验证的值
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 type validateFunc func(value interface{}) ValidationError
 
 var metaValidate = map[string]validateFunc{
@@ -70,11 +117,23 @@ var metaValidate = map[string]validateFunc{
 	"uuid":   uuidValidate,
 }
 
-// 注册一个验证器
+// RegisterValidate 注册自定义验证器
+//
+// 参数:
+//   - name string: 验证器名称
+//   - validate validateFunc: 验证处理函数
 func RegisterValidate(name string, validate validateFunc) {
 	metaValidate[name] = validate
 }
 
+// validateValue 执行验证
+//
+// 参数:
+//   - validator_name string: 验证器名称
+//   - value interface{}: 待验证的值
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 func validateValue(validator_name string, value interface{}) ValidationError {
 	validate, ok := metaValidate[validator_name]
 	if !ok {
@@ -89,7 +148,13 @@ func validateValue(validator_name string, value interface{}) ValidationError {
 	return validate(value)
 }
 
-// bool 类型
+// boolValidate 布尔类型验证器
+//
+// 参数:
+//   - value interface{}: 待验证的值
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 func boolValidate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case bool:
@@ -118,7 +183,13 @@ func boolValidate(value interface{}) ValidationError {
 	}
 }
 
-// int 类型
+// intValidate 整数类型验证器
+//
+// 参数:
+//   - value interface{}: 待验证的值
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 func intValidate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
@@ -147,7 +218,13 @@ func intValidate(value interface{}) ValidationError {
 	}
 }
 
-// string 类型
+// stringValidate 字符串类型验证器
+//
+// 参数:
+//   - value interface{}: 待验证的值
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 func stringValidate(value interface{}) ValidationError {
 	switch value.(type) {
 	case string:
@@ -163,7 +240,13 @@ func stringValidate(value interface{}) ValidationError {
 	}
 }
 
-// slice 类型
+// sliceValidate 切片类型验证器
+//
+// 参数:
+//   - value interface{}: 待验证的值
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 func sliceValidate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
@@ -184,8 +267,8 @@ func sliceValidate(value interface{}) ValidationError {
 		if valueType.Kind() == reflect.Ptr {
 			valueType = valueType.Elem()
 		}
-		// 判断是否为切片类型
-		if valueType.Kind() == reflect.Slice {
+		kind := valueType.Kind()
+		if kind == reflect.Slice || kind == reflect.Array {
 			return nil
 		}
 		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -198,7 +281,13 @@ func sliceValidate(value interface{}) ValidationError {
 	}
 }
 
-// map 类型
+// mapValidate 映射类型验证器
+//
+// 参数:
+//   - value interface{}: 待验证的值
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 func mapValidate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
@@ -231,10 +320,15 @@ func mapValidate(value interface{}) ValidationError {
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
-
 }
 
-// slug 类型
+// slugValidate slug格式验证器
+//
+// 参数:
+//   - value interface{}: 待验证的值，必须是字符串且只包含字母、数字、下划线和连字符
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 func slugValidate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
@@ -261,7 +355,13 @@ func slugValidate(value interface{}) ValidationError {
 	}
 }
 
-// uuid 类型
+// uuidValidate UUID格式验证器
+//
+// 参数:
+//   - value interface{}: 待验证的值，必须是符合UUID格式的字符串
+//
+// 返回:
+//   - ValidationError: 验证错误，如果验证通过则返回nil
 func uuidValidate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
