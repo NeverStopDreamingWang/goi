@@ -19,7 +19,7 @@
     "close_database_error": "Close {{ .engine }} {{ .name }} error: {{ .err }}",
     "stop_time": "Stopping Time: {{ .stop_time }}",
     "run_time": "Run Time: {{ .run_time }}",
-    "stop": "Service Stopped",
+    "stop": "Service Stopped\n",
     "response_json_error": "Response to json data error: {{ .err }}\n",
     "response_error": "Response error: {{ .err }}\n",
     "url_not_allowed": "URL NOT FOUND \"{{ .path }}\".",
@@ -84,5 +84,31 @@
     "field_is_not_null_error": "field cannot be empty",
     "field_type_string_error": "field is not a string type",
     "varchar_len_error": "contains more than {{ .length }} character"
+  },
+  "auth": {
+    "empty_password": "Password cannot be empty",
+    "salt_generation_error": "Failed to generate password salt：{{ .err }}"
+  },
+  "crypto": {
+    "aes": {
+      "empty_data": "Data length is zero",
+      "invalid_padding_length": "Invalid padding length",
+      "invalid_padding": "Invalid padding",
+      "base64_decode_error": "Base64 decode failed: {{.err}}",
+      "new_cipher_error": "Failed to create cipher: {{.err}}",
+      "invalid_ciphertext_length": "Invalid ciphertext length"
+    },
+    "pbkdf2": {
+      "invalid_format": "Invalid encoding string format",
+      "invalid_iterations": "Invalid iteration count: {{ .err }}",
+      "invalid_salt": "Invalid salt value: {{ .err }}"
+    },
+    "rsa": {
+      "public_key_decode_error": "Failed to decode public key",
+      "public_key_parse_error": "Failed to parse public key: {{ .err }}",
+      "public_key_type_error": "Failed to convert public key type",
+      "private_key_decode_error": "Failed to decode private key",
+      "private_key_parse_error": "Failed to parse private key: {{ .err }}"
+    }
   }
 }

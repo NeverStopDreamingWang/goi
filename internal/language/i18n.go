@@ -18,6 +18,7 @@ func init() {
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
 	_, _ = bundle.LoadMessageFileFS(langFS, "lang/zh_cn.json")
 	_, _ = bundle.LoadMessageFileFS(langFS, "lang/en_us.json")
+	I18n = i18n.NewLocalizer(bundle, "zh_cn")
 }
 
 // 设置语言
