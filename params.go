@@ -186,7 +186,7 @@ func (values ParamsValues) setFieldValue(field reflect.Value, value string) Vali
 		paramsIsNotCanSetMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.params_is_not_can_set",
 			TemplateData: map[string]interface{}{
-				"name": "dest",
+				"name": field.Type().Name(),
 			},
 		})
 		return NewValidationError(http.StatusInternalServerError, paramsIsNotCanSetMsg)
@@ -204,7 +204,7 @@ func (values ParamsValues) setFieldValue(field reflect.Value, value string) Vali
 	// 类型转换处理
 	switch fieldType.Kind() {
 	case reflect.Interface:
-		field.Set(reflect.ValueOf(value))
+		field.Set(valueInterface)
 	case reflect.Bool:
 		boolValue, err := strconv.ParseBool(value)
 		if err != nil {
@@ -416,21 +416,20 @@ func (values BodyParamsValues) setFieldValue(field reflect.Value, value interfac
 		paramsIsNotCanSetMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.params_is_not_can_set",
 			TemplateData: map[string]interface{}{
-				"name": "dest",
+				"name": field.Type().Name(),
 			},
 		})
 		return NewValidationError(http.StatusInternalServerError, paramsIsNotCanSetMsg)
 	}
 
 	fieldType := field.Type()
-	valueInterface := reflect.ValueOf(value)
-
 	// 处理 nil 值
 	if value == nil {
 		field.Set(reflect.Zero(fieldType))
 		return nil
 	}
 
+	valueInterface := reflect.ValueOf(value)
 	// 直接类型匹配
 	if valueInterface.Type().AssignableTo(fieldType) {
 		field.Set(valueInterface)
