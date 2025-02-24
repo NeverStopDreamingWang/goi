@@ -15,22 +15,33 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
+// SQLite3DB 结构体用于管理SQLite3数据库连接和操作
 type SQLite3DB struct {
-	name        string               // 连接名称
+	name        string               // 数据库连接名称
 	DB          *sql.DB              // 数据库连接对象
-	transaction *sql.Tx              // 事务
-	model       sqlite3.SQLite3Model // 模型
-	fields      []string             // 模型字段
-	field_sql   []string             // 表字段
-	where_sql   []string             // 条件语句
-	limit_sql   string               // 分页
-	group_sql   string               // 分组
-	order_sql   string               // 排序
-	sql         string               // 执行 sql
-	args        []interface{}        // 条件参数
+	transaction *sql.Tx              // 当前事务对象
+	model       sqlite3.SQLite3Model // 当前操作的数据模型
+	fields      []string             // 模型结构体字段名
+	field_sql   []string             // 数据库表字段名
+	where_sql   []string             // WHERE条件语句
+	limit_sql   string               // LIMIT分页语句
+	group_sql   string               // GROUP BY分组语句
+	order_sql   string               // ORDER BY排序语句
+	sql         string               // 最终执行的SQL语句
+	args        []interface{}        // SQL语句的参数值
 }
 
-// 连接 SQLite3 数据库
+// SQLite3Connect 连接SQLite3数据库
+//
+// 参数:
+//   - UseDataBases: string 数据库配置名称
+//
+// 返回:
+//   - *SQLite3DB: SQLite3数据库操作实例
+//
+// 说明:
+//   - 从全局配置中获取数据库连接信息
+//   - 如果配置不存在或连接失败则panic
 func SQLite3Connect(UseDataBases string) *SQLite3DB {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {
@@ -58,17 +69,34 @@ func SQLite3Connect(UseDataBases string) *SQLite3DB {
 	}
 }
 
-// 获取数据库别名
+// Name 获取数据库连接名称
+//
+// 返回:
+//   - string: 当前数据库连接名称
 func (sqlite3DB SQLite3DB) Name() string {
 	return sqlite3DB.name
 }
 
-// 获取SQL语句
+// GetSQL 获取最近一次执行的SQL语句
+//
+// 返回:
+//   - string: 最近一次执行的SQL语句
 func (sqlite3DB SQLite3DB) GetSQL() string {
 	return sqlite3DB.sql
 }
 
-// 事务
+// WithTransaction 在事务中执行指定的函数
+//
+// 参数:
+//   - transactionFunc: func(sqlite3DB *SQLite3DB, args ...interface{}) error 事务执行函数
+//   - args: ...interface{} 传递给事务函数的参数列表
+//
+// 返回:
+//   - error: 事务执行的错误，发生错误时会自动回滚
+//
+// 说明:
+//   - 不支持嵌套事务，如果当前已在事务中则返回错误
+//   - 事务函数执行失败时自动回滚
 func (sqlite3DB SQLite3DB) WithTransaction(transactionFunc func(sqlite3DB *SQLite3DB, args ...interface{}) error, args ...interface{}) error {
 	var err error
 	if sqlite3DB.transaction != nil {
@@ -89,15 +117,21 @@ func (sqlite3DB SQLite3DB) WithTransaction(transactionFunc func(sqlite3DB *SQLit
 	}
 
 	// 提交事务
-	err = sqlite3DB.transaction.Commit()
-	if err != nil {
-		_ = sqlite3DB.transaction.Rollback()
-		return err
-	}
-	return nil
+	return sqlite3DB.transaction.Commit()
 }
 
-// 执行语句
+// Execute 执行SQL语句
+//
+// 参数:
+//   - query: string SQL语句
+//   - args: ...interface{} SQL参数值列表
+//
+// 返回:
+//   - sql.Result: 执行操作的结果
+//   - error: 执行过程中的错误
+//
+// 说明:
+//   - 支持在事务中使用
 func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Result, error) {
 	if sqlite3DB.transaction != nil {
 		return sqlite3DB.transaction.Exec(query, args...)
@@ -106,16 +140,39 @@ func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Resu
 	}
 }
 
-// 查询语句
+// Query 执行查询SQL语句
+//
+// 参数:
+//   - query: string SQL查询语句
+//   - args: ...interface{} SQL参数值列表
+//
+// 返回:
+//   - *sql.Rows: 查询结果集
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 返回的结果集需要调用方手动关闭
+//   - 查询失败时返回nil和错误信息
+//   - 支持在事务中使用
 func (sqlite3DB *SQLite3DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	rows, err := sqlite3DB.DB.Query(query, args...)
-	if err != nil {
-		return nil, err
+	if sqlite3DB.transaction != nil {
+		return sqlite3DB.transaction.Query(query, args...)
+	} else {
+		return sqlite3DB.DB.Query(query, args...)
 	}
-	return rows, err
 }
 
-// 模型迁移
+// Migrate 根据模型创建数据库表
+//
+// 参数:
+//   - db_name: string 数据库名称
+//   - model: sqlite3.SQLite3Model 数据模型
+//
+// 说明:
+//   - 检查表是否已存在，存在则跳过创建
+//   - 解析模型结构体的字段标签
+//   - 支持自定义迁移前后处理函数
+//   - 创建失败时会panic
 func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) {
 	var err error
 	modelSettings := model.ModelSet()
@@ -219,6 +276,11 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 	}
 }
 
+// isSetModel 检查是否已设置数据模型
+//
+// 说明:
+//   - 内部方法，用于验证模型是否已设置
+//   - 如果未设置模型则panic
 func (sqlite3DB *SQLite3DB) isSetModel() {
 	if sqlite3DB.model == nil {
 		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -229,7 +291,17 @@ func (sqlite3DB *SQLite3DB) isSetModel() {
 	}
 }
 
-// 设置使用模型  return 当前 *SQLite3DB 本身
+// SetModel 设置当前操作的数据模型
+//
+// 参数:
+//   - model: sqlite3.SQLite3Model 数据模型实例
+//
+// 返回:
+//   - *SQLite3DB: 当前实例指针，支持链式调用
+//
+// 说明:
+//   - 设置后会重置所有查询条件
+//   - 解析模型的字段信息用于后续操作
 func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 	sqlite3DB.model = model
 	ModelType := reflect.TypeOf(sqlite3DB.model)
@@ -261,7 +333,19 @@ func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 	return sqlite3DB
 }
 
-// 设置查询结果字段  return 当前 *SQLite3DB 的副本指针
+// Fields 指定查询要返回的字段
+//
+// 参数:
+//   - fields: ...string 要查询的字段名列表
+//
+// 返回:
+//   - *SQLite3DB: 当前实例的副本指针，支持链式调用
+//
+// 说明:
+//   - 字段名必须是模型结构体中已定义的字段
+//   - 只返回带有field_type标签的字段
+//   - 字段名大小写不敏感，会自动转换为数据库字段名
+//   - 如果字段不存在则会panic
 func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 	ModelType := reflect.TypeOf(sqlite3DB.model)
 	// 获取字段
@@ -281,6 +365,7 @@ func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 			panic(fieldIsNotErrorMsg)
 		}
 
+		// 检查字段是否有field_type标签
 		_, ok = field.Tag.Lookup("field_type")
 		if !ok {
 			continue
@@ -288,6 +373,7 @@ func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 
 		sqlite3DB.fields = append(sqlite3DB.fields, field.Name)
 
+		// 获取数据库字段名，如果没有field_name标签则使用字段名小写
 		field_name, ok := field.Tag.Lookup("field_name")
 		if !ok {
 			field_name = strings.ToLower(field.Name)
@@ -297,7 +383,19 @@ func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 	return &sqlite3DB
 }
 
-// 插入数据库
+// Insert 向数据库插入一条记录
+//
+// 参数:
+//   - ModelData: sqlite3.SQLite3Model 要插入的数据模型实例
+//
+// 返回:
+//   - sql.Result: 插入操作的结果
+//   - error: 插入过程中的错误
+//
+// 说明:
+//   - 调用前必须先通过SetModel设置数据模型
+//   - 支持指针和非指针类型的字段值
+//   - 只插入带有field_type标签的字段
 func (sqlite3DB *SQLite3DB) Insert(ModelData sqlite3.SQLite3Model) (sql.Result, error) {
 	sqlite3DB.isSetModel()
 
@@ -330,7 +428,19 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData sqlite3.SQLite3Model) (sql.Result, 
 	return sqlite3DB.Execute(sqlite3DB.sql, insertValues...)
 }
 
-// 设置条件查询语句  return 当前 *SQLite3DB 的副本指针
+// Where 设置查询条件
+//
+// 参数:
+//   - query: string WHERE条件语句
+//   - args: ...interface{} 条件参数值列表
+//
+// 返回:
+//   - *SQLite3DB: 当前实例的副本指针，支持链式调用
+//
+// 说明:
+//   - 支持多次调用，条件之间使用AND连接
+//   - 支持参数占位符?自动替换
+//   - 支持 in 切片类型的参数
 func (sqlite3DB SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
 	queryParts := strings.Split(query, "?")
 	if len(queryParts)-1 != len(args) {
@@ -370,7 +480,19 @@ func (sqlite3DB SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
 	return &sqlite3DB
 }
 
-// 分组  return 当前 *SQLite3DB 的副本指针
+// GroupBy 设置分组条件
+//
+// 参数:
+//   - groups: ...string 分组字段名列表
+//
+// 返回:
+//   - *SQLite3DB: 当前实例的副本指针，支持链式调用
+//
+// 说明:
+//   - 字段名会自动去除首尾的空格和引号字符
+//   - 字段名会自动添加反引号
+//   - 空字段名会被忽略
+//   - 不传参数时清空分组条件
 func (sqlite3DB SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
 	var groupFields []string
 	for _, group := range groups {
@@ -388,10 +510,23 @@ func (sqlite3DB SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
 	return &sqlite3DB
 }
 
-// 排序  return 当前 *SQLite3DB 的副本指针
+// OrderBy 设置排序条件
+//
+// 参数:
+//   - orders: ...string 排序规则列表，字段名前加"-"表示降序，否则为升序
+//
+// 返回:
+//   - *SQLite3DB: 当前实例的副本指针，支持链式调用
+//
+// 说明:
+//   - 字段名会自动去除首尾的空格和引号字符
+//   - 字段名会自动添加反引号
+//   - 空字段名会被忽略
+//   - 不传参数时清空排序条件
 func (sqlite3DB SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 	var orderFields []string
 	for _, order := range orders {
+		// 去除字段名首尾的空格和引号
 		order = strings.Trim(order, " `'\"")
 		if order == "" {
 			continue
@@ -399,6 +534,7 @@ func (sqlite3DB SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 
 		var sequence string
 		var orderSQL string
+		// 处理排序方向
 		if order[0] == '-' {
 			orderSQL = order[1:]
 			sequence = "DESC"
@@ -416,7 +552,22 @@ func (sqlite3DB SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 	return &sqlite3DB
 }
 
-// 分页
+// Page 设置分页参数
+//
+// 参数:
+//   - page: int 页码，从1开始
+//   - pagesize: int 每页记录数
+//
+// 返回:
+//   - int: 总记录数
+//   - int: 总页数
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 页码小于等于0时自动设为1
+//   - 每页记录数小于等于0时设为默认值10
+//   - 总页数根据总记录数和每页记录数计算
+//   - 会自动执行一次COUNT查询获取总记录数
 func (sqlite3DB *SQLite3DB) Page(page int, pagesize int) (int, int, error) {
 	if page <= 0 {
 		page = 1
@@ -431,7 +582,19 @@ func (sqlite3DB *SQLite3DB) Page(page int, pagesize int) (int, int, error) {
 	return total, totalPages, err
 }
 
-// 执行查询语句获取数据
+// Select 执行查询并将结果扫描到切片中
+//
+// 参数:
+//   - queryResult: []*struct{} 或 []map[string]interface{} 用于接收结果的切片指针
+//
+// 返回:
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 必须传入结构体指针切片或map切片
+//   - 支持指针和非指针类型的字段
+//   - 自动映射数据库字段到结构体字段
+//   - 查询失败时返回错误信息
 func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	sqlite3DB.isSetModel()
 
@@ -551,7 +714,19 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	return nil
 }
 
-// 返回第一条数据
+// First 获取查询结果的第一条记录
+//
+// 参数:
+//   - queryResult: *struct{} 或 map[string]interface{} 用于接收结果的结构体指针或map
+//
+// 返回:
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 必须传入结构体指针或map
+//   - 自动映射数据库字段到结构体字段
+//   - 无记录时返回sql.ErrNoRows
+//   - 查询失败时返回错误信息
 func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	sqlite3DB.isSetModel()
 
@@ -638,7 +813,16 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	return nil
 }
 
-// 返回查询条数数量
+// Count 获取符合当前条件的记录总数
+//
+// 返回:
+//   - int: 记录总数
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 必须先通过SetModel设置数据模型
+//   - 会考虑当前设置的WHERE条件
+//   - 查询失败时返回0和错误信息
 func (sqlite3DB *SQLite3DB) Count() (int, error) {
 	sqlite3DB.isSetModel()
 
@@ -663,7 +847,18 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 	return count, nil
 }
 
-// 是否存在
+// Exists 检查是否存在符合条件的记录
+//
+// 返回:
+//   - bool: 是否存在记录
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 必须先通过SetModel设置数据模型
+//   - 会考虑当前设置的WHERE条件
+//   - 使用SELECT 1优化查询性能
+//   - 查询出错时返回false和错误信息
+//   - 无记录时返回false和nil
 func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
 	sqlite3DB.isSetModel()
 
@@ -692,7 +887,20 @@ func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
 	return exists == 1, nil
 }
 
-// 更新数据，返回操作条数
+// Update 更新符合条件的记录
+//
+// 参数:
+//   - ModelData: sqlite3.SQLite3Model 包含更新数据的模型实例
+//
+// 返回:
+//   - sql.Result: 更新操作的结果
+//   - error: 更新过程中的错误
+//
+// 说明:
+//   - 调用前必须先通过SetModel设置数据模型
+//   - 只更新非空字段
+//   - 支持指针和非指针类型的字段值
+//   - 会考虑当前设置的WHERE条件
 func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, error) {
 	sqlite3DB.isSetModel()
 
@@ -729,7 +937,15 @@ func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, 
 	return sqlite3DB.Execute(sqlite3DB.sql, updateValues...)
 }
 
-// 删除数据，返回操作条数
+// Delete 删除符合条件的记录
+//
+// 返回:
+//   - sql.Result: 删除操作的结果
+//   - error: 删除过程中的错误
+//
+// 说明:
+//   - 调用前必须先通过SetModel设置数据模型
+//   - 根据当前设置的WHERE条件删除记录
 func (sqlite3DB *SQLite3DB) Delete() (sql.Result, error) {
 	sqlite3DB.isSetModel()
 

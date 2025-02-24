@@ -15,22 +15,33 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
+// MySQLDB 结构体用于管理MySQL数据库连接和操作
 type MySQLDB struct {
-	name        string           // 连接名称
+	name        string           // 数据库连接名称
 	DB          *sql.DB          // 数据库连接对象
-	transaction *sql.Tx          // 事务
-	model       mysql.MySQLModel // 模型
-	fields      []string         // 模型字段
-	field_sql   []string         // 表字段
-	where_sql   []string         // 条件语句
-	limit_sql   string           // 分页
-	group_sql   string           // 分组
-	order_sql   string           // 排序
-	sql         string           // 执行 sql
-	args        []interface{}    // 条件参数
+	transaction *sql.Tx          // 当前事务对象
+	model       mysql.MySQLModel // 当前操作的数据模型
+	fields      []string         // 模型结构体字段名
+	field_sql   []string         // 数据库表字段名
+	where_sql   []string         // WHERE条件语句
+	limit_sql   string           // LIMIT分页语句
+	group_sql   string           // GROUP BY分组语句
+	order_sql   string           // ORDER BY排序语句
+	sql         string           // 最终执行的SQL语句
+	args        []interface{}    // SQL语句的参数值
 }
 
-// 连接 MySQL 数据库
+// MySQLConnect 连接MySQL数据库
+//
+// 参数:
+//   - UseDataBases: string 数据库配置名称
+//
+// 返回:
+//   - *MySQLDB: MySQL数据库操作实例
+//
+// 说明:
+//   - 从全局配置中获取数据库连接信息
+//   - 如果配置不存在或连接失败则panic
 func MySQLConnect(UseDataBases string) *MySQLDB {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {
@@ -58,17 +69,34 @@ func MySQLConnect(UseDataBases string) *MySQLDB {
 	}
 }
 
-// 获取数据库别名
+// Name 获取数据库连接名称
+//
+// 返回:
+//   - string: 当前数据库连接名称
 func (mysqlDB MySQLDB) Name() string {
 	return mysqlDB.name
 }
 
-// 获取SQL语句
+// GetSQL 获取最近一次执行的SQL语句
+//
+// 返回:
+//   - string: 最近一次执行的SQL语句
 func (mysqlDB MySQLDB) GetSQL() string {
 	return mysqlDB.sql
 }
 
-// 根据当前对象副本创建一个事务
+// WithTransaction 在事务中执行指定的函数
+//
+// 参数:
+//   - transactionFunc: func(mysqlDB *MySQLDB, args ...interface{}) error 事务执行函数
+//   - args: ...interface{} 传递给事务函数的参数列表
+//
+// 返回:
+//   - error: 事务执行的错误，发生错误时会自动回滚
+//
+// 说明:
+//   - 不支持嵌套事务，如果当前已在事务中则返回错误
+//   - 事务函数执行失败时自动回滚
 func (mysqlDB MySQLDB) WithTransaction(transactionFunc func(mysqlDB *MySQLDB, args ...interface{}) error, args ...interface{}) error {
 	var err error
 	if mysqlDB.transaction != nil {
@@ -89,15 +117,21 @@ func (mysqlDB MySQLDB) WithTransaction(transactionFunc func(mysqlDB *MySQLDB, ar
 	}
 
 	// 提交事务
-	err = mysqlDB.transaction.Commit()
-	if err != nil {
-		_ = mysqlDB.transaction.Rollback()
-		return err
-	}
-	return nil
+	return mysqlDB.transaction.Commit()
 }
 
-// 执行语句
+// Execute 执行SQL语句
+//
+// 参数:
+//   - query: string SQL语句
+//   - args: ...interface{} SQL参数值列表
+//
+// 返回:
+//   - sql.Result: 执行操作的结果
+//   - error: 执行过程中的错误
+//
+// 说明:
+//   - 支持在事务中使用
 func (mysqlDB *MySQLDB) Execute(query string, args ...interface{}) (sql.Result, error) {
 	if mysqlDB.transaction != nil {
 		return mysqlDB.transaction.Exec(query, args...)
@@ -106,16 +140,40 @@ func (mysqlDB *MySQLDB) Execute(query string, args ...interface{}) (sql.Result, 
 	}
 }
 
-// 查询语句
+// Query 执行查询SQL语句
+//
+// 参数:
+//   - query: string SQL查询语句
+//   - args: ...interface{} SQL参数值列表
+//
+// 返回:
+//   - *sql.Rows: 查询结果集
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 返回的结果集需要调用方手动关闭
+//   - 查询失败时返回nil和错误信息
+//   - 支持在事务中使用
 func (mysqlDB *MySQLDB) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	rows, err := mysqlDB.DB.Query(query, args...)
-	if err != nil {
-		return nil, err
+	if mysqlDB.transaction != nil {
+		return mysqlDB.transaction.Query(query, args...)
+	} else {
+		return mysqlDB.DB.Query(query, args...)
 	}
-	return rows, err
 }
 
-// 模型迁移
+// Migrate 根据模型创建数据库表
+//
+// 参数:
+//   - db_name: string 数据库名称
+//   - model: mysql.MySQLModel 数据模型
+//
+// 说明:
+//   - 检查表是否已存在，存在则跳过创建
+//   - 解析模型结构体的字段标签
+//   - 支持表的存储引擎、字符集等配置
+//   - 支持自定义迁移前后处理函数
+//   - 创建失败时会panic
 func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 	var err error
 	modelSettings := model.ModelSet()
@@ -258,6 +316,11 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 	}
 }
 
+// isSetModel 检查是否已设置数据模型
+//
+// 说明:
+//   - 内部方法，用于验证模型是否已设置
+//   - 如果未设置模型则panic
 func (mysqlDB *MySQLDB) isSetModel() {
 	if mysqlDB.model == nil {
 		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -268,7 +331,17 @@ func (mysqlDB *MySQLDB) isSetModel() {
 	}
 }
 
-// 设置使用模型  return 当前 *MySQLDB 本身
+// SetModel 设置当前操作的数据模型
+//
+// 参数:
+//   - model: mysql.MySQLModel 数据模型实例
+//
+// 返回:
+//   - *MySQLDB: 当前实例指针，支持链式调用
+//
+// 说明:
+//   - 设置后会重置所有查询条件
+//   - 解析模型的字段信息用于后续操作
 func (mysqlDB *MySQLDB) SetModel(model mysql.MySQLModel) *MySQLDB {
 	mysqlDB.model = model
 	ModelType := reflect.TypeOf(mysqlDB.model)
@@ -300,7 +373,19 @@ func (mysqlDB *MySQLDB) SetModel(model mysql.MySQLModel) *MySQLDB {
 	return mysqlDB
 }
 
-// 设置查询结果字段  return 当前 *MySQLDB 的副本指针
+// Fields 指定查询要返回的字段
+//
+// 参数:
+//   - fields: ...string 要查询的字段名列表
+//
+// 返回:
+//   - *MySQLDB: 当前实例的副本指针，支持链式调用
+//
+// 说明:
+//   - 字段名必须是模型结构体中已定义的字段
+//   - 只返回带有field_type标签的字段
+//   - 字段名大小写不敏感，会自动转换为数据库字段名
+//   - 如果字段不存在则会panic
 func (mysqlDB MySQLDB) Fields(fields ...string) *MySQLDB {
 	ModelType := reflect.TypeOf(mysqlDB.model)
 	// 获取字段
@@ -320,6 +405,7 @@ func (mysqlDB MySQLDB) Fields(fields ...string) *MySQLDB {
 			panic(fieldIsNotErrorMsg)
 		}
 
+		// 检查字段是否有field_type标签
 		_, ok = field.Tag.Lookup("field_type")
 		if !ok {
 			continue
@@ -327,6 +413,7 @@ func (mysqlDB MySQLDB) Fields(fields ...string) *MySQLDB {
 
 		mysqlDB.fields = append(mysqlDB.fields, field.Name)
 
+		// 获取数据库字段名，如果没有field_name标签则使用字段名小写
 		field_name, ok := field.Tag.Lookup("field_name")
 		if !ok {
 			field_name = strings.ToLower(field.Name)
@@ -336,7 +423,19 @@ func (mysqlDB MySQLDB) Fields(fields ...string) *MySQLDB {
 	return &mysqlDB
 }
 
-// 插入到数据库
+// Insert 向数据库插入一条记录
+//
+// 参数:
+//   - ModelData: mysql.MySQLModel 要插入的数据模型实例
+//
+// 返回:
+//   - sql.Result: 插入操作的结果
+//   - error: 插入过程中的错误
+//
+// 说明:
+//   - 调用前必须先通过SetModel设置数据模型
+//   - 支持指针和非指针类型的字段值
+//   - 只插入带有field_type标签的字段
 func (mysqlDB *MySQLDB) Insert(ModelData mysql.MySQLModel) (sql.Result, error) {
 	mysqlDB.isSetModel()
 
@@ -369,7 +468,19 @@ func (mysqlDB *MySQLDB) Insert(ModelData mysql.MySQLModel) (sql.Result, error) {
 	return mysqlDB.Execute(mysqlDB.sql, insertValues...)
 }
 
-// 设置条件查询语句  return 当前 *MySQLDB 的副本指针
+// Where 设置查询条件
+//
+// 参数:
+//   - query: string WHERE条件语句
+//   - args: ...interface{} 条件参数值列表
+//
+// 返回:
+//   - *MySQLDB: 当前实例的副本指针，支持链式调用
+//
+// 说明:
+//   - 支持多次调用，条件之间使用AND连接
+//   - 支持参数占位符?自动替换
+//   - 支持 in 切片类型的参数
 func (mysqlDB MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
 	queryParts := strings.Split(query, "?")
 	if len(queryParts)-1 != len(args) {
@@ -409,7 +520,19 @@ func (mysqlDB MySQLDB) Where(query string, args ...interface{}) *MySQLDB {
 	return &mysqlDB
 }
 
-// 分组  return 当前 *MySQLDB 的副本指针
+// GroupBy 设置分组条件
+//
+// 参数:
+//   - groups: ...string 分组字段名列表
+//
+// 返回:
+//   - *MySQLDB: 当前实例的副本指针，支持链式调用
+//
+// 说明:
+//   - 字段名会自动去除首尾的空格和引号字符
+//   - 字段名会自动添加反引号
+//   - 空字段名会被忽略
+//   - 不传参数时清空分组条件
 func (mysqlDB MySQLDB) GroupBy(groups ...string) *MySQLDB {
 	var groupFields []string
 	for _, group := range groups {
@@ -427,10 +550,23 @@ func (mysqlDB MySQLDB) GroupBy(groups ...string) *MySQLDB {
 	return &mysqlDB
 }
 
-// 排序  return 当前 *MySQLDB 的副本指针
+// OrderBy 设置排序条件
+//
+// 参数:
+//   - orders: ...string 排序规则列表，字段名前加"-"表示降序，否则为升序
+//
+// 返回:
+//   - *MySQLDB: 当前实例的副本指针，支持链式调用
+//
+// 说明:
+//   - 字段名会自动去除首尾的空格和引号字符
+//   - 字段名会自动添加反引号
+//   - 空字段名会被忽略
+//   - 不传参数时清空排序条件
 func (mysqlDB MySQLDB) OrderBy(orders ...string) *MySQLDB {
 	var orderFields []string
 	for _, order := range orders {
+		// 去除字段名首尾的空格和引号
 		order = strings.Trim(order, " `'\"")
 		if order == "" {
 			continue
@@ -438,6 +574,7 @@ func (mysqlDB MySQLDB) OrderBy(orders ...string) *MySQLDB {
 
 		var sequence string
 		var orderSQL string
+		// 处理排序方向
 		if order[0] == '-' {
 			orderSQL = order[1:]
 			sequence = "DESC"
@@ -455,7 +592,22 @@ func (mysqlDB MySQLDB) OrderBy(orders ...string) *MySQLDB {
 	return &mysqlDB
 }
 
-// 分页
+// Page 设置分页参数
+//
+// 参数:
+//   - page: int 页码，从1开始
+//   - pagesize: int 每页记录数
+//
+// 返回:
+//   - int: 总记录数
+//   - int: 总页数
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 页码小于等于0时自动设为1
+//   - 每页记录数小于等于0时设为默认值10
+//   - 总页数根据总记录数和每页记录数计算
+//   - 会自动执行一次COUNT查询获取总记录数
 func (mysqlDB *MySQLDB) Page(page int, pagesize int) (int, int, error) {
 	if page <= 0 {
 		page = 1
@@ -470,7 +622,19 @@ func (mysqlDB *MySQLDB) Page(page int, pagesize int) (int, int, error) {
 	return total, totalPages, err
 }
 
-// 执行查询语句获取数据
+// Select 执行查询并将结果扫描到切片中
+//
+// 参数:
+//   - queryResult: []*struct{} 或 []map[string]interface{} 用于接收结果的切片指针
+//
+// 返回:
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 必须传入结构体指针切片或map切片
+//   - 支持指针和非指针类型的字段
+//   - 自动映射数据库字段到结构体字段
+//   - 查询失败时返回错误信息
 func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 	mysqlDB.isSetModel()
 
@@ -590,7 +754,19 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 	return nil
 }
 
-// 返回第一条数据
+// First 获取查询结果的第一条记录
+//
+// 参数:
+//   - queryResult: *struct{} 或 map[string]interface{} 用于接收结果的结构体指针或map
+//
+// 返回:
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 必须传入结构体指针或map
+//   - 自动映射数据库字段到结构体字段
+//   - 无记录时返回sql.ErrNoRows
+//   - 查询失败时返回错误信息
 func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	mysqlDB.isSetModel()
 
@@ -677,7 +853,16 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	return nil
 }
 
-// 返回查询条数数量
+// Count 获取符合当前条件的记录总数
+//
+// 返回:
+//   - int: 记录总数
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 必须先通过SetModel设置数据模型
+//   - 会考虑当前设置的WHERE条件
+//   - 查询失败时返回0和错误信息
 func (mysqlDB *MySQLDB) Count() (int, error) {
 	mysqlDB.isSetModel()
 
@@ -702,7 +887,18 @@ func (mysqlDB *MySQLDB) Count() (int, error) {
 	return count, nil
 }
 
-// 是否存在
+// Exists 检查是否存在符合条件的记录
+//
+// 返回:
+//   - bool: 是否存在记录
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 必须先通过SetModel设置数据模型
+//   - 会考虑当前设置的WHERE条件
+//   - 使用SELECT 1优化查询性能
+//   - 查询出错时返回false和错误信息
+//   - 无记录时返回false和nil
 func (mysqlDB *MySQLDB) Exists() (bool, error) {
 	mysqlDB.isSetModel()
 
@@ -731,7 +927,20 @@ func (mysqlDB *MySQLDB) Exists() (bool, error) {
 	return exists == 1, nil
 }
 
-// 更新数据，返回操作条数
+// Update 更新符合条件的记录
+//
+// 参数:
+//   - ModelData: mysql.MySQLModel 包含更新数据的模型实例
+//
+// 返回:
+//   - sql.Result: 更新操作的结果
+//   - error: 更新过程中的错误
+//
+// 说明:
+//   - 调用前必须先通过SetModel设置数据模型
+//   - 只更新非空字段
+//   - 支持指针和非指针类型的字段值
+//   - 会考虑当前设置的WHERE条件
 func (mysqlDB *MySQLDB) Update(ModelData mysql.MySQLModel) (sql.Result, error) {
 	mysqlDB.isSetModel()
 
@@ -768,7 +977,15 @@ func (mysqlDB *MySQLDB) Update(ModelData mysql.MySQLModel) (sql.Result, error) {
 	return mysqlDB.Execute(mysqlDB.sql, updateValues...)
 }
 
-// 删除数据，返回操作条数
+// Delete 删除符合条件的记录
+//
+// 返回:
+//   - sql.Result: 删除操作的结果
+//   - error: 删除过程中的错误
+//
+// 说明:
+//   - 调用前必须先通过SetModel设置数据模型
+//   - 根据当前设置的WHERE条件删除记录
 func (mysqlDB *MySQLDB) Delete() (sql.Result, error) {
 	mysqlDB.isSetModel()
 
