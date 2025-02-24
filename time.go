@@ -14,5 +14,5 @@ func GetLocation() *time.Location {
 
 // 获取当前时区时间
 func GetTime() time.Time {
-	return time.Now().In(Settings.GetLocation())
+	return time.Now().In(GetLocation())
 }
