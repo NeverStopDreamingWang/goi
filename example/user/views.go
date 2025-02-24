@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -88,7 +89,7 @@ func TestAuth(request *goi.Request) interface{} {
 
 	payloads := &example.Payloads{}
 	err := jwt.CkeckToken(token, goi.Settings.SECRET_KEY, payloads)
-	if jwt.JwtDecodeError(err) { // token 解码错误
+	if errors.Is(err, jwt.ErrDecode) { // token 解码错误
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{
@@ -97,7 +98,7 @@ func TestAuth(request *goi.Request) interface{} {
 				Results: err,
 			},
 		}
-	} else if jwt.JwtExpiredSignatureError(err) { // token 已过期
+	} else if errors.Is(err, jwt.ErrExpiredSignature) { // token 已过期
 		return goi.Response{
 			Status: http.StatusOK,
 			Data: goi.Data{

@@ -23,7 +23,7 @@ func main() {
 
 func routerInfo() {
 	// 获取所有路径信息
-	var routerInfoChan = make(chan goi.RouteInfo)
+	var routerInfoChan = make(chan goi.RouteInfo, 50)
 	go func() {
 		defer close(routerInfoChan)
 		example.Server.Router.Next(routerInfoChan)
