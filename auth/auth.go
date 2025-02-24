@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	"github.com/NeverStopDreamingWang/goi/crypto/pbkdf2_sha256"
+	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // MakePassword 使用 PBKDF2-SHA256 算法对密码进行加密
@@ -18,14 +20,23 @@ import (
 func MakePassword(password string) (string, error) {
 	// 验证密码不为空
 	if password == "" {
-		return "", errors.New("密码不能为空")
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "auth.empty_password",
+		})
+		return "", errors.New(errMsg)
 	}
 
 	// 生成 16 字节的随机盐值
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
-		return "", err
+		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "auth.salt_generation_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return "", errors.New(errMsg)
 	}
 
 	// 设置迭代次数为 870000
