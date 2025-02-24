@@ -89,6 +89,10 @@
     "empty_password": "Password cannot be empty",
     "salt_generation_error": "Failed to generate password salt：{{ .err }}"
   },
+  "jwt": {
+    "decode_error": "Decode Error",
+    "expired_signature": "Expired Signature Error"
+  },
   "crypto": {
     "aes": {
       "empty_data": "Data length is zero",

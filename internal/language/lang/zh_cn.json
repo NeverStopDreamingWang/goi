@@ -89,6 +89,10 @@
     "empty_password": "密码不能为空",
     "salt_generation_error": "生成密码盐值失败：{{ .err }}"
   },
+  "jwt": {
+    "decode_error": "解码错误",
+    "expired_signature": "签名过期错误"
+  },
   "crypto": {
     "aes": {
       "empty_data": "数据长度为0",
