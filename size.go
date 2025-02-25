@@ -14,11 +14,6 @@ import (
 //
 // 返回:
 //   - string: 格式化后的字符串，如 "1.25 MB"
-//
-// 示例:
-//
-//	FormatBytes(1024) // 返回 "1.00 KB"
-//	FormatBytes(1536) // 返回 "1.50 KB"
 func FormatBytes[T IntAll](ByteSize T) string {
 	byteSize := float64(ByteSize)
 	const unit = 1024.00
