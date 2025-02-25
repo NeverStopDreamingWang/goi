@@ -4,7 +4,6 @@
 
 [详细示例：example](./example)
 
-
 ## goi 创建命令
 
 使用 `go env GOMODCACHE` 获取 go 软件包路径：`mypath\Go\pkg\mod` + `github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe`
@@ -163,40 +162,69 @@ The commands are（命令如下）:
 ## 内置 auth 密码生成与验证
 
 ```go
-func TestAuth(t *testing.T) {
-    // 原始密码
-    password := "goi123456"
+package auth_test
 
-    // 生成密码的哈希值
-    hashedPassword, err := MakePassword(password, bcrypt.DefaultCost)
-    if err != nil {
-    	fmt.Println("密码加密失败:", err)
-    	return
-    }
+import (
+	"fmt"
 
-    // 输出加密后的密码
-    fmt.Println("加密后的密码:", hashedPassword)
+	"github.com/NeverStopDreamingWang/goi/auth"
+)
 
-    // 验证密码
-    isValid := CheckPassword(password, hashedPassword)
-    if isValid {
-    	fmt.Println("密码验证成功")
-    } else {
-    	fmt.Println("密码验证失败")
-    }
+func ExampleMakePassword() {
+	// 原始密码
+	password := "goi123456"
+
+	// 生成密码的哈希值
+	hashedPassword, err := auth.MakePassword(password)
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	fmt.Printf("原始密码: %s\n", password)
+
+	// 验证密码
+	isValid := auth.CheckPassword(password, hashedPassword)
+	fmt.Printf("密码验证: %v\n", isValid)
+
+	// Output:
+	//
+	// 原始密码: goi123456
+	// 密码验证: true
 }
 ```
 
 ## 内置 Converter 路由转换器
 
-注册路由转换器
+`converter.go` 注册路由转换器
 
 ```go
-func init() {
-    // 注册路由转换器
+package goi_test
 
-    // 手机号
-    goi.RegisterConverter("my_phone", `(1[3456789]\d{9})`)
+import "github.com/NeverStopDreamingWang/goi"
+
+func ExampleRegisterConverter() {
+	// 注册路由转换器
+
+	// 手机号
+	goi.RegisterConverter("my_phone", `(1[3456789]\d{9})`)
+
+	// 邮箱
+	goi.RegisterConverter("my_email", `([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})`)
+
+	// URL
+	goi.RegisterConverter("my_url", `(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})`)
+
+	// 日期 (YYYY-MM-DD)
+	goi.RegisterConverter("my_date", `(\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))`)
+
+	// 时间 (HH:MM:SS)
+	goi.RegisterConverter("my_time", `((?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d)`)
+
+	// IP地址 (IPv4)
+	goi.RegisterConverter("my_ipv4", `((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))`)
+
+	// 用户名 (字母开头，允许字母数字下划线，4-16位)
+	goi.RegisterConverter("my_username", `([a-zA-Z][a-zA-Z0-9_]{3,15})`)
 }
 
 ```
@@ -204,9 +232,16 @@ func init() {
 使用
 
 ```go
+package goi_test
+
+import (
+	"goi_test/goi_test"
+	"github.com/NeverStopDreamingWang/goi"
+)
+
 func init() {
     // 创建一个子路由
-    testRouter := example.Server.Router.Include("test/", "测试路由")
+	testRouter := goi_test.Server.Router.Include("test/", "测试路由")
     {
         // 注册一个路径 
         // 类型 my_phone
@@ -238,6 +273,17 @@ func TestPhone(request *goi.Request) interface{} {
 注册参数验证器
 
 ```go
+package goi_test
+
+import (
+	"fmt"
+	"net/http"
+	"regexp"
+	"strconv"
+
+	"github.com/NeverStopDreamingWang/goi"
+)
+
 func init() {
     // 注册验证器
     // 手机号
@@ -245,19 +291,41 @@ func init() {
 }
 
 // phone 类型
-func phoneValidate(value string) goi.ValidationError {
-    var IntRe = `^(1[3456789]\d{9})$`
-    re := regexp.MustCompile(IntRe)
-    if re.MatchString(value) == false {
-    	return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
-    }
-    return nil
+func phoneValidate(value interface{}) goi.ValidationError {
+	switch typeValue := value.(type) {
+	case int:
+		valueStr := strconv.Itoa(typeValue)
+		var reStr = `^(1[3456789]\d{9})$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(valueStr) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	case string:
+		var reStr = `^(1[3456789]\d{9})$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	default:
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
+	}
+
+	return nil
 }
 ```
 
 使用
 
 ```go
+package test
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/NeverStopDreamingWang/goi"
+)
+
 // 参数验证
 type testParamsValidParams struct {
     Username string            `name:"username" required:"string"`
@@ -275,34 +343,34 @@ type testParamsValidParams struct {
 // ...
 
 func TestParamsValid(request *goi.Request) interface{} {
-    var params testParamsValidParams
-    var bodyParams goi.BodyParamsValues
-    var validationErr goi.ValidationError
-    bodyParams = request.BodyParams() // Body 传参
-    validationErr = bodyParams.ParseParams(&params)
-    if validationErr != nil {
-    	// 验证器返回
-    	return validationErr.Response()
+	var params testParamsValidParams
+	var bodyParams goi.BodyParamsValues
+	var validationErr goi.ValidationError
+	bodyParams = request.BodyParams() // Body 传参
+	validationErr = bodyParams.ParseParams(&params)
+	if validationErr != nil {
+		// 验证器返回
+		return validationErr.Response()
 
-    	// 自定义返回
-    	// return goi.Response{
-    	// 	Status: http.StatusOK,
-    	// 	Data: goi.Data{
-    	// 		Status: http.StatusBadRequest,
-    	// 		Message:    "参数错误",
-        // 		Results:   nil,
-    	// 	},
-    	// }
-    }
-    fmt.Println(params)
-    return goi.Response{
-    	Status: http.StatusOK,
-    	Data: goi.Data{
-		Code:  http.StatusOK,
-    		Message: "ok",
-    		Results:    nil,
-    	},
-    }
+		// 自定义返回
+		// return goi.Response{
+		// 	Status: http.StatusOK,
+		// 	Data: goi.Data{
+		// 		Status: http.StatusBadRequest,
+		// 		Message:    "参数错误",
+		// 		Results:   nil,
+		// 	},
+		// }
+	}
+	fmt.Println(params)
+	return goi.Response{
+		Status: http.StatusOK,
+		Data: goi.Data{
+			Code:    http.StatusOK,
+			Message: "ok",
+			Results: nil,
+		},
+	}
 }
 
 ```
@@ -311,486 +379,453 @@ func TestParamsValid(request *goi.Request) interface{} {
 
 支持：MySQL、SQLite3
 
-#### **模型迁移**
-
-* **MySQL**
-
 ```go
-// MySQL
-type UserModel struct {
-    Id          *int64  `field_name:"id" field_type:"int NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '用户id'" json:"id"`
-    Username    *string `field_name:"username" field_type:"varchar(255) DEFAULT NULL COMMENT '用户名'" json:"username"`
-    Password    *string `field_name:"password" field_type:"varchar(255) DEFAULT NULL COMMENT '密码'" json:"password"`
-    Create_time *string `field_name:"create_time" field_type:"DATETIME DEFAULT NULL COMMENT '更新时间'" json:"create_time"`
-    Update_time *string `field_name:"update_time" field_type:"DATETIME DEFAULT NULL COMMENT '创建时间'" json:"update_time"`
+package db_test
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/db"
+	"github.com/NeverStopDreamingWang/goi/model"
+	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
+)
+
+func init() {
+	// 初始化测试数据库
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 迁移模型前清理旧表(如果存在)
+	_, _ = sqliteDB.Execute("DROP TABLE IF EXISTS user_tb")
+
+	// 迁移模型
+	sqliteDB.Migrate("test_db", UserSqliteModel{})
+
+	// 插入初始测试数据
+	username := "test_user"
+	password := "test123456"
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	user := UserSqliteModel{
+		Username:    &username,
+		Password:    &password,
+		Create_time: &now,
+		Update_time: &now,
+	}
+
+	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.Insert(user)
 }
 
-// 设置表配置
-func (UserModel) ModelSet() *model.MySQLSettings {
-    encryptFields := []string{
-    	"username",
-    	"password",
-    }
-
-    modelSettings := &model.MySQLSettings{
-    	TABLE_NAME:      "user_tb",            // 设置表名
-    	ENGINE:          "InnoDB",             // 设置存储引擎，默认: InnoDB
-    	AUTO_INCREMENT:  2,                    // 设置自增长起始值
-    	COMMENT:         "用户表",                // 设置表注释
-    	DEFAULT_CHARSET: "utf8mb4",            // 设置默认字符集，如: utf8mb4
-    	COLLATE:         "utf8mb4_0900_ai_ci", // 设置校对规则，如 utf8mb4_0900_ai_ci;
-    	ROW_FORMAT:      "",                   // 设置行的存储格式，如 DYNAMIC, COMPACT, FULL.
-    	DATA_DIRECTORY:  "",                   // 设置数据存储目录
-    	INDEX_DIRECTORY: "",                   // 设置索引存储目录
-    	STORAGE:         "",                   // 设置存储类型，如 DISK、MEMORY、CSV
-    	CHECKSUM:        0,                    // 表格的校验和算法，如 1 开启校验和
-    	DELAY_KEY_WRITE: 0,                    // 控制非唯一索引的写延迟，如 1
-    	MAX_ROWS:        0,                    // 设置最大行数
-    	MIN_ROWS:        0,                    // 设置最小行数
-    	PARTITION_BY:    "",                   // 定义分区方式，如 RANGE、HASH、LIST
-
-    	// 自定义配置
-    	Settings: model.Settings{
-    		"encrypt_fields": encryptFields,
-    	},
-    }
-
-    return modelSettings
-}
-```
-
-**SQLite**
-
-```go
-// 用户表
+// 用户表模型
 type UserSqliteModel struct {
-    Id          *int64  `field_name:"id" field_type:"INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" json:"id"`
-    Username    *string `field_name:"username" field_type:"TEXT" json:"username"`
-    Password    *string `field_name:"password" field_type:"TEXT" json:"password"`
-    Create_time *string `field_name:"create_time" field_type:"TEXT NOT NULL" json:"create_time"`
-    Update_time *string `field_name:"update_time" field_type:"TEXT" json:"update_time"`
-    Test        *string `field_name:"test_txt" field_type:"TEXT" json:"txt"` // 更新表字段
+	Id          *int64  `field_name:"id" field_type:"INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" json:"id"`
+	Username    *string `field_name:"username" field_type:"TEXT NOT NULL" json:"username"`
+	Password    *string `field_name:"password" field_type:"TEXT NOT NULL" json:"-"`
+	Create_time *string `field_name:"create_time" field_type:"TEXT NOT NULL" json:"create_time"`
+	Update_time *string `field_name:"update_time" field_type:"TEXT" json:"update_time"`
 }
 
 // 设置表配置
-func (UserSqliteModel) ModelSet() *model.SQLite3Settings {
-    encryptFields := []string{
-    	"username",
-    	"password",
-    }
-
-    modelSettings := &model.SQLite3Settings{
-    	TABLE_NAME: "user_tb", // 设置表名
-
-    	// 自定义配置
-    	Settings: model.Settings{
-    		"encrypt_fields": encryptFields,
-    	},
-    }
-    return modelSettings
-}
-
-```
-
-### 查询多条数据
-
-```go
-// 参数验证
-type testModelListParams struct {
-    Page     int `name:"page" required:"int"`
-    Pagesize int `name:"pagesize" required:"int"`
-}
-
-// 读取多条数据到 Model
-func TestModelList(request *goi.Request) interface{} {
-    var params testModelListParams
-    var bodyParams goi.BodyParamsValues
-    var validationErr goi.ValidationError
-    bodyParams = request.BodyParams()
-    validationErr = bodyParams.ParseParams(&params)
-    if validationErr != nil {
-    	// 验证器返回
-    	return validationErr.Response()
-
-    }
-
-    mysqlDB := db.MySQLConnect("default")
-    // sqlite3DB := db.SQLite3Connect("sqlite")
-
-    // mysql 数据库
-    var userSlice []UserModel
-    mysqlDB.SetModel(UserModel{}) // 设置操作表
-    mysqlDB.Fields("Id", "Username", "Password").Where("id>?", 1).OrderBy("-id")
-    total, page_number, err := mysqlDB.Page(params.Page, params.Pagesize)
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    err = mysqlDB.Select(&userSlice)
-
-    // sqlite3 数据库
-    // var userSlice []UserSqliteModel
-    // sqlite3DB.SetModel(UserSqliteModel{})
-    // err = sqlite3DB.Fields("Id", "Username", "Password").Where("id>?", 1).OrderBy("-id")
-    // total, page_number, err := sqlite3DB.Page(params.Page, params.Pagesize)
-    // if err != nil {
-    // 	return goi.Response{
-    // 		Status: http.StatusInternalServerError,
-    // 		Data:   err.Error(),
-    // 	}
-    // }
-    // err = sqlite3DB.Select(&userSlice)
-
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    ...
-}
-```
-
-### 查询单条数据
-
-```go
-// 参数验证
-type testModelRetrieveParams struct {
-    User_id int `name:"user_id" required:"int"`
-}
-
-// 读取第一条数据到 Model
-func TestModelRetrieve(request *goi.Request) interface{} {
-    var params testModelRetrieveParams
-    var bodyParams goi.BodyParamsValues
-    var validationErr goi.ValidationError
-    bodyParams = request.BodyParams()
-    validationErr = bodyParams.ParseParams(&params)
-    if validationErr != nil {
-    	// 验证器返回
-    	return validationErr.Response()
-
-    }
-
-    if params.User_id == 0 {
-    	// 返回 goi.Response
-    	return goi.Response{
-    		Status: http.StatusNotFound, // Status 指定响应状态码
-    		Data:   nil,
-    	}
-    }
-
-    mysqlDB := db.MySQLConnect("default")
-    // sqlite3DB := db.SQLite3Connect("sqlite")
-
-    // mysql 数据库
-    user := UserModel{}
-    mysqlDB.SetModel(UserModel{}) // 设置操作表
-    err = mysqlDB.Fields("Id", "Username").Where("id=?", params.User_id).First(&user)
-
-    // sqlite3 数据库
-    // user := UserSqliteModel{}
-    // sqlite3DB.SetModel(UserSqliteModel{})
-    // err = sqlite3DB.Fields("Id", "Username").Where("id=?", params.User_id).First(&user)
-
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    ...
-}
-```
-
-### 新增一条数据
-
-```go
-// 参数验证
-type testModelCreateParams struct {
-    Username string `name:"username" required:"string"`
-    Password string `name:"password" required:"string"`
-}
-
-// 添加一条数据到 Model
-func TestModelCreate(request *goi.Request) interface{} {
-    var params testModelCreateParams
-    var bodyParams goi.BodyParamsValues
-    var validationErr goi.ValidationError
-    bodyParams = request.BodyParams()
-    validationErr = bodyParams.ParseParams(&params)
-    if validationErr != nil {
-    	// 验证器返回
-    	return validationErr.Response()
-
-    }
-
-    mysqlDB := db.MySQLConnect("default")
-    // sqlite3DB := db.SQLite3Connect("sqlite")
-
-    create_time := goi.GetTime().Format("2006-01-02 15:04:05")
-    // mysql 数据库
-    user := &UserModel{
-    	Username:    &params.Username,
-    	Password:    &params.Password,
-    	Create_time: &create_time,
-    }
-    mysqlDB.SetModel(UserModel{})
-    // result, err := mysqlDB.Insert(user)
-    result, err := mysqlDB.Fields("Id", "Password").Insert(user) // 指定插入字段
-
-    // // sqlite3 数据库
-    // user := &UserSqliteModel{
-    // 	Username:    &params.Username,
-    // 	Password:    &params.Password,
-    // 	Create_time: &create_time,
-    // }
-    // sqlite3DB.SetModel(UserSqliteModel{})
-    // // result, err := sqlite3DB.Insert(user)
-    // result, err := sqlite3DB.Fields("Id", "Password", "Create_time").Insert(user)
-
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    id, err := result.LastInsertId()
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    fmt.Println("id", id)
-
-    user.Id = &id
-    ...
-}
-```
-
-### 更新数据
-
-```go
-// 参数验证
-type testModelUpdateParams struct {
-    User_id  int    `name:"user_id" required:"int"`
-    Username string `name:"username" optional:"string"`
-    Password string `name:"password" optional:"string"`
-}
-
-// 修改 Model
-func TestModelUpdate(request *goi.Request) interface{} {
-    var params testModelUpdateParams
-    var bodyParams goi.BodyParamsValues
-    var validationErr goi.ValidationError
-    bodyParams = request.BodyParams()
-    validationErr = bodyParams.ParseParams(&params)
-    if validationErr != nil {
-    	// 验证器返回
-    	return validationErr.Response()
-
-    }
-
-    if params.User_id == 0 {
-    	// 返回 goi.Response
-    	return goi.Response{
-    		Status: http.StatusNotFound, // Status 指定响应状态码
-    		Data:   nil,
-    	}
-    }
-
-    mysqlDB := db.MySQLConnect("default")
-    // sqlite3DB := db.SQLite3Connect("sqlite")
-
-    update_time := goi.GetTime().Format("2006-01-02 15:04:05")
-    // mysql 数据库
-    update_user := &UserModel{
-    	Username:    nil,
-    	Password:    nil,
-    	Update_time: &update_time,
-    }
-    if params.Username != "" {
-    	update_user.Username = &params.Username
-    }
-    if params.Password != "" {
-    	update_user.Password = &params.Password
-    }
-    mysqlDB.SetModel(UserModel{})
-    // result, err := mysqlDB.Where("id=?", user_id).Update(update_user)
-    result, err := mysqlDB.Fields("Username").Where("id=?", params.User_id).Update(update_user) // 更新指定字段
-
-    // sqlite3 数据库
-    // update_user := &UserSqliteModel{
-    // 	Username:    nil,
-    // 	Password:    nil,
-    // 	Update_time: &update_time,
-    // }
-    // if params.Username != ""{
-    // 	update_user.Username = &params.Username
-    // }
-    // if params.Password != ""{
-    // 	update_user.Password = &params.Password
-    // }
-    // sqlite3DB.SetModel(UserSqliteModel{})
-    // result, err := sqlite3DB.Where("id=?", params.User_id).Update(update_user)
-
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    rowNum, err := result.RowsAffected()
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    if rowNum == 0 {
-    	return goi.Response{
-    		Status: http.StatusOK,
-    		Data: goi.Data{
-            Status:  http.StatusInternalServerError,
-    		    Message: "修改失败！",
-                Results: nil,
-    		},
-    	}
-    }
-    fmt.Println("rowNum", rowNum)
-    ...
-}
-```
-
-### 删除数据
-
-```go
-// 删除 Model
-func TestModelDelete(request *goi.Request) interface{} {
-    var user_id int
-    var validationErr goi.ValidationError
-    var err error
-    validationErr = request.PathParams.Get("user_id", &user_id)
-    if validationErr != nil {
-    	return validationErr.Response()
-    }
-
-    if user_id == 0 {
-    	// 返回 goi.Response
-    	return goi.Response{
-    		Status: http.StatusNotFound, // Status 指定响应状态码
-    		Data:   nil,
-    	}
-    }
-
-    mysqlDB := db.MySQLConnect("default")
-    // sqlite3DB := db.SQLite3Connect("sqlite")
-
-    // mysql 数据库
-    mysqlDB.SetModel(UserModel{})
-    result, err := mysqlDB.Where("id=?", user_id).Delete()
-
-    // sqlite3 数据库
-    // sqlite3DB.SetModel(UserSqliteModel{})
-    // result, err := sqlite3DB.Where("id=?", user_id).Delete()
-
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    rowNum, err := result.RowsAffected()
-    if err != nil {
-    	return goi.Response{
-    		Status: http.StatusInternalServerError,
-    		Data:   err.Error(),
-    	}
-    }
-    if rowNum == 0 {
-    	return goi.Response{
-    		Status: http.StatusOK,
-    		Data: goi.Data{
-    		    Status:  http.StatusOK,
-    		    Message: "已删除！",
-    		    Results: nil,
-    		},
-    	}
-    }
-    fmt.Println("rowNum", rowNum)
-    ...
-}
-```
-
-### 使用事务
-
-```go
-// 使用事务
-func TestWithTransaction(request *goi.Request) interface{} {
-	var user_id int
-	var params testModelCreateParams
-	var bodyParams goi.BodyParamsValues
-	var validationErr goi.ValidationError
-	var err error
-
-	validationErr = request.PathParams.Get("user_id", &user_id)
-	if validationErr != nil {
-		return validationErr.Response()
+func (userModel UserSqliteModel) ModelSet() *sqlite3.SQLite3Settings {
+	encryptFields := []string{
+		"username",
+		"password",
 	}
 
-	bodyParams = request.BodyParams()
-	validationErr = bodyParams.ParseParams(&params)
-	if validationErr != nil {
-		// 验证器返回
-		return validationErr.Response()
+	modelSettings := &sqlite3.SQLite3Settings{
+		MigrationsHandler: model.MigrationsHandler{
+			BeforeHandler: nil,            // 迁移之前处理函数
+			AfterHandler:  InitUserSqlite, // 迁移之后处理函数
+		},
 
+		TABLE_NAME: "user_tb", // 设置表名
+
+		// 自定义配置
+		Settings: model.Settings{
+			"encrypt_fields": encryptFields,
+		},
 	}
 
-	if user_id == 0 {
-		// 返回 goi.Response
-		return goi.Response{
-			Status: http.StatusNotFound, // Status 指定响应状态码
-			Data:   nil,
+	return modelSettings
+}
+
+// 初始化用户
+func InitUserSqlite() error {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	var (
+		id              int64  = 1
+		username        string = "超级管理员"
+		password        string = "admin"
+		create_Datetime        = goi.GetTime().Format("2006-01-02 15:04:05")
+		err             error
+	)
+
+	user := UserSqliteModel{
+		Id:          &id,
+		Username:    &username,
+		Password:    &password,
+		Create_time: &create_Datetime,
+		Update_time: nil,
+	}
+	sqliteDB.SetModel(UserSqliteModel{})
+	_, err = sqliteDB.Insert(&user)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ExampleSQLite3DB_Migrate() {
+	// 连接数据库
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 迁移模型
+	sqliteDB.Migrate("test_db", UserSqliteModel{})
+
+	// Output:
+}
+
+func ExampleSQLite3DB_Insert() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 准备测试数据
+	username := "test_user"
+	password := "test123456"
+	now := time.Now().Format("2006-01-02 15:04:05")
+
+	user := UserSqliteModel{
+		Username:    &username,
+		Password:    &password,
+		Create_time: &now,
+	}
+
+	// 设置模型并插入数据
+	sqliteDB.SetModel(UserSqliteModel{})
+	result, err := sqliteDB.Insert(user)
+	if err != nil {
+		fmt.Println("插入错误:", err)
+		return
+	}
+
+	id, _ := result.LastInsertId()
+	fmt.Printf("插入成功, ID: %d\n", id)
+
+	// Output:
+	// 插入成功, ID: 1
+}
+
+func ExampleSQLite3DB_Where() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	var users []*UserSqliteModel
+	sqliteDB.SetModel(UserSqliteModel{})
+
+	// Where 返回当前实例的副本指针
+	// 简单条件
+	sqliteDB = sqliteDB.Where("username = ?", "where_test1")
+
+	// AND条件
+	sqliteDB = sqliteDB.Where("create_time IS NULL")
+
+	// 支持 IN 参数值为 Slice 或 Array
+	testUsers := []string{"where_test1", "where_test2"}
+	sqliteDB = sqliteDB.Where("username IN ?", testUsers)
+
+	// LIKE条件
+	sqliteDB = sqliteDB.Where("username LIKE ?", "where_test%")
+
+	err := sqliteDB.Select(&users)
+	if err != nil {
+		fmt.Println("查询错误:", err)
+		return
+	}
+
+	fmt.Printf("查询到 %d 条记录\n", len(users))
+	for _, user := range users {
+		fmt.Printf("用户名: %s\n", *user.Username)
+	}
+
+	// Output:
+	// 查询到 2 条记录
+	// 用户名: where_test1
+	// 用户名: where_test2
+}
+
+func ExampleSQLite3DB_Select() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 查询多条记录 Select 支持 map 以及 结构体
+	// var users []map[string]interface{}
+	var users []*UserSqliteModel
+
+	sqliteDB.SetModel(UserSqliteModel{})
+	err := sqliteDB.Select(users)
+	if err != nil {
+		fmt.Println("查询错误:", err)
+		return
+	}
+
+	for _, user := range users {
+		fmt.Printf("用户名: %s\n", *user.Username)
+	}
+
+	// Output:
+	// 用户名: test_user
+}
+
+func ExampleSQLite3DB_Page() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 分页查询
+	var users []*UserSqliteModel
+
+	sqliteDB.SetModel(UserSqliteModel{})
+	total, totalPages, err := sqliteDB.Page(2, 5) // 第2页,每页5条
+	if err != nil {
+		fmt.Println("分页错误:", err)
+		return
+	}
+
+	err = sqliteDB.Select(&users)
+	if err != nil {
+		fmt.Println("查询错误:", err)
+		return
+	}
+
+	fmt.Printf("总记录数: %d\n", total)
+	fmt.Printf("总页数: %d\n", totalPages)
+	fmt.Printf("当前页记录数: %d\n", len(users))
+
+	// Output:
+	// 总记录数: 15
+	// 总页数: 3
+	// 当前页记录数: 5
+}
+
+func ExampleSQLite3DB_First() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 查询单条记录 First 支持 map 以及 结构体
+	// var user map[string]interface{}
+	var user *UserSqliteModel
+
+	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB = sqliteDB.Where("username = ?", "test_user")
+	err := sqliteDB.First(user)
+	if err != nil {
+		fmt.Println("查询错误:", err)
+		return
+	}
+
+	fmt.Printf("用户名: %s\n", *user.Username)
+
+	// Output:
+	// 用户名: test_user
+}
+
+func ExampleSQLite3DB_Fields() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 指定查询字段
+	var user map[string]interface{}
+
+	sqliteDB.SetModel(UserSqliteModel{})
+
+	// Fields 返回当前实例的副本指针
+	sqliteDB = sqliteDB.Fields("Username", "Create_time")
+	err := sqliteDB.Select(&user)
+	if err != nil {
+		fmt.Println("查询错误:", err)
+		return
+	}
+
+	fmt.Println("用户名:", user["username"])
+
+	// Output:
+	// 用户名: user_1
+}
+
+func ExampleSQLite3DB_Update() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 准备更新数据
+	newPassword := "new_password"
+	updateUser := UserSqliteModel{
+		Password: &newPassword,
+	}
+
+	// 更新记录
+	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB = sqliteDB.Where("username = ?", "test_user")
+	result, err := sqliteDB.Update(updateUser)
+	if err != nil {
+		fmt.Println("更新错误:", err)
+		return
+	}
+
+	rows, _ := result.RowsAffected()
+	fmt.Printf("更新成功, 影响行数: %d\n", rows)
+
+	// Output:
+	// 更新成功, 影响行数: 1
+}
+
+func ExampleSQLite3DB_Delete() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB = sqliteDB.Where("username = ?", "test_user")
+
+	// 删除记录
+	result, err := sqliteDB.Delete()
+	if err != nil {
+		fmt.Println("删除错误:", err)
+		return
+	}
+
+	rows, _ := result.RowsAffected()
+	fmt.Printf("删除成功, 影响行数: %d\n", rows)
+
+	// Output:
+	// 删除成功, 影响行数: 1
+}
+
+func ExampleSQLite3DB_GroupBy() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 使用分组查询
+	type Result struct {
+		Date  *string `field_name:"date" json:"date"`
+		Count *int    `field_name:"count" json:"count"`
+	}
+
+	var results []*Result
+	sqliteDB.SetModel(UserSqliteModel{})
+	// GroupBy 返回当前实例的副本指针
+	sqliteDB = sqliteDB.GroupBy("DATE(create_time)")
+	err := sqliteDB.Select(&results)
+	if err != nil {
+		fmt.Println("查询错误:", err)
+		return
+	}
+
+	for _, result := range results {
+		fmt.Printf("日期: %s, 注册人数: %d\n", *result.Date, *result.Count)
+	}
+
+	// Output:
+	// 日期: 2024-03-21, 注册人数: 15
+}
+
+func ExampleSQLite3DB_OrderBy() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 使用排序查询
+	var users []UserSqliteModel
+	sqliteDB.SetModel(UserSqliteModel{})
+
+	// OrderBy 返回当前实例的副本指针
+	sqliteDB = sqliteDB.OrderBy("-create_time")
+	err := sqliteDB.Select(&users)
+	if err != nil {
+		fmt.Println("查询错误:", err)
+		return
+	}
+
+	for _, user := range users {
+		fmt.Println("用户名:", *user.Username)
+	}
+
+	// Output:
+	// 用户名: test_user
+}
+
+func ExampleSQLite3DB_Count() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 统计记录数
+	sqliteDB.SetModel(UserSqliteModel{})
+	count, err := sqliteDB.Count()
+	if err != nil {
+		fmt.Println("统计错误:", err)
+		return
+	}
+
+	fmt.Printf("总记录数: %d\n", count)
+
+	// Output:
+	// 总记录数: 1
+}
+
+func ExampleSQLite3DB_Exists() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	sqliteDB.SetModel(UserSqliteModel{})
+	// 检查记录是否存在
+	exists, err := sqliteDB.Where("username = ?", "test_user").Exists()
+	if err != nil {
+		fmt.Println("查询错误:", err)
+		return
+	}
+
+	fmt.Printf("记录是否存在: %v\n", exists)
+
+	// Output:
+	// 记录是否存在: true
+}
+
+func ExampleSQLite3DB_WithTransaction() {
+	sqliteDB := db.SQLite3Connect("sqlite")
+
+	// 事务
+	err := sqliteDB.WithTransaction(func(db *db.SQLite3DB, args ...interface{}) error {
+		// 准备测试数据
+		username1 := "transaction_user1"
+		username2 := "transaction_user2"
+		password := "test123456"
+		now := time.Now().Format("2006-01-02 15:04:05")
+
+		// 插入第一个用户
+		user1 := UserSqliteModel{
+			Username:    &username1,
+			Password:    &password,
+			Create_time: &now,
 		}
-	}
-
-	mysqlDB := db.MySQLConnect("default")
-	// sqlite3DB := db.SQLite3Connect("sqlite")
-
-	// 返回错误事务自动回滚
-	err = mysqlDB.WithTransaction(func(mysqlDB *db.MySQLDB, args ...interface{}) error {
-		create_time := goi.GetTime().Format("2006-01-02 15:04:05")
-		// mysql 数据库
-		user := &UserModel{
-			Username:    &params.Username,
-			Password:    &params.Password,
-			Create_time: &create_time,
-		}
-
-		mysqlDB.SetModel(UserModel{})
-		_, err = mysqlDB.Insert(user)
+		db.SetModel(UserSqliteModel{})
+		_, err := db.Insert(user1)
 		if err != nil {
 			return err
 		}
 
-		mysqlDB.SetModel(UserModel{})
-		_, err = mysqlDB.Where("id=?", user_id).Delete()
+		// 插入第二个用户
+		user2 := UserSqliteModel{
+			Username:    &username2,
+			Password:    &password,
+			Create_time: &now,
+		}
+		_, err = db.Insert(user2)
 		if err != nil {
 			return err
 		}
+
 		return nil
 	})
+	// 事务执行的错误，发生错误时会自动回滚
 	if err != nil {
-		return goi.Data{
-			Code:  http.StatusInternalServerError,
-			Message: err.Error(),
-		}
+		fmt.Println("事务执行错误:", err)
+		return
 	}
-    ...
+
+	fmt.Println("事务执行完成")
+
+	// Output:
+	// 事务执行完成
 }
+
 ```
 
 ## 内置 JWT Token
