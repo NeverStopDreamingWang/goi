@@ -9,6 +9,7 @@ import (
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/crypto"
+	"github.com/NeverStopDreamingWang/goi/crypto/rsa"
 	"github.com/spf13/cobra"
 )
 
@@ -46,15 +47,15 @@ var MainAppFileList = []InitFile{
 func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	projectName = args[0]
 
+	var err error
 	// 生成密钥
-	randomSecretKey, err := crypto.GenerateRandomSecretKey()
+	secretKey, err = crypto.GenerateRandomSecretKey()
 	if err != nil {
 		return err
 	}
-	secretKey = crypto.SECRET_KEY_INSECURE_PREFIX + randomSecretKey
 
 	// 生成 RSA 密钥
-	privateKeyBytes, publicKeyBytes, err := crypto.GenerateRSA(2048)
+	privateKeyBytes, publicKeyBytes, err := rsa.GenerateKey(2048)
 	if err != nil {
 		return err
 	}
