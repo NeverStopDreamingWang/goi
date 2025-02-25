@@ -74,7 +74,7 @@
     "field_is_not_error": "{{ .name }} field does not exist\n",
     "where_args_placeholder_error": "The number of arguments does not match the placeholder\n",
     "is_not_ptr": "{{ .name }} is not a pointer type",
-    "is_not_slice_ptr": "{{ .name }} is not a slice pointer",
+    "is_not_slice_or_array": "{{ .name }} is not a slice or array",
     "is_not_struct_ptr_or_map": "{{ .name }} is not a struct structure pointer or a map[string]interface{} dictionary",
     "is_not_slice_struct_ptr_or_map": "{{ .name }} is not a []struct structure pointer slice or a []map[string]interface{} dictionary slice"
   },
