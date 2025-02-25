@@ -374,13 +374,13 @@ func (values BodyParamsValues) ParseParams(paramsDest interface{}) ValidationErr
 			zeroValue := reflect.Zero(reflect.ValueOf(value).Type()).Interface()
 
 			// 比较实际值与零值是否相等
-			if reflect.DeepEqual(value, zeroValue) {
-				continue
+			if !reflect.DeepEqual(value, zeroValue) {
+				validationErr = validateValue(validator_name, value)
+				if validationErr != nil {
+					return validationErr
+				}
 			}
-			validationErr = validateValue(validator_name, value)
-			if validationErr != nil {
-				return validationErr
-			}
+
 			// 设置到参数结构体中
 			validationErr = values.setFieldValue(paramsValue.Field(i), value)
 			if validationErr != nil {
