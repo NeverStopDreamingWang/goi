@@ -74,7 +74,7 @@
     "field_is_not_error": "{{ .name }} 字段不存在\n",
     "where_args_placeholder_error": "参数个数与占位符不匹配\n",
     "is_not_ptr": "{{ .name }} 不是指针类型",
-    "is_not_slice_ptr": "{{ .name }} 不是 slice 切片指针",
+    "is_not_slice_or_array_ptr": "{{ .name }} 不是 slice 或 array",
     "is_not_struct_ptr_or_map": "{{ .name }} 不是 struct 结构体指针 或 map[string]interface{} 字典",
     "is_not_slice_struct_ptr_or_map": "{{ .name }} 不是 []struct 结构体指针切片 或 []map[string]interface{} 字典切片"
   },
