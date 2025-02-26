@@ -2,7 +2,7 @@ module example
 
 go 1.23.2
 
-require github.com/NeverStopDreamingWang/goi v1.4.0
+require github.com/NeverStopDreamingWang/goi v1.4.3
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -12,4 +12,4 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 )
 
-replace github.com/NeverStopDreamingWang/goi v1.4.0 => ../../goi
+replace github.com/NeverStopDreamingWang/goi v1.4.3 => ../../goi
