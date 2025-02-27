@@ -344,7 +344,7 @@ type testParamsValidParams struct {
 
 func TestParamsValid(request *goi.Request) interface{} {
 	var params testParamsValidParams
-	var bodyParams goi.BodyParamsValues
+	var bodyParams goi.Params
 	var validationErr goi.ValidationError
 	bodyParams = request.BodyParams() // Body 传参
 	validationErr = bodyParams.ParseParams(&params)

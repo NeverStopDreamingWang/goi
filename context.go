@@ -2,118 +2,78 @@ package goi
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"net/http"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/parse"
 )
 
-// Data 自定义标准的API响应格式
-//
-// 字段:
-//   - Code int: 响应状态码
-//   - Message string: 响应消息
-//   - Results interface{}: 响应数据
-type Data struct {
-	Code    int         `json:"code"`    // 响应状态码
-	Message string      `json:"message"` // 响应消息
-	Results interface{} `json:"results"` // 响应数据
-}
+const ContentType = "Content-Type"
 
 // Request 封装HTTP请求相关信息
 //
-// 字段:
-//   - Object *http.Request: 原始HTTP请求对象
-//   - PathParams ParamsValues: 路由参数
+// 参数:
+//   - Object *http.Request: 原始HTTP请求对象，包含完整的HTTP请求信息
+//   - PathParams Params: 路由参数，存储URL路径中的动态参数值
 //
 // 用于在处理请求时提供统一的访问接口
 type Request struct {
 	Object     *http.Request // 原始HTTP请求对象
-	PathParams ParamsValues  // 路由参数
+	PathParams Params        // 路由参数
 }
 
 // QueryParams 解析并返回URL查询字符串参数
 // 匹配模式: URL中的查询参数，格式为 ?key=value&key2=value2
 // 示例: /api/users?page=1&size=10
-// 返回一个ParamsValues类型的map，包含所有查询参数
+// 返回一个Params类型的map，包含所有查询参数
 //
 // 返回:
-//   - ParamsValues: URL查询参数的键值对映射，其中值为字符串切片
-func (request *Request) QueryParams() ParamsValues {
-	var QueryParams ParamsValues = make(ParamsValues)
-	// 解析 Query 参数
-	for name, values := range request.Object.URL.Query() {
-		QueryParams[name] = append(QueryParams[name], values...)
+//   - Params: URL查询参数的键值对映射，其中值为字符串切片
+func (request *Request) QueryParams() Params {
+	var params Params
+
+	queryValues := request.Object.URL.Query()
+	for name, values := range queryValues {
+		params[name] = values
 	}
-	return QueryParams
+	return params
 }
 
-// BodyParams 解析并返回请求体中的参数
-// 支持以下格式:
-// - multipart/form-data
-// - application/x-www-form-urlencoded
-// - application/json
-// 示例: {"name": "user", "age": 25}
-// 返回一个BodyParamsValues类型的map，包含所有请求体参数
+// Params 解析并返回请求体中的参数
+//
+// 支持的Content-Type:
+//   - multipart/form-data
+//   - application/x-www-form-urlencoded
+//   - application/json
 //
 // 返回:
-//   - BodyParamsValues: 请求体参数的键值对映射，支持多种格式的请求体解析
-func (request *Request) BodyParams() BodyParamsValues {
-	var err error
-	var bodyParams BodyParamsValues = make(BodyParamsValues)
-	// 解析 Body 参数
-	err = request.Object.ParseMultipartForm(32 << 20)
-	if err != nil {
-		err = request.Object.ParseForm()
-		if err != nil {
-			parseBodyErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "context.parse_body_error",
-				TemplateData: map[string]interface{}{
-					"err": err,
-				},
-			})
-			Log.Error(parseBodyErrorMsg)
-			panic(parseBodyErrorMsg)
-		}
-	}
-	for name, values := range request.Object.Form {
-		for _, v := range values {
-			bodyParams[name] = append(bodyParams[name], v)
-		}
-	}
+//   - Params: 请求体参数的键值对映射
+//
+// 注意:
+//   - JSON数据会被解析为interface{}类型
+//   - 如果解析失败会触发panic
+func (request *Request) BodyParams() Params {
+	parsing := parse.GetParsing(request.Object.Header.Get(ContentType))
+	return request.BodyParamsParsing(parsing)
+}
 
-	// 解析 json 数据
-	body, err := io.ReadAll(request.Object.Body)
+func (request *Request) BodyParamsJSON() Params {
+	return request.BodyParamsParsing(parse.JSON)
+}
+
+func (request *Request) BodyParamsXML() Params {
+	return request.BodyParamsParsing(parse.XML)
+}
+
+func (request *Request) BodyParamsYAML() Params {
+	return request.BodyParamsParsing(parse.YAML)
+}
+
+func (request *Request) BodyParamsParsing(parsing parse.Parsing) Params {
+	params, err := parsing.Parse(request.Object)
 	if err != nil {
-		readBodyErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "context.read_body_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
-		})
-		Log.Error(readBodyErrorMsg)
-		panic(readBodyErrorMsg)
+		panic(err)
 	}
-	if len(body) != 0 {
-		jsonData := make(map[string]interface{})
-		err = json.Unmarshal(body, &jsonData)
-		if err != nil {
-			unmarshalBodyErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "context.unmarshal_body_error",
-				TemplateData: map[string]interface{}{
-					"err": err,
-				},
-			})
-			Log.Error(unmarshalBodyErrorMsg)
-			panic(unmarshalBodyErrorMsg)
-		}
-		for name, value := range jsonData {
-			bodyParams[name] = append(bodyParams[name], value)
-		}
-	}
-	return bodyParams
+	return Params(params)
 }
 
 // WithContext 更新请求对象中的上下文信息
