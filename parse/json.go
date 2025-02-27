@@ -27,8 +27,8 @@ func (jsonParsing) Name() string {
 }
 
 func (jsonParsing) Parse(request *http.Request) (Params, error) {
-	var params Params
 	var err error
+	params := make(Params)
 
 	decoder := json.NewDecoder(request.Body)
 	if EnableDecoderUseNumber {

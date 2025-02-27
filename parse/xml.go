@@ -17,8 +17,8 @@ func (xmlParsing) Name() string {
 }
 
 func (xmlParsing) Parse(request *http.Request) (Params, error) {
-	var params Params
 	var err error
+	params := make(Params)
 
 	decoder := xml.NewDecoder(request.Body)
 	err = decoder.Decode(&params)
