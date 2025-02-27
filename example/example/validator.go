@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
@@ -15,12 +16,25 @@ func init() {
 }
 
 // phone 类型
-func phoneValidate(value string) goi.ValidationError {
-	var IntRe = `^(1[3456789]\d{9})$`
-	re := regexp.MustCompile(IntRe)
-	if re.MatchString(value) == false {
-		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+func phoneValidate(value interface{}) goi.ValidationError {
+	switch typeValue := value.(type) {
+	case int:
+		valueStr := strconv.Itoa(typeValue)
+		var reStr = `^(1[3456789]\d{9})$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(valueStr) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	case string:
+		var reStr = `^(1[3456789]\d{9})$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	default:
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
 	}
+
 	return nil
 }
 

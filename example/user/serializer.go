@@ -6,33 +6,33 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/auth"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/serializer/mysql"
+	"github.com/NeverStopDreamingWang/goi/serializer/sqlite3"
 )
 
 type UserModelSerializer struct {
-	mysql.ModelSerializer
+	sqlite3.ModelSerializer
 
 	// 实例
 	Instance *UserModel
 }
 
-func (serializer UserModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs UserModel, partial bool) error {
+func (serializer UserModelSerializer) Validate(sqlite3DB *db.SQLite3DB, attrs UserModel, partial bool) error {
 	var err error
 	// 调用 ModelSerializer.Validate
-	err = serializer.ModelSerializer.Validate(mysqlDB, attrs, partial)
+	err = serializer.ModelSerializer.Validate(sqlite3DB, attrs, partial)
 	if err != nil {
 		return err
 	}
 
 	// 自定义验证
-	mysqlDB.SetModel(attrs)
+	sqlite3DB.SetModel(attrs)
 
 	if serializer.Instance != nil {
-		mysqlDB = mysqlDB.Where("`id` != ?", serializer.Instance.Id)
+		sqlite3DB = sqlite3DB.Where("`id` != ?", serializer.Instance.Id)
 	}
 
 	if attrs.Username != nil {
-		flag, err := mysqlDB.Where("`username` = ?", attrs.Username).Exists()
+		flag, err := sqlite3DB.Where("`username` = ?", attrs.Username).Exists()
 		if err != nil {
 			return errors.New("查询数据库错误")
 		}
@@ -43,7 +43,7 @@ func (serializer UserModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs UserMo
 	return nil
 }
 
-func (serializer UserModelSerializer) Create(mysqlDB *db.MySQLDB, validated_data *UserModel) error {
+func (serializer UserModelSerializer) Create(sqlite3DB *db.SQLite3DB, validated_data *UserModel) error {
 	var err error
 
 	if validated_data.Create_time == nil {
@@ -58,8 +58,8 @@ func (serializer UserModelSerializer) Create(mysqlDB *db.MySQLDB, validated_data
 	}
 	validated_data.Password = &encryptPassword
 
-	mysqlDB.SetModel(*validated_data)
-	result, err := mysqlDB.Insert(*validated_data)
+	sqlite3DB.SetModel(*validated_data)
+	result, err := sqlite3DB.Insert(*validated_data)
 	if err != nil {
 		return errors.New("添加用户错误")
 	}
@@ -71,7 +71,7 @@ func (serializer UserModelSerializer) Create(mysqlDB *db.MySQLDB, validated_data
 	return nil
 }
 
-func (serializer UserModelSerializer) Update(mysqlDB *db.MySQLDB, validated_data *UserModel) error {
+func (serializer UserModelSerializer) Update(sqlite3DB *db.SQLite3DB, validated_data *UserModel) error {
 	var err error
 
 	Update_time := goi.GetTime().Format("2006-01-02 15:04:05")
@@ -86,9 +86,9 @@ func (serializer UserModelSerializer) Update(mysqlDB *db.MySQLDB, validated_data
 		validated_data.Password = &encryptPassword
 	}
 
-	mysqlDB.SetModel(*validated_data)
+	sqlite3DB.SetModel(*validated_data)
 
-	_, err = mysqlDB.Where("`id` = ?", serializer.Instance.Id).Update(validated_data)
+	_, err = sqlite3DB.Where("`id` = ?", serializer.Instance.Id).Update(validated_data)
 	if err != nil {
 		return errors.New("修改用户错误")
 	}
