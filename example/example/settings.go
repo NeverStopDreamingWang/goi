@@ -3,14 +3,21 @@ package example
 import (
 	"database/sql"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
+	"example/utils"
+	"example/utils/mongo_db"
+	"example/utils/mysql_db"
+	"example/utils/redis_db"
+	"example/utils/sqlite3_db"
 	"github.com/NeverStopDreamingWang/goi"
 )
 
 // Http 服务
 var Server *goi.Engine
+var Config *ConfigModel
 
 func init() {
 	var err error
@@ -86,34 +93,46 @@ hwIDAQAB
 		KEY_PATH:  filepath.Join(Server.Settings.BASE_DIR, "ssl", "example.key"),
 	}
 
+	// 加载 Config 配置
+	configPath := path.Join(Server.Settings.BASE_DIR, "config.yaml")
+
+	Config = &ConfigModel{
+		MySQLConfig:   mysql_db.Config,
+		RedisConfig:   redis_db.Config,
+		MongoDBConfig: mongo_db.Config,
+	}
+	err = utils.LoadYaml(configPath, Config)
+	if err != nil {
+		panic(err)
+	}
+
 	// 数据库配置
 	Server.Settings.DATABASES["default"] = &goi.DataBase{
-		ENGINE:         "mysql",
-		DataSourceName: "root:123123@tcp(127.0.0.1:3306)/test_goi",
+		ENGINE:         "sqlite3",
+		DataSourceName: filepath.Join(Server.Settings.BASE_DIR, Config.SQLite3Config.Uri),
 		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
-			mysqlDB, err := sql.Open(ENGINE, DataSourceName)
+			sqlite3_db.SQLite3DB, err = sql.Open(ENGINE, DataSourceName)
+			if err != nil {
+				goi.Log.Error(err)
+				panic(err)
+			}
+			return sqlite3_db.SQLite3DB
+		},
+	}
+	Server.Settings.DATABASES["mysql"] = &goi.DataBase{
+		ENGINE:         "mysql",
+		DataSourceName: Config.MySQLConfig.Uri,
+		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
+			mysql_db.MySQLDB, err = sql.Open(ENGINE, DataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
 			}
 			// 设置连接池参数
-			mysqlDB.SetMaxOpenConns(10)           // 设置最大打开连接数
-			mysqlDB.SetMaxIdleConns(5)            // 设置最大空闲连接数
-			mysqlDB.SetConnMaxLifetime(time.Hour) // 设置连接的最大存活时间
-			return mysqlDB
-		},
-	}
-	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
-		ENGINE:         "sqlite3",
-		DataSourceName: filepath.Join(Server.Settings.BASE_DIR, "data", "test_goi.db"),
-		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
-			var sqliteDB *sql.DB
-			sqliteDB, err = sql.Open(ENGINE, DataSourceName)
-			if err != nil {
-				goi.Log.Error(err)
-				panic(err)
-			}
-			return sqliteDB
+			mysql_db.MySQLDB.SetMaxOpenConns(10)           // 设置最大打开连接数
+			mysql_db.MySQLDB.SetMaxIdleConns(5)            // 设置最大空闲连接数
+			mysql_db.MySQLDB.SetConnMaxLifetime(time.Hour) // 设置连接的最大存活时间
+			return mysql_db.MySQLDB
 		},
 	}
 
@@ -165,11 +184,26 @@ hwIDAQAB
 	// Server.Settings.Set(key string, value interface{})
 	// Server.Settings.Get(key string, dest interface{})
 
+	// 连接其它数据库
+	// redis_db.Connect()
+	// mongo_db.Connect()
+
 	// 注册关闭回调处理程序
-	Server.RegisterShutdownHandler("关闭操作", Shutdown)
+	Server.RegisterShutdownHandler("清理连接", Shutdown)
 }
 
 func Shutdown(engine *goi.Engine) error {
-	goi.Log.Info("关闭操作")
+	// var err error
+	//
+	// 关闭连接
+	// err = redis_db.Close()
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// err = mongo_db.Close()
+	// if err != nil {
+	// 	return err
+	// }
 	return nil
 }

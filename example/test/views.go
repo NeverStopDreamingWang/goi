@@ -18,16 +18,54 @@ func Test1(request *goi.Request) interface{} {
 	return resp
 }
 
-func Test3(request *goi.Request) interface{} {
-	return goi.Data{
-		Code:    http.StatusOK,
-		Message: "test3 OK",
-		Results: "OK",
+// query 查询字符串传参
+func TestQueryParams(request *goi.Request) interface{} {
+	var name string
+	var queryParams goi.Params
+	var validationErr goi.ValidationError
+	queryParams = request.QueryParams()
+
+	validationErr = queryParams.Get("name", name)
+	if validationErr != nil {
+		return validationErr.Response()
+	}
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
+	fmt.Println(msg)
+	return goi.Response{
+		Status: http.StatusCreated, // 返回指定响应状态码 404
+		Data: goi.Data{
+			Code:    http.StatusOK,
+			Message: msg,
+			Results: "",
+		}, // 响应数据 ""
 	}
 }
 
-// 请求传参
-func TestParams(request *goi.Request) interface{} {
+// body 请求体传参
+func TestBodyParams(request *goi.Request) interface{} {
+	var name string
+	var bodyParams goi.Params
+	var validationErr goi.ValidationError
+	bodyParams = request.BodyParams()
+
+	validationErr = bodyParams.Get("name", name)
+	if validationErr != nil {
+		return validationErr.Response()
+	}
+	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
+	fmt.Println(msg)
+	return goi.Response{
+		Status: http.StatusCreated, // 返回指定响应状态码 404
+		Data: goi.Data{
+			Code:    http.StatusOK,
+			Message: msg,
+			Results: "",
+		}, // 响应数据 ""
+	}
+}
+
+// 路由传参
+func TestPathParams(request *goi.Request) interface{} {
 	var name string
 	var validationErr goi.ValidationError
 	validationErr = request.PathParams.Get("name", &name) // 路由传参
@@ -64,7 +102,7 @@ type testParamsValidParams struct {
 
 func TestParamsValid(request *goi.Request) interface{} {
 	var params testParamsValidParams
-	var bodyParams goi.BodyParamsValues
+	var bodyParams goi.Params
 	var validationErr goi.ValidationError
 	bodyParams = request.BodyParams() // Body 传参
 	validationErr = bodyParams.ParseParams(&params)
@@ -110,9 +148,16 @@ func TestPhone(request *goi.Request) interface{} {
 }
 
 // 两个同名参数时
-func TestPathParamsStrs(request *goi.Request) interface{} {
+func TestParamsStrs(request *goi.Request) interface{} {
+	var validationErr goi.ValidationError
+
+	var nameSlice []string
 	// 多个值
-	nameSlice := request.PathParams["name"] // 返回一个 []interface{}
+	validationErr = request.BodyParams().Get("name", nameSlice) // 返回一个 []interface{}
+	if validationErr != nil {
+		return validationErr.Response()
+	}
+
 	fmt.Printf("%v,%T\n", nameSlice, nameSlice)
 	name1 := nameSlice[0]
 	name2 := nameSlice[1]
@@ -147,11 +192,10 @@ func TestConverterParamsStrs(request *goi.Request) interface{} {
 
 // 上下文
 func TestContext(request *goi.Request) interface{} {
-
 	// 请求上下文
-	fmt.Println(request.Object.Context())
-	fmt.Println("requestID", request.Object.Context().Value("requestID"))
 	requestID := request.Object.Context().Value("requestID")
+
+	fmt.Println("requestID", requestID)
 
 	// fmt.Println("PathParams", request.PathParams)
 	var name string
@@ -196,15 +240,15 @@ func TestFile(request *goi.Request) interface{} {
 
 // 异常处理
 func TestPanic(request *goi.Request) interface{} {
-	var bodyParams goi.BodyParamsValues
+	var bodyParams goi.Params
 	bodyParams = request.BodyParams()
 	name := bodyParams["name"]
 
 	msg := fmt.Sprintf("参数: %v 参数类型:  %T", name, name)
 	fmt.Println(msg)
 
-	name_tmp := name[100]
-	fmt.Println(name_tmp)
+	panic(name)
+
 	return goi.Response{
 		Status: http.StatusCreated, // 返回指定响应状态码 404
 		Data: goi.Data{

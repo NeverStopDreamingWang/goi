@@ -1,4 +1,4 @@
-package user
+package test
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type testCacheSetParams struct {
 // 设置一条数据到缓存
 func TestCacheSet(request *goi.Request) interface{} {
 	var params testCacheSetParams
-	var bodyParams goi.BodyParamsValues
+	var bodyParams goi.Params
 	var validationErr goi.ValidationError
 	bodyParams = request.BodyParams()
 	validationErr = bodyParams.ParseParams(&params)
@@ -60,7 +60,7 @@ type cacheKeyParams struct {
 // 通过 key 获取缓存
 func TestCacheGet(request *goi.Request) interface{} {
 	var params cacheKeyParams
-	var bodyParams goi.BodyParamsValues
+	var bodyParams goi.Params
 	var validationErr goi.ValidationError
 	bodyParams = request.BodyParams()
 	validationErr = bodyParams.ParseParams(&params)
@@ -103,7 +103,7 @@ func TestCacheGet(request *goi.Request) interface{} {
 // 通过 key 删除缓存
 func TestCacheDel(request *goi.Request) interface{} {
 	var params cacheKeyParams
-	var bodyParams goi.BodyParamsValues
+	var bodyParams goi.Params
 	var validationErr goi.ValidationError
 	bodyParams = request.BodyParams()
 	validationErr = bodyParams.ParseParams(&params)

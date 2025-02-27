@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"regexp"
+	"strings"
 
 	"example/example"
 	"github.com/NeverStopDreamingWang/goi"
@@ -26,13 +26,12 @@ func RequestMiddleWare(request *goi.Request) interface{} {
 	// fmt.Println("请求中间件", request.Object.URL)
 
 	var apiList = []string{
-		"^/api",
+		"/api/auth",   // 放行
+		"/api/static", // 放行
 	}
-	var re *regexp.Regexp
 	for _, api := range apiList {
-		re = regexp.MustCompile(api)
 		// 跳过验证
-		if re.MatchString(request.Object.URL.Path) {
+		if strings.HasPrefix(request.Object.URL.Path, api) {
 			return nil
 		}
 	}
