@@ -29,11 +29,15 @@ type Request struct {
 // 返回:
 //   - Params: URL查询参数的键值对映射，其中值为字符串切片
 func (request *Request) QueryParams() Params {
-	var params Params
+	params := make(Params)
 
 	queryValues := request.Object.URL.Query()
 	for name, values := range queryValues {
-		params[name] = values
+		if len(values) == 1 {
+			params[name] = values[0]
+		} else {
+			params[name] = values
+		}
 	}
 	return params
 }

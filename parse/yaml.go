@@ -17,8 +17,8 @@ func (yamlParsing) Name() string {
 }
 
 func (yamlParsing) Parse(request *http.Request) (Params, error) {
-	var params Params
 	var err error
+	params := make(Params)
 
 	decoder := yaml.NewDecoder(request.Body)
 	err = decoder.Decode(&params)
