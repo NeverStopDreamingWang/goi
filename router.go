@@ -192,7 +192,7 @@ func (router MetaRouter) Next(routerChan chan<- RouteInfo) {
 }
 
 // 路由解析
-func (router MetaRouter) routeResolution(Path string, PathParams ParamsValues) (AsView, bool) {
+func (router MetaRouter) routeResolution(Path string, PathParams Params) (AsView, bool) {
 	var re *regexp.Regexp
 	params, converterPattern := routerParse(router.path)
 	var reString string
@@ -221,13 +221,11 @@ func (router MetaRouter) routeResolution(Path string, PathParams ParamsValues) (
 	}
 	paramsSlice = paramsSlice[1:]
 	for i := 0; i < len(params); i++ {
-		param := params[i]
-		PathParams[param.paramName] = append(PathParams[param.paramName], paramsSlice[i]) // 添加参数
+		PathParams[params[i].paramName] = paramsSlice[i]
 	}
 
 	if router.viewSet.dir != "" || router.viewSet.dirFS != nil { // 静态路由映射
-		fileName := path.Clean("/" + Path[len(router.path):])
-		PathParams["fileName"] = append(PathParams["fileName"], fileName)
+		PathParams["fileName"] = path.Clean("/" + Path[len(router.path):])
 		return router.viewSet, true
 	} else if len(router.includeRouter) == 0 { // API
 		return router.viewSet, true

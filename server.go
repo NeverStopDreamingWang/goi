@@ -371,7 +371,7 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// 初始化请求
 	request := &Request{
 		Object:     r,
-		PathParams: make(ParamsValues),
+		PathParams: make(Params),
 	}
 	// 创建自定义响应写入器
 	response := &customResponseWriter{

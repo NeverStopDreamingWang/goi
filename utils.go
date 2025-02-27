@@ -5,6 +5,18 @@ import (
 	"os"
 )
 
+// Data 自定义标准的API响应格式
+//
+// 字段:
+//   - Code int: 响应状态码
+//   - Message string: 响应消息
+//   - Results interface{}: 响应数据
+type Data struct {
+	Code    int         `json:"code"`    // 响应状态码
+	Message string      `json:"message"` // 响应消息
+	Results interface{} `json:"results"` // 响应数据
+}
+
 // 通用的 JSON 文件加载函数
 func LoadJSON(filePath string, value interface{}) error {
 	// 打开 JSON 文件

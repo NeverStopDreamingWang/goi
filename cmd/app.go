@@ -275,7 +275,7 @@ type listValidParams struct {
 }
 func listView(request *goi.Request) interface{} {
 	var params listValidParams
-	var queryParams goi.ParamsValues
+	var queryParams goi.Params
 	var validationErr goi.ValidationError
 
 	queryParams = request.QueryParams() // Query 传参
@@ -297,7 +297,7 @@ type createValidParams struct {
 }
 func createView(request *goi.Request) interface{} {
 	var params createValidParams
-	var bodyParams goi.BodyParamsValues
+	var bodyParams goi.Params
 	var validationErr goi.ValidationError
 	
 	bodyParams = request.BodyParams() // Body 传参
@@ -335,7 +335,7 @@ type updateValidParams struct {
 func updateView(request *goi.Request) interface{} {
 	var pk int64
 	var params updateValidParams
-	var bodyParams goi.BodyParamsValues
+	var bodyParams goi.Params
 	var validationErr goi.ValidationError
 
 	validationErr = request.PathParams.Get("pk", &pk)
