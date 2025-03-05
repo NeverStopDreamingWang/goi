@@ -20,7 +20,7 @@ import (
 )
 
 // Http 服务
-var version = "v1.4.3"
+var version = "v1.4.4"
 var Settings *metaSettings
 var Cache *metaCache
 var Log *metaLog
@@ -148,7 +148,9 @@ func (engine *Engine) RunServer() {
 		switch sig {
 		case os.Kill, os.Interrupt, syscall.SIGTERM:
 			err = engine.StopServer()
-			panic(err)
+			if err != nil {
+				panic(err)
+			}
 			return
 		default:
 			invalidOperationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
