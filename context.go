@@ -34,7 +34,11 @@ func (request *Request) QueryParams() Params {
 	queryValues := request.Object.URL.Query()
 	for name, values := range queryValues {
 		if len(values) == 1 {
-			params[name] = values[0]
+			if values[0] == "" {
+				params[name] = nil
+			} else {
+				params[name] = values[0]
+			}
 		} else {
 			params[name] = values
 		}
