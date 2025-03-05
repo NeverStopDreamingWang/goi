@@ -49,7 +49,7 @@ func (userModel UserModel) ModelSet() *mysql.MySQLSettings {
 		DATA_DIRECTORY:  "",                   // 设置数据存储目录
 		INDEX_DIRECTORY: "",                   // 设置数据存储目录
 		PARTITION_BY:    "",                   // 定义分区方式，如 RANGE、HASH、LIST
-		COMMENT:         "用户表",             // 设置表注释
+		COMMENT:         "用户表",                // 设置表注释
 
 		// 自定义配置
 		Settings: model.Settings{
