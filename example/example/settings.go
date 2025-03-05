@@ -141,7 +141,8 @@ hwIDAQAB
 	if err != nil {
 		panic(err)
 	}
-	//  goi.Settings.GetLocation() 获取时区 Location
+	//  goi.GetLocation() 获取时区 Location
+	//  goi.GetTime() 获取当前时区的时间
 
 	// 设置框架语言
 	Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
