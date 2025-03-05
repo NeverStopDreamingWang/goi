@@ -130,21 +130,17 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 			return NewValidationError(http.StatusInternalServerError, isNotRequiredOrOptionalMsg)
 		}
 
-		// 获取该类型的零值
-		zeroValue := reflect.Zero(reflect.ValueOf(value).Type()).Interface()
-
-		// 是否零值
-		if reflect.DeepEqual(value, zeroValue) {
-			if is_required == false { // 非必填项跳过
-				continue
+		if value == nil {
+			if is_required == true { // 必填项返回错误
+				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "params.required_params",
+					TemplateData: map[string]interface{}{
+						"name": fieldName,
+					},
+				})
+				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 			}
-			requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.required_params",
-				TemplateData: map[string]interface{}{
-					"name": fieldName,
-				},
-			})
-			return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
+			continue
 		}
 
 		validationErr = validateValue(validator_name, value)
