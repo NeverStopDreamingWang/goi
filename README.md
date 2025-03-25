@@ -4,6 +4,10 @@
 
 [详细示例：example](./example)
 
+# 感谢 [JetBrains](https://www.jetbrains.com/zh-cn/) [对开源项目的支持](https://www.jetbrains.com/zh-cn/community/opensource/)
+
+![JetBrains logo](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.png)
+
 ## goi 创建命令
 
 使用 `go env GOMODCACHE` 获取 go 软件包路径：`mypath\Go\pkg\mod` + `github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe`
