@@ -64,7 +64,7 @@ The commands are（命令如下）:
     * `path` 路由
     * `desc` 描述
 
-* `Router.UrlPatterns(path string, desc string, view AsView)` 注册一个路由
+* `Router.Path(path string, desc string, view ViewSet)` 注册一个路由
     * `path` 路由
     * `desc` 描述
     * `view` 视图 `AsView` 类型
@@ -82,43 +82,83 @@ The commands are（命令如下）:
 
 静态路由映射，返回文件对象即响应该文件内容
 
-* `Router.StaticUrlPatterns(path string, desc string, FilePath string)` 注册静态文件路由
+静态路由映射可通过两种方式注册：
+
+方式一：Router.* 辅助方法（内部基于公共 ViewSet 生成器）
+
+* `Router.StaticFile(path string, desc string, filePath string)` 注册静态文件路由
     * `path` 路由
     * `desc` 描述
-    * `FilePath` 文件路径，支持`相对路径`和`绝对路径`
+  * `filePath` 文件路径，支持`相对路径`和`绝对路径`
 
-* `Router.StaticDirPatterns(path string, desc string, DirPath http.Dir)` 注册静态目录路由
+* `Router.StaticDir(path string, desc string, dirPath http.Dir)` 注册静态目录路由
     * `path` 路由
     * `desc` 描述
-    * `DirPath` 静态映射路径，支持`相对路径`和`绝对路径`
+  * `dirPath` 静态映射路径，支持`相对路径`和`绝对路径`
 
-* `Router.StaticFilePatternsFS(path string, desc string, FileFS embed.FS)` 注册 `embed.FS` 静态文件路由
+* `Router.StaticFileFS(path string, desc string, fileFS embed.FS)` 注册 `embed.FS` 静态文件路由
     * `path` 路由
     * `desc` 描述
-  * `FileFS` 嵌入文件路径，支持`相对路径`和`绝对路径`
+  * `fileFS` 嵌入文件路径，支持`相对路径`和`绝对路径`
 
 
-* `Router.StaticDirPatternsFS(path string, desc string, DirFS embed.FS)` 注册 `embed.FS` 静态目录路由
+* `Router.StaticDirFS(path string, desc string, dirFS embed.FS)` 注册 `embed.FS` 静态目录路由
     * `path` 路由
     * `desc` 描述
-  * `DirFS` 嵌入目录路径，支持`相对路径`和`绝对路径`
+  * `dirFS` 嵌入目录路径，支持`相对路径`和`绝对路径`
+
+### 静态 View 生成器
+
+提供四个公共方法生成静态资源的 HandlerFunc，配合 `Router.Path` 使用：
+
+- `goi.NewStaticFile(filePath string) HandlerFunc`
+- `goi.NewStaticDir(dirPath http.Dir) HandlerFunc`
+- `goi.NewStaticFileFS(fs embed.FS) HandlerFunc`
+- `goi.NewStaticDirFS(fs embed.FS) HandlerFunc`
+
+示例：
+
+```go
+// 单文件
+router.Path("index.html", "首页", goi.ViewSet{GET: goi.NewStaticFile("template/html/index.html"),})
+
+// 目录（带路由参数 <path:fileName>）
+router.Path("static/<path:fileName>", "静态目录", goi.ViewSet{GET: goi.NewStaticDir(http.Dir("public")), })
+
+// 嵌入式单文件 / 目录
+router.Path("logo.svg", "静态FS文件", goi.ViewSet{GET: goi.NewStaticFileFS(assets.LogoFS), })
+router.Path("assets/", "静态FS目录", goi.ViewSet{GET: goi.NewStaticDirFS(assets.AssetsFS), })
+```
 
 ## 中间件
 
-* 请求中间件：`Server.MiddleWares.BeforeRequest(processRequest RequestMiddleware)` 注册请求中间件
-    * `type RequestMiddleware func(request *goi.Request) interface{}`
-        * `request` 请求对象
+框架采用接口式中间件，按职责可实现以下任意方法（可选实现）：
 
+```go
+type MiddleWare interface {
+ProcessRequest(*Request) interface{}                // 请求中间件
+ProcessView(*Request) interface{}                   // 视图中间件
+ProcessException(*Request, interface{}) interface{} // 异常中间件
+ProcessResponse(*Request, interface{}) interface{}  // 响应中间件
+}
+```
 
-* 视图中间件：`Server.MiddleWares.BeforeView(processView ViewMiddleware)` 注册视图中间件
-    * `type ViewMiddleware func(request *goi.Request) interface{}`
-        * `request` 请求对象
+注册：
 
+```go
+goi.RegisterMiddleWare(MyMiddleware{})
+```
 
-* 响应中间件：`Server.MiddleWares.BeforeResponse(processResponse ResponseMiddleware)` 注册响应中间件
-    * `type ResponseMiddleware func(request *goi.Request, viewResponse interface{}) interface{}`
-        * `request` 请求对象
-        * `viewResponse` 视图响应结果
+执行顺序：
+
+- 请求阶段（ProcessRequest）：正序执行；返回 nil 则继续执行，否则返回结果
+- 视图阶段（ProcessView）：正序执行；返回 nil 则继续执行，否则返回结果
+- 异常阶段（ProcessException）：逆序执行；返回 nil 则继续执行，否则返回结果
+- 响应阶段（ProcessResponse）：逆序执行；可对视图结果进行包装/替换
+
+异常处理：
+
+- 若所有异常中间件均返回 nil，将由框架统一返回 500 响应
 
 ## 日志模块
 
@@ -199,36 +239,96 @@ func ExampleMakePassword() {
 
 ## 内置 Converter 路由转换器
 
-`converter.go` 注册路由转换器
+注册路由转换器
+
+* 包含参数验证
+* 包含参数解析
+
+功能：
+
+实现 `goi.Converter` 结构体
 
 ```go
 package goi_test
 
-import "github.com/NeverStopDreamingWang/goi"
+import (
+	"fmt"
+
+	"github.com/NeverStopDreamingWang/goi"
+)
+
+// 手机号
+var phoneConverter = goi.Converter{
+	Regex: `(1[3456789]\d{9})`,
+	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
+}
+
+// 邮箱
+var emailConverter = goi.Converter{
+	Regex: `([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})`,
+	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
+}
+
+// URL
+var urlConverter = goi.Converter{
+	Regex: `(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})`,
+	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
+}
+
+// 日期 (YYYY-MM-DD)
+var dateConverter = goi.Converter{
+	Regex: `(\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))`,
+	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
+}
+
+// 时间 (HH:MM:SS)
+var timeConverter = goi.Converter{
+	Regex: `((?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d)`,
+	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
+}
+
+// IP地址 (IPv4)
+var ipv4Converter = goi.Converter{
+	Regex: `((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))`,
+	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
+}
+
+// 用户名 (字母开头，允许字母数字下划位)
+var usernameConverter = goi.Converter{
+	Regex: `([a-zA-Z][a-zA-Z0-9_]{3,15})`,
+	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
+}
 
 func ExampleRegisterConverter() {
 	// 注册路由转换器
 
 	// 手机号
-	goi.RegisterConverter("my_phone", `(1[3456789]\d{9})`)
+	goi.RegisterConverter(phoneConverter, "my_phone")
 
 	// 邮箱
-	goi.RegisterConverter("my_email", `([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})`)
+	goi.RegisterConverter(emailConverter, "my_email")
 
 	// URL
-	goi.RegisterConverter("my_url", `(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})`)
+	goi.RegisterConverter(urlConverter, "my_url")
 
 	// 日期 (YYYY-MM-DD)
-	goi.RegisterConverter("my_date", `(\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))`)
+	goi.RegisterConverter(dateConverter, "my_date")
 
 	// 时间 (HH:MM:SS)
-	goi.RegisterConverter("my_time", `((?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d)`)
+	goi.RegisterConverter(timeConverter, "my_time")
 
 	// IP地址 (IPv4)
-	goi.RegisterConverter("my_ipv4", `((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))`)
+	goi.RegisterConverter(ipv4Converter, "my_ipv4")
 
-	// 用户名 (字母开头，允许字母数字下划线，4-16位)
-	goi.RegisterConverter("my_username", `([a-zA-Z][a-zA-Z0-9_]{3,15})`)
+	// 用户名 (字母开头，允许字母数字下划位)
+	goi.RegisterConverter(usernameConverter, "my_username")
 }
 
 ```
@@ -250,7 +350,7 @@ func init() {
         // 注册一个路径 
         // 类型 my_phone
         // 名称 phone
-        testRouter.UrlPatterns("test_phone/<my_phone:phone>", "", goi.AsView{GET: TestPhone}) // 测试路由转换器
+		testRouter.Path("test_phone/<my_phone:phone>", "", goi.ViewSet{GET: TestPhone}) // 测试路由转换器
     }
 }
 
@@ -274,107 +374,120 @@ func TestPhone(request *goi.Request) interface{} {
 
 ## 内置 Validator 参数验证器
 
-注册参数验证器
+* 包含参数验证
+* 包含参数解析
+
+实现 `goi.Validate` 接口
 
 ```go
 package goi_test
-
 import (
 	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
+	"testing"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
 
-func init() {
-    // 注册验证器
-    // 手机号
-    goi.RegisterValidate("phone", phoneValidate)
-}
+// phoneValidator 手机号验证器示例
+type phoneValidator struct{}
 
-// phone 类型
-func phoneValidate(value interface{}) goi.ValidationError {
+func (validator phoneValidator) Validate(value interface{}) goi.ValidationError {
 	switch typeValue := value.(type) {
 	case int:
 		valueStr := strconv.Itoa(typeValue)
 		var reStr = `^(1[3456789]\d{9})$`
 		re := regexp.MustCompile(reStr)
-		if re.MatchString(valueStr) == false {
+		if !re.MatchString(valueStr) {
 			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
 		}
 	case string:
 		var reStr = `^(1[3456789]\d{9})$`
 		re := regexp.MustCompile(reStr)
-		if re.MatchString(typeValue) == false {
+		if !re.MatchString(typeValue) {
 			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
 		}
 	default:
 		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
 	}
-
 	return nil
 }
-```
 
-使用
-
-```go
-package test
-
-import (
-	"fmt"
-	"net/http"
-
-	"github.com/NeverStopDreamingWang/goi"
-)
-
-// 参数验证
-type testParamsValidParams struct {
-    Username string            `name:"username" required:"string"`
-    Password string            `name:"password" required:"string"`
-    Age      string            `name:"age" required:"int"`
-    Phone    string            `name:"phone" required:"phone"`
-    Args     []string          `name:"args" optional:"slice"`
-    Kwargs   map[string]string `name:"kwargs" optional:"map"`
+func (validator phoneValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+	switch typeValue := value.(type) {
+	case int:
+		return strconv.Itoa(typeValue), nil
+	case string:
+		return typeValue, nil
+	default:
+		return fmt.Sprintf("%v", value), nil
+	}
 }
 
-// required 必传参数
-// optional 可选
-// 支持
-// int *int []*int []... map[string]*int map[...]...
-// ...
+// emailValidator 邮箱验证器示例
+type emailValidator struct{}
 
-func TestParamsValid(request *goi.Request) interface{} {
-	var params testParamsValidParams
-	var bodyParams goi.Params
+func (validator emailValidator) Validate(value interface{}) goi.ValidationError {
+	switch v := value.(type) {
+	case string:
+		re := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
+		if !re.MatchString(v) {
+			return goi.NewValidationError(http.StatusBadRequest, "invalid email format")
+		}
+		return nil
+	default:
+		return goi.NewValidationError(http.StatusBadRequest, "email must be string")
+	}
+}
+
+// 当解析参数值类型与结构体字段类型不一致，且结构体字段类型为自定义类型时，需要实现 ToGo 方法
+func (validator emailValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+	switch v := value.(type) {
+	case string:
+		// 转换类型，并返回
+		return Email{Address: v}, nil
+	default:
+		// Validate 会拦截返回
+		return nil, nil
+	}
+}
+
+// 支持自定义类型
+type Email struct {
+	Address string `json:"address"`
+}
+type testParamsValidParams struct {
+	Phone string `name:"phone" type:"phone" required:"true"`
+	Email *Email `name:"email" type:"email" required:"true"`
+}
+
+// ExampleRegisterValidate 展示如何注册和使用自定义验证器
+func ExampleRegisterValidate() {
+	// 注册手机号验证器
+	goi.RegisterValidate("phone", phoneValidator{})
+
+	// 注册邮箱验证器
+	goi.RegisterValidate("email", emailValidator{})
+
 	var validationErr goi.ValidationError
-	bodyParams = request.BodyParams() // Body 传参
+
+	var params testParamsValidParams
+	bodyParams := goi.Params{
+		"phone": "13800000000",
+		"email": "test@example.com",
+	}
 	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
-		// 验证器返回
-		return validationErr.Response()
+		return
+	}
+	fmt.Printf("Phone %+v %T\n", params.Phone, params.Phone)
+	fmt.Printf("Email %+v %T\n", params.Email, params.Email)
+}
 
-		// 自定义返回
-		// return goi.Response{
-		// 	Status: http.StatusOK,
-		// 	Data: goi.Data{
-		// 		Status: http.StatusBadRequest,
-		// 		Message:    "参数错误",
-		// 		Results:   nil,
-		// 	},
-		// }
-	}
-	fmt.Println(params)
-	return goi.Response{
-		Status: http.StatusOK,
-		Data: goi.Data{
-			Code:    http.StatusOK,
-			Message: "ok",
-			Results: nil,
-		},
-	}
+func TestRegisterValidate(t *testing.T) {
+	ExampleRegisterValidate()
 }
 
 ```
@@ -409,7 +522,7 @@ func init() {
 	// 插入初始测试数据
 	username := "test_user"
 	password := "test123456"
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := time.Now().Format(time.DateTime)
 
 	user := UserSqliteModel{
 		Username:    &username,
@@ -463,7 +576,7 @@ func InitUserSqlite() error {
 		id              int64  = 1
 		username        string = "超级管理员"
 		password        string = "admin"
-		create_Datetime        = goi.GetTime().Format("2006-01-02 15:04:05")
+		create_Datetime = goi.GetTime().Format(time.DateTime)
 		err             error
 	)
 
@@ -499,7 +612,7 @@ func ExampleSQLite3DB_Insert() {
 	// 准备测试数据
 	username := "test_user"
 	password := "test123456"
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := time.Now().Format(time.DateTime)
 
 	user := UserSqliteModel{
 		Username:    &username,
@@ -791,7 +904,7 @@ func ExampleSQLite3DB_WithTransaction() {
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"
 		password := "test123456"
-		now := time.Now().Format("2006-01-02 15:04:05")
+		now := time.Now().Format(time.DateTime)
 
 		// 插入第一个用户
 		user1 := UserSqliteModel{
