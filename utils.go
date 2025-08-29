@@ -17,7 +17,11 @@ type Data struct {
 	Results interface{} `json:"results"` // 响应数据
 }
 
-// 通用的 JSON 文件加载函数
+// 通用的读取 JSON 文件到指定的结构体
+//
+// 参数:
+//   - filePath string: JSON 文件路径
+//   - value interface{}: 目标结构体指针
 func LoadJSON(filePath string, value interface{}) error {
 	// 打开 JSON 文件
 	file, err := os.Open(filePath)
