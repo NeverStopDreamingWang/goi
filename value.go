@@ -12,48 +12,53 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-func SetValue(targetValue reflect.Value, source interface{}) error {
+// SetValue 将 source 赋值给 destValue
+//
+// 参数:
+//   - destValue reflect.Value: 目标值
+//   - source interface{}: 源值
+func SetValue(destValue reflect.Value, source interface{}) error {
 	// 处理指针类型
-	if targetValue.Kind() == reflect.Ptr {
+	if destValue.Kind() == reflect.Ptr {
 		// 检查字段值是否是零值
-		if targetValue.IsNil() {
+		if destValue.IsNil() {
 			// 如果字段值是零值，则创建一个新的指针对象并设置为该字段的值
-			targetValue.Set(reflect.New(targetValue.Type().Elem()))
+			destValue.Set(reflect.New(destValue.Type().Elem()))
 		}
-		targetValue = targetValue.Elem()
+		destValue = destValue.Elem()
 	}
 
-	if !targetValue.CanSet() {
+	if !destValue.CanSet() {
 		paramsIsNotCanSetMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 			MessageID: "params.params_is_not_can_set",
 			TemplateData: map[string]interface{}{
-				"name": targetValue.Type().Name(),
+				"name": destValue.Type().Name(),
 			},
 		})
 		return errors.New(paramsIsNotCanSetMsg)
 	}
 
-	fieldType := targetValue.Type()
+	fieldType := destValue.Type()
 	// 处理 nil 值
 	if source == nil {
-		targetValue.Set(reflect.Zero(fieldType))
+		destValue.Set(reflect.Zero(fieldType))
 		return nil
 	}
 
 	sourceValue := reflect.ValueOf(source)
-	if targetValue.Kind() == reflect.Ptr {
+	if sourceValue.Kind() == reflect.Ptr {
 		// 检查字段值是否是零值
-		if targetValue.IsNil() {
+		if sourceValue.IsNil() {
 			// 如果字段值是零值，则创建一个新的指针对象并设置为该字段的值
-			targetValue.Set(reflect.New(targetValue.Type().Elem()))
+			sourceValue.Set(reflect.New(sourceValue.Type().Elem()))
 		}
-		targetValue = targetValue.Elem()
+		sourceValue = sourceValue.Elem()
 	}
 
 	sourceType := sourceValue.Type()
 	// 直接类型匹配
 	if sourceType.AssignableTo(fieldType) {
-		targetValue.Set(sourceValue)
+		destValue.Set(sourceValue)
 		return nil
 	}
 
@@ -62,13 +67,13 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 	case reflect.Bool:
 		switch v := source.(type) {
 		case bool:
-			targetValue.SetBool(v)
+			destValue.SetBool(v)
 		case string:
 			boolValue, err := strconv.ParseBool(v)
 			if err != nil {
 				return errors.New(err.Error())
 			}
-			targetValue.SetBool(boolValue)
+			destValue.SetBool(boolValue)
 		default:
 			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "params.value_invalid",
@@ -81,16 +86,16 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 	case reflect.String:
 		switch v := source.(type) {
 		case string:
-			targetValue.SetString(v)
+			destValue.SetString(v)
 		default:
-			targetValue.SetString(fmt.Sprint(source))
+			destValue.SetString(fmt.Sprint(source))
 		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		switch v := source.(type) {
 		case int, int8, int16, int32, int64:
-			targetValue.SetInt(reflect.ValueOf(v).Int())
+			destValue.SetInt(reflect.ValueOf(v).Int())
 		case uint, uint8, uint16, uint32, uint64:
-			targetValue.SetInt(int64(reflect.ValueOf(v).Uint()))
+			destValue.SetInt(int64(reflect.ValueOf(v).Uint()))
 		case float32, float64:
 			floatVal := reflect.ValueOf(v).Float()
 			if floatVal > float64(math.MaxInt64) || floatVal < float64(math.MinInt64) {
@@ -102,13 +107,13 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 				})
 				return errors.New(valueInvalidMsg)
 			}
-			targetValue.SetInt(int64(floatVal))
+			destValue.SetInt(int64(floatVal))
 		case string:
 			intValue, err := strconv.ParseInt(v, 10, fieldType.Bits())
 			if err != nil {
 				return errors.New(err.Error())
 			}
-			targetValue.SetInt(intValue)
+			destValue.SetInt(intValue)
 		default:
 			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "params.value_invalid",
@@ -121,17 +126,17 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		switch v := source.(type) {
 		case uint, uint8, uint16, uint32, uint64:
-			targetValue.SetUint(reflect.ValueOf(v).Uint())
+			destValue.SetUint(reflect.ValueOf(v).Uint())
 		case int, int8, int16, int32, int64:
-			targetValue.SetUint(uint64(reflect.ValueOf(v).Int()))
+			destValue.SetUint(uint64(reflect.ValueOf(v).Int()))
 		case float32, float64:
-			targetValue.SetUint(uint64(reflect.ValueOf(v).Float()))
+			destValue.SetUint(uint64(reflect.ValueOf(v).Float()))
 		case string:
 			uintValue, err := strconv.ParseUint(v, 10, fieldType.Bits())
 			if err != nil {
 				return errors.New(err.Error())
 			}
-			targetValue.SetUint(uintValue)
+			destValue.SetUint(uintValue)
 		default:
 			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "params.value_invalid",
@@ -144,17 +149,17 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 	case reflect.Float32, reflect.Float64:
 		switch v := source.(type) {
 		case float32, float64:
-			targetValue.SetFloat(reflect.ValueOf(v).Float())
+			destValue.SetFloat(reflect.ValueOf(v).Float())
 		case int, int8, int16, int32, int64:
-			targetValue.SetFloat(float64(reflect.ValueOf(v).Int()))
+			destValue.SetFloat(float64(reflect.ValueOf(v).Int()))
 		case uint, uint8, uint16, uint32, uint64:
-			targetValue.SetFloat(float64(reflect.ValueOf(v).Uint()))
+			destValue.SetFloat(float64(reflect.ValueOf(v).Uint()))
 		case string:
 			floatValue, err := strconv.ParseFloat(v, fieldType.Bits())
 			if err != nil {
 				return errors.New(err.Error())
 			}
-			targetValue.SetFloat(floatValue)
+			destValue.SetFloat(floatValue)
 		default:
 			valueInvalidMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "params.value_invalid",
@@ -175,8 +180,8 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 			return errors.New(valueInvalidMsg)
 		}
 
-		if targetValue.IsNil() {
-			targetValue.Set(reflect.MakeMap(fieldType))
+		if destValue.IsNil() {
+			destValue.Set(reflect.MakeMap(fieldType))
 		}
 		keyType := fieldType.Key()
 		valueTypeElem := fieldType.Elem()
@@ -194,7 +199,7 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 
 			valueVal := sourceValue.MapIndex(key)
 			if valueVal.Type().AssignableTo(valueTypeElem) {
-				targetValue.SetMapIndex(key, valueVal)
+				destValue.SetMapIndex(key, valueVal)
 			} else {
 				// 创建目标 Map 的值，并递归调用 setFieldValue 进行赋值
 				val := reflect.New(valueTypeElem).Elem()
@@ -202,7 +207,7 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 				if err != nil {
 					return err
 				}
-				targetValue.SetMapIndex(key, val)
+				destValue.SetMapIndex(key, val)
 			}
 		}
 		return nil
@@ -218,14 +223,14 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 		}
 
 		// 如果目标切片的长度小于源切片的长度，扩展目标切片
-		if targetValue.Len() < sourceValue.Len() {
-			// 创建一个新的切片并设置给 targetValue
+		if destValue.Len() < sourceValue.Len() {
+			// 创建一个新的切片并设置给 destValue
 			newSlice := reflect.MakeSlice(fieldType, sourceValue.Len(), sourceValue.Len())
-			targetValue.Set(newSlice)
+			destValue.Set(newSlice)
 		}
 
 		for i := 0; i < sourceValue.Len(); i++ {
-			err := SetValue(targetValue.Index(i), sourceValue.Index(i).Interface())
+			err := SetValue(destValue.Index(i), sourceValue.Index(i).Interface())
 			if err != nil {
 				return err
 			}
@@ -245,7 +250,7 @@ func SetValue(targetValue reflect.Value, source interface{}) error {
 
 		// 处理 map[string]interface{} 类型
 		for i := 0; i < fieldType.NumField(); i++ {
-			structField := targetValue.Field(i)
+			structField := destValue.Field(i)
 			fieldName := fieldType.Field(i).Name
 			// 尝试获取 tag 中的 name，如果没有则使用字段名
 			tagName := fieldType.Field(i).Tag.Get("json")
