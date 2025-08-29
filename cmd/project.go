@@ -124,8 +124,8 @@ require github.com/NeverStopDreamingWang/goi %s
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/go-sql-driver/mysql v1.8.1 // indirect
-	github.com/mattn/go-sqlite3 v1.14.22 // indirect
+	github.com/go-sql-driver/mysql v1.9.3 // indirect
+	github.com/mattn/go-sqlite3 v1.14.32 // indirect
 )
 
 
@@ -159,6 +159,7 @@ import (
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/middleware"
 )
 
 // Http 服务
@@ -169,7 +170,17 @@ func init() {
 	
 	// 创建 http 服务
 	Server = goi.NewHttpServer()
-	
+
+	// version := goi.Version() // 获取版本信息
+	// fmt.Println("goi 版本", version)
+
+	// 注册中间件
+	Server.MiddleWare = []goi.MiddleWare{
+		&middleware.SecurityMiddleWare{},
+		&middleware.CommonMiddleWare{},
+		&middleware.XFrameMiddleWare{},
+	}
+
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
 	// 网络协议
@@ -229,6 +240,7 @@ func init() {
 		},
 	}
 	
+	Server.Settings.USE_TZ = true
 	// 设置时区
 	err = Server.Settings.SetTimeZone("Asia/Shanghai") // 默认为空字符串 ''，本地时间
 	if err != nil {
@@ -290,14 +302,21 @@ var converter = InitFile{
 	Content: func() string {
 		content := `package %s
 
-import "github.com/NeverStopDreamingWang/goi"
+import (
+	"github.com/NeverStopDreamingWang/goi"
+)
+
+// 手机号
+var phoneConverter = goi.Converter{
+	Regex: %s,
+	ToGo:  func(value string) (interface{}, error) { return value, nil },
+}
 
 func init() {
 	// 注册路由转换器
-	
+
 	// 手机号
-	goi.RegisterConverter("phone", %s)
-	
+	goi.RegisterConverter(phoneConverter, "phone")
 }
 `
 		return fmt.Sprintf(content, projectName, "`(1[3456789]\\d{9})`")
@@ -325,30 +344,7 @@ import (
 func init() {
 	// 注册验证器
 	// 手机号
-	goi.RegisterValidate("phone", phoneValidate)
-}
-
-// phone 类型
-func phoneValidate(value interface{}) goi.ValidationError {
-	switch typeValue := value.(type) {
-	case int:
-		valueStr := strconv.Itoa(typeValue)
-		var reStr = ` + "`^(1[3456789]\\d{9})$`" + `
-		re := regexp.MustCompile(reStr)
-		if re.MatchString(valueStr) == false {
-			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%%v", value))
-		}
-	case string:
-		var reStr = ` + "`^(1[3456789]\\d{9})$`" + `
-		re := regexp.MustCompile(reStr)
-		if re.MatchString(typeValue) == false {
-			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%%v", value))
-		}
-	default:
-		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%%v", value))
-	}
-
-	return nil
+	goi.RegisterValidate("phone", phoneValidator{})
 }
 
 // 自定义参数验证错误
@@ -370,10 +366,49 @@ func (validationErr *validationError) Response() goi.Response {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
-			Code:  validationErr.Status,
+			Code:    validationErr.Status,
 			Message: validationErr.Message,
-			Results:    nil,
+			Results: nil,
 		},
+	}
+}
+
+type phoneValidator struct{}
+
+func (validator phoneValidator) Validate(value interface{}) goi.ValidationError {
+	switch typeValue := value.(type) {
+	case int:
+		valueStr := strconv.Itoa(typeValue)
+		var reStr = ` + "`^(1[3456789]\\d{9})$`" + `
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(valueStr) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	case string:
+		var reStr = ` + "`^(1[3456789]\\d{9})$`" + `
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	default:
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
+	}
+	return nil
+}
+
+func (validator phoneValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+	switch typeValue := value.(type) {
+	case int:
+		return typeValue, nil
+	case string:
+		intValue, err := strconv.Atoi(typeValue)
+		if err != nil {
+			return nil, goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
+		}
+		return intValue, nil
+	default:
+		// 尝试转换为字符串
+		return fmt.Sprintf("%v", value), nil
 	}
 }
 
@@ -396,13 +431,14 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
 
 // 日志输出
 func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
-	timeStr := fmt.Sprintf("[%%v]", goi.GetTime().Format("2006-01-02 15:04:05"))
+	timeStr := fmt.Sprintf("[%%v]", goi.GetTime().Format(time.DateTime))
 	if level != "" {
 		timeStr += fmt.Sprintf(" %%v", level)
 	}
