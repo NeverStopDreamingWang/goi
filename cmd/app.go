@@ -65,20 +65,16 @@ var models = InitFile{
 		content := `package %s
 
 import (
-	// 	"github.com/NeverStopDreamingWang/goi"
-	// 	"github.com/NeverStopDreamingWang/goi/db"
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/model"
-	"github.com/NeverStopDreamingWang/goi/model/mysql"
+	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
 )
 
 func init() {
-	// MySQL 数据库
-	// mysqlDB := db.MySQLConnect("default")
-	// mysqlDB.Migrate("test_goi", TestModel{})
-	
 	// sqlite 数据库
-	// sqlite3DB := db.SQLite3Connect("sqlite")
-	// SQLite3DB.Migrate("test_goi", TestSqliteModel{})
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.Migrate("%s", MyModel{})
 }
 
 
@@ -92,36 +88,22 @@ type MyModel struct {
 
 
 // 设置表配置
-func (myModel MyModel) ModelSet() *mysql.MySQLSettings {
-	modelSettings := &mysql.MySQLSettings{
+func (self MyModel) ModelSet() *sqlite3.SQLite3Settings {
+	modelSettings := &sqlite3.SQLite3Settings{
 		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
 			BeforeHandler: nil,  // 迁移之前处理函数
 			AfterHandler:  nil,  // 迁移之后处理函数
 		},
 
-		TABLE_NAME:      "tb_",                // 设置表名
-		ENGINE:          "InnoDB",             // 设置存储引擎，默认: InnoDB
-		AUTO_INCREMENT:  1,                    // 设置自增长起始值
-		DEFAULT_CHARSET: "utf8mb4",            // 设置默认字符集，如: utf8mb4
-		COLLATE:         "utf8mb4_0900_ai_ci", // 设置校对规则，如 utf8mb4_0900_ai_ci;
-		MIN_ROWS:        0,                    // 设置最小行数
-		MAX_ROWS:        0,                    // 设置最大行数
-		CHECKSUM:        0,                    // 表格的校验和算法，如 1 开启校验和
-		DELAY_KEY_WRITE: 0,                    // 控制非唯一索引的写延迟，如 1
-		ROW_FORMAT:      "",                   // 设置行的存储格式，如 DYNAMIC, COMPACT, FULL.
-		DATA_DIRECTORY:  "",                   // 设置数据存储目录
-		INDEX_DIRECTORY: "",                   // 设置数据存储目录
-		PARTITION_BY:    "",                   // 定义分区方式，如 RANGE、HASH、LIST
-		COMMENT:         "表",                 // 设置表注释
+		TABLE_NAME: "user_tb", // 设置表名
 
-		// 自定义配置
-		Settings: model.Settings{},
+		Settings: goi.Params{},
 	}
 
 	return modelSettings
 }
 `
-		return fmt.Sprintf(content, appName)
+		return fmt.Sprintf(content, appName, appName)
 	},
 	Path: func() string {
 		return filepath.Join(baseDir, appName)
@@ -135,87 +117,71 @@ var serializer = InitFile{
 		content := `package %s
 
 import (
-	"net/http"
+	"errors"
+	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/serializer/mysql"
+	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
 )
 
-type MyModelSerializer struct {
-	mysql.ModelSerializer
-
-	// 实例
-	Instance *MyModel
-}
-
-func (serializer MyModelSerializer) Validate(mysqlDB *db.MySQLDB, attrs MyModel, partial bool) goi.ValidationError {
-	// 调用 ModelSerializer.Validate
-	validationErr := serializer.ModelSerializer.Validate(mysqlDB, attrs, partial)
-	if validationErr != nil {
-		return validationErr
-	}
-
+func (self MyModel) Validate() error {
 	// 自定义验证
-	mysqlDB.SetModel(attrs)
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.SetModel(self)
 
-	if serializer.Instance != nil {
-		mysqlDB.Where("` + "`" + `id` + "`" + ` != ?", serializer.Instance.Id)
+	if self.Id != nil {
+		sqlite3DB = sqlite3DB.Where("` + "`" + `id` + "`" + ` != ?", self.Id)
 	}
 
-	if attrs.Name != nil {
-		flag, err := mysqlDB.Where("` + "`" + `name` + "`" + ` = ?", attrs.Name).Count()
+	if self.Name != nil {
+		flag, err := sqlite3DB.Where("` + "`" + `name` + "`" + ` = ?", self.Name).Count()
 		if err != nil {
-			return goi.NewValidationError(http.StatusBadRequest, "查询数据库错误")
+			return errors.New("查询数据库错误")
 		}
 		if flag > 0 {
-			return goi.NewValidationError(http.StatusBadRequest, "名称重复")
+			return errors.New("名称重复")
 		}
 	}
 	return nil
 }
 
-func (serializer MyModelSerializer) Create(mysqlDB *db.MySQLDB, validated_data *MyModel) goi.ValidationError {
-	// 调用 serializer.Validate
-	validationErr := serializer.Validate(mysqlDB, *validated_data, false)
-	if validationErr != nil {
-		return validationErr
+func (self *MyModel) Create() error {
+	if self.Create_time == nil {
+		Create_time := goi.GetTime().Format(time.DateTime)
+		self.Create_time = &Create_time
 	}
 
-	mysqlDB.SetModel(*validated_data)
-	result, err := mysqlDB.Insert(*validated_data)
+	err := sqlite3.Validate(self, true)
 	if err != nil {
-		return goi.NewValidationError(http.StatusInternalServerError, "添加失败")
+		return err
+	}
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.SetModel(self)
+	result, err := sqlite3DB.Insert(self)
+	if err != nil {
+		return errors.New("添加失败")
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		return goi.NewValidationError(http.StatusInternalServerError, "添加失败")
+		return errors.New("添加失败")
 	}
-	validated_data.Id = &id
+	self.Id = &id
 	return nil
 }
 
-func (serializer MyModelSerializer) Update(mysqlDB *db.MySQLDB, instance *MyModel, validated_data *MyModel) goi.ValidationError {
-	var err error
+func (self *MyModel) Update(validated_data *MyModel) error {
+	Update_time := goi.GetTime().Format(time.DateTime)
+	validated_data.Update_time = &Update_time
 
-	// 设置当前实例
-	serializer.Instance = instance
-
-	// 调用 serializer.Validate
-	validationErr := serializer.Validate(mysqlDB, *validated_data, true)
-	if validationErr != nil {
-		return validationErr
-	}
-
-	mysqlDB.SetModel(*instance)
-
-	_, err = mysqlDB.Where("` + "`" + `id` + "`" + ` = ?", serializer.Instance.Id).Update(validated_data)
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.SetModel(self)
+	_, err := sqlite3DB.Where("` + "`" + `id` + "`" + ` = ?", self.Id).Update(validated_data)
 	if err != nil {
-		return goi.NewValidationError(http.StatusInternalServerError, "修改失败")
+		return errors.New("修改失败")
 	}
 
 	// 更新 instance
-	serializer.ModelSerializer.Update(instance, validated_data)
 	return nil
 }
 
@@ -243,8 +209,8 @@ func init() {
 	%sRouter := %s.Server.Router.Include("%s/", "父路由")
 	{
 		// 注册一个路径
-		%sRouter.UrlPatterns("", "获取列表/创建", goi.AsView{GET: listView, POST: createView})
-		%sRouter.UrlPatterns("<int:pk>", "详情/更新/删除", goi.AsView{GET: retrieveView, PUT: updateView, DELETE: deleteView})
+		%sRouter.Path("", "获取列表/创建", goi.ViewSet{GET: listView, POST: createView})
+		%sRouter.Path("<int:pk>", "详情/更新/删除", goi.ViewSet{GET: retrieveView, PUT: updateView, DELETE: deleteView})
 
 	}
 }
@@ -270,8 +236,8 @@ import (
 
 // 参数验证
 type listValidParams struct {
-	Page int            ` + "`" + `name:"page" required:"int"` + "`" + `
-	Page_Size int            ` + "`" + `name:"page_size" required:"int"` + "`" + `
+	Page int            ` + "`" + `name:"page" type:"int" required:"true"` + "`" + `
+	Page_Size int            ` + "`" + `name:"page_size" type:"int" required:"true"` + "`" + `
 }
 func listView(request *goi.Request) interface{} {
 	var params listValidParams
@@ -293,7 +259,7 @@ func listView(request *goi.Request) interface{} {
 
 // 参数验证
 type createValidParams struct {
-	Name string            ` + "`" + `name:"name" required:"string"` + "`" + `
+	Name string            ` + "`" + `name:"name" type:"string" required:"true"` + "`" + `
 }
 func createView(request *goi.Request) interface{} {
 	var params createValidParams
@@ -330,7 +296,7 @@ func retrieveView(request *goi.Request) interface{} {
 
 // 参数验证
 type updateValidParams struct {
-	Name *string            ` + "`" + `name:"name" optional:"string"` + "`" + `
+	Name *string            ` + "`" + `name:"name" type:"string"` + "`" + `
 }
 func updateView(request *goi.Request) interface{} {
 	var pk int64
