@@ -1,62 +1,81 @@
 package goi
 
 import (
+	"embed"
 	"net/http"
 	"os"
 )
 
-// 静态文件处理函数
-func metaStaticFileHandler(staticFile string, request *Request) interface{} {
-	var err error
-	file, err := os.Open(staticFile)
-	if err != nil {
-		if file != nil {
-			_ = file.Close()
+// 生成静态路由的通用 View
+// 单文件：返回文件对象，由上层统一写回
+//
+// 参数:
+//   - filePath string: 文件路径
+func StaticFileView(filePath string) HandlerFunc {
+	return func(request *Request) interface{} {
+		var err error
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			if file != nil {
+				_ = file.Close()
+			}
+			return Response{
+				Status: http.StatusNotFound,
+				Data:   "",
+			}
 		}
-		return Response{
-			Status: http.StatusNotFound,
-			Data:   "",
-		}
+		return file
 	}
-	return file
+
 }
 
-// 静态目录映射处理函数
-func metaStaticDirHandler(staticDir http.Dir, request *Request) interface{} {
-	var fileName string
-	var validationErr ValidationError
-	var err error
-	validationErr = request.PathParams.Get("fileName", &fileName)
-	if validationErr != nil {
-		return validationErr.Response()
+// 目录：根据路由参数 fileName 返回目标文件
+//
+// 参数:
+//   - dirPath http.Dir: 目录路径
+func StaticDirView(dirPath http.Dir) HandlerFunc {
+	if dirPath == "" {
+		dirPath = "."
 	}
-	file, err := staticDir.Open(fileName)
-	if err != nil {
-		if file != nil {
-			_ = file.Close()
+	return func(request *Request) interface{} {
+		var fileName string
+		var validationErr ValidationError
+		var err error
+		validationErr = request.PathParams.Get("fileName", &fileName)
+		if validationErr != nil {
+			return validationErr.Response()
 		}
-		return Response{
-			Status: http.StatusNotFound,
-			Data:   "",
+		file, err := dirPath.Open(fileName)
+		if err != nil {
+			if file != nil {
+				_ = file.Close()
+			}
+			return Response{
+				Status: http.StatusNotFound,
+				Data:   "",
+			}
 		}
+		return file
 	}
-	return file
 }
 
-// 返回响应文件内容
-func metaResponseStatic(file os.File, request *Request, response http.ResponseWriter) {
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if os.IsNotExist(err) {
-		response.WriteHeader(http.StatusNotFound)
-	} else if err != nil {
-		response.WriteHeader(http.StatusInternalServerError)
+// embed.FS 单文件：直接返回 FS，由上层 FileServer 处理
+//
+// 参数:
+//   - fileFS embed.FS: 嵌入文件系统
+func StaticFileFSView(fileFS embed.FS) HandlerFunc {
+	return func(request *Request) interface{} {
+		return fileFS
 	}
-	if fileInfo.IsDir() {
-		response.WriteHeader(http.StatusNotFound)
-	} else {
-		response.WriteHeader(http.StatusOK)
-		http.ServeContent(response, request.Object, fileInfo.Name(), GetTime(), &file)
+}
+
+// embed.FS 目录：直接返回 FS，由上层 FileServer 处理
+//
+// 参数:
+//   - dirFS embed.FS: 嵌入文件系统
+func StaticDirFSView(dirFS embed.FS) HandlerFunc {
+	return func(request *Request) interface{} {
+		return dirFS
 	}
 }
