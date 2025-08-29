@@ -92,24 +92,25 @@ func (engine *Engine) RunServer() {
 	startMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.start",
 	})
-	engine.Log.Log(meta, startMsg)
+	engine.Log.Log(meta, startMsg, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
+
 	startTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.start_time",
 		TemplateData: map[string]interface{}{
-			"start_time": engine.startTime.Format("2006-01-02 15:04:05"),
+			"start_time": engine.startTime.Format(time.DateTime),
 		},
 	})
 	engine.Log.Log(meta, startTimeMsg)
 
-	goiVersionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.goi_version",
-		TemplateData: map[string]interface{}{
-			"version": version,
-		},
-	})
-	engine.Log.Log(meta, goiVersionMsg)
-
-	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
+	if engine.Log.DEBUG == true {
+		goiVersionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.goi_version",
+			TemplateData: map[string]interface{}{
+				"version": version,
+			},
+		})
+		engine.Log.Log(meta, goiVersionMsg)
+	}
 
 	if engine.Settings.GetTimeZone() != "" {
 		currentTimeZoneMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -293,7 +294,7 @@ func (engine *Engine) StopServer() error {
 	stopTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 		MessageID: "server.stop_time",
 		TemplateData: map[string]interface{}{
-			"stop_time": GetTime().Format("2006-01-02 15:04:05"),
+			"stop_time": GetTime().Format(time.DateTime),
 		},
 	})
 	engine.Log.Log(meta, stopTimeMsg)
