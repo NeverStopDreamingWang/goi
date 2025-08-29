@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/model"
 )
 
@@ -23,17 +24,7 @@ type MySQLSettings struct {
 	PARTITION_BY    string // 定义分区方式，如 RANGE、HASH、LIST
 	COMMENT         string // 设置表注释
 	// 自定义配置
-	Settings model.Settings
-}
-
-// 设置自定义配置
-func (mysqlmodelsettings *MySQLSettings) Set(name string, value interface{}) {
-	mysqlmodelsettings.Settings[name] = value
-}
-
-// 获取自定义配置
-func (mysqlmodelsettings MySQLSettings) Get(name string) interface{} {
-	return mysqlmodelsettings.Settings[name]
+	Settings goi.Params
 }
 
 // 模型类
