@@ -3,38 +3,34 @@ package goi
 import (
 	"fmt"
 	"net/http"
-	"runtime"
-	"strings"
+	"runtime/debug"
+	"time"
 )
 
-func trace(message string) string {
-	var pcs [32]uintptr
-	n := runtime.Callers(3, pcs[:]) // skip first 3 caller
-
-	var str strings.Builder
-	str.WriteString(message + "\nTraceback: ")
-	for _, pc := range pcs[:n] {
-		fn := runtime.FuncForPC(pc)
-		file, line := fn.FileLine(pc)
-		str.WriteString(fmt.Sprintf("\n\t%s:%d", file, line))
+func (engine *Engine) recovery(request *Request, responseWriter *ResponseWriter, elapsed time.Duration) {
+	err := recover()
+	if err != nil {
+		// 如果没有写入响应，则写入 500 错误
+		if responseWriter.Status == 0 && responseWriter.Bytes == 0 {
+			responseWriter.WriteHeader(http.StatusInternalServerError)
+			_, _ = responseWriter.Write([]byte("Internal Server Error"))
+		}
+		engine.Log.Error(fmt.Sprintf("%v", err))
+		engine.Log.Error(string(debug.Stack()))
 	}
-	return str.String()
-}
 
-func metaRecovery(request *Request, response http.ResponseWriter) {
-	if err := recover(); err != nil {
-		message := fmt.Sprintf("%v", err)
-		response.WriteHeader(http.StatusInternalServerError)
-		write, _ := response.Write([]byte("Internal Server Error"))
-		log := fmt.Sprintf("- %v - %v %v %v byte status %v %v \nerr: %v",
-			request.Object.Host,
-			request.Object.Method,
-			request.Object.URL.Path,
-			write,
-			request.Object.Proto,
-			http.StatusInternalServerError,
-			trace(message),
-		)
-		Log.Error(log)
-	}
+	// 格式化时间单位（统一为毫秒，保留2位小数）
+	timeMs := float64(elapsed) / float64(time.Millisecond)
+
+	log := fmt.Sprintf("- %v - %v %v => generated %d bytes in %.2f msecs (%s %d) %d headers",
+		request.Object.Host,
+		request.Object.Method,
+		request.Object.URL.Path,
+		responseWriter.Bytes,
+		timeMs,
+		request.Object.Proto,
+		responseWriter.Status,
+		len(responseWriter.Header()),
+	)
+	engine.Log.Info(log)
 }

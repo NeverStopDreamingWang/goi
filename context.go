@@ -2,9 +2,16 @@ package goi
 
 import (
 	"context"
+	"embed"
+	"encoding/json"
+	"errors"
 	"net/http"
+	"os"
+	"strconv"
 
+	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/NeverStopDreamingWang/goi/parse"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 const ContentType = "Content-Type"
@@ -14,11 +21,22 @@ const ContentType = "Content-Type"
 // 参数:
 //   - Object *http.Request: 原始HTTP请求对象，包含完整的HTTP请求信息
 //   - PathParams Params: 路由参数，存储URL路径中的动态参数值
+//   - Params Params: 自定义参数，可在整个请求处理过程中传递和共享数据
 //
 // 用于在处理请求时提供统一的访问接口
 type Request struct {
-	Object     *http.Request // 原始HTTP请求对象
-	PathParams Params        // 路由参数
+	Object     *http.Request
+	PathParams Params
+	Params     Params
+}
+
+// WithContext 更新请求对象中的上下文信息
+//
+// 参数:
+//   - ctx context.Context: 新的上下文对象
+func (request *Request) WithContext(ctx context.Context) {
+	// 创建一个新的 http.Request 并用新的上下文更新它
+	request.Object = request.Object.WithContext(ctx)
 }
 
 // QueryParams 解析并返回URL查询字符串参数
@@ -84,16 +102,7 @@ func (request *Request) BodyParamsParsing(parsing parse.Parsing) Params {
 	return Params(params)
 }
 
-// WithContext 更新请求对象中的上下文信息
-//
-// 参数:
-//   - ctx context.Context: 新的上下文对象
-func (request *Request) WithContext(ctx context.Context) {
-	// 创建一个新的 http.Request 并用新的上下文更新它
-	request.Object = request.Object.WithContext(ctx)
-}
-
-// customResponseWriter 自定义响应写入器
+// ResponseWriter 自定义响应写入器
 //
 // 字段:
 //   - ResponseWriter http.ResponseWriter: 标准响应写入器
@@ -101,9 +110,9 @@ func (request *Request) WithContext(ctx context.Context) {
 //   - Bytes int64: 已写入的字节数
 //
 // 用于请求日志记录和响应监控
-type customResponseWriter struct {
+type ResponseWriter struct {
 	http.ResponseWriter       // 内嵌http.ResponseWriter接口
-	StatusCode          int   // 响应状态码
+	Status              int   // 响应状态码
 	Bytes               int64 // 已写入的字节数
 }
 
@@ -111,9 +120,9 @@ type customResponseWriter struct {
 //
 // 参数:
 //   - code int: HTTP状态码
-func (w *customResponseWriter) WriteHeader(code int) {
-	w.StatusCode = code
-	w.ResponseWriter.WriteHeader(code)
+func (responseWriter *ResponseWriter) WriteHeader(code int) {
+	responseWriter.Status = code
+	responseWriter.ResponseWriter.WriteHeader(code)
 }
 
 // Write 写入响应数据
@@ -124,9 +133,14 @@ func (w *customResponseWriter) WriteHeader(code int) {
 // 返回:
 //   - int: 已写入的字节数
 //   - error: 写入过程中的错误信息
-func (w *customResponseWriter) Write(b []byte) (int, error) {
-	bytesWritten, err := w.ResponseWriter.Write(b)
-	w.Bytes += int64(bytesWritten)
+func (responseWriter *ResponseWriter) Write(b []byte) (int, error) {
+	// 若未显式写入状态码，则按约定补写 200
+	if responseWriter.Status == 0 {
+		responseWriter.WriteHeader(http.StatusOK)
+	}
+	// 调用嵌入的http.ResponseWriter的Write方法
+	bytesWritten, err := responseWriter.ResponseWriter.Write(b)
+	responseWriter.Bytes += int64(bytesWritten)
 	return bytesWritten, err
 }
 
@@ -138,6 +152,80 @@ func (w *customResponseWriter) Write(b []byte) (int, error) {
 //
 // 示例: {Status: 200, Data: {"message": "success"}}
 type Response struct {
-	Status int         // HTTP状态码
-	Data   interface{} // 响应数据
+	Status  int         // HTTP状态码
+	Data    interface{} // 响应数据
+	headers http.Header
+}
+
+func (response *Response) Header() http.Header {
+	if response.headers == nil {
+		response.headers = make(http.Header)
+	}
+	return response.headers
+}
+
+func (response *Response) write(request *Request, responseWriter http.ResponseWriter) (int, error) {
+	var err error
+	var dataByte []byte
+	var contentType string
+	switch value := response.Data.(type) {
+	case string:
+		dataByte = []byte(value)
+		contentType = "text/plain"
+	case []byte:
+		dataByte = value
+		contentType = "application/octet-stream"
+	case *os.File:
+		defer value.Close()
+		fileInfo, err := value.Stat()
+		if err != nil || fileInfo.IsDir() {
+			http.NotFound(responseWriter, request.Object)
+			return 0, nil
+		}
+		http.ServeContent(responseWriter, request.Object, fileInfo.Name(), fileInfo.ModTime(), value)
+		return 0, nil
+	case http.File:
+		defer value.Close()
+		fileInfo, err := value.Stat()
+		if err != nil || fileInfo.IsDir() {
+			http.NotFound(responseWriter, request.Object)
+			return 0, nil
+		}
+		http.ServeContent(responseWriter, request.Object, fileInfo.Name(), fileInfo.ModTime(), value)
+		return 0, nil
+	case embed.FS:
+		staticServer := http.FileServer(http.FS(value))
+		staticServer.ServeHTTP(responseWriter, request.Object)
+		return 0, nil
+	default:
+		dataByte, err = json.Marshal(value)
+		contentType = "application/json"
+	}
+	// 返回响应
+	if err != nil {
+		responseJsonErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "server.response_error",
+			TemplateData: map[string]interface{}{
+				"err": err,
+			},
+		})
+		return 0, errors.New(responseJsonErrorMsg)
+	}
+
+	// 若未显式设置 Content-Length，则为非流式响应补上
+	if response.Header().Get("Content-Length") == "" {
+		response.Header().Set("Content-Length", strconv.Itoa(len(dataByte)))
+	}
+	if response.Header().Get("Content-Type") == "" {
+		response.Header().Set("Content-Type", contentType)
+	}
+	for key, value := range response.Header() {
+		for _, v := range value {
+			responseWriter.Header().Add(key, v)
+		}
+	}
+
+	// 返回响应
+	responseWriter.WriteHeader(response.Status)
+	return responseWriter.Write(dataByte)
 }
