@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"example/user"
+
 	"github.com/NeverStopDreamingWang/goi"
 )
 
@@ -86,16 +88,17 @@ func TestPathParams(request *goi.Request) interface{} {
 
 // 参数验证
 type testParamsValidParams struct {
-	Username string            `name:"username" required:"string"`
-	Password string            `name:"password" required:"string"`
-	Age      string            `name:"age" required:"int"`
-	Phone    string            `name:"phone" required:"phone"`
-	Args     []string          `name:"args" optional:"slice"`
-	Kwargs   map[string]string `name:"kwargs" optional:"map"`
+	Username string            `name:"username" type:"string" required:"true"`
+	Password string            `name:"password" type:"string" required:"true"`
+	Age      string            `name:"age" type:"int" required:"true"`
+	Phone    string            `name:"phone" type:"phone" required:"true"`
+	Args     []string          `name:"args" type:"slice"`
+	Kwargs   map[string]string `name:"kwargs" type:"map"`
 }
 
-// required 必传参数
-// optional 可选
+// type:"name" 字段类型, name 验证器名称
+// required:"bool" 字段是否必填，bool 布尔值 false 默认可选，true 必传参数
+// allow_null:"bool" 字段值是否允许为空，bool 布尔值 false 默认不允许，true 允许为空。当 required != true 并且 allow_null 未设置时，参数值可以为 null
 // 支持
 // int *int []*int []... map[string]*int map[...]...
 // ...
@@ -196,6 +199,11 @@ func TestContext(request *goi.Request) interface{} {
 	requestID := request.Object.Context().Value("requestID")
 
 	fmt.Println("requestID", requestID)
+
+	// 请求参数
+	userInfo := user.UserModel{}
+	request.Params.Get("user", &userInfo)
+	fmt.Println("user", userInfo)
 
 	// fmt.Println("PathParams", request.PathParams)
 	var name string

@@ -2,27 +2,27 @@ package middleware
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
 
 	"example/example"
+	"example/user"
+	"example/utils"
+
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/jwt"
 )
 
 func init() {
-	// 注册中间件
-	// 注册请求中间件
-	example.Server.MiddleWares.BeforeRequest(RequestMiddleWare)
-	// 注册视图中间件
-	example.Server.MiddleWares.BeforeView(ViewMiddleWare)
-	// 注册响应中间件
-	example.Server.MiddleWares.BeforeResponse(ResponseMiddleWare)
+	example.Server.MiddleWare = append(example.Server.MiddleWare, &MyMiddleWare{})
 }
 
-// 请求中间件
-func RequestMiddleWare(request *goi.Request) interface{} {
+type MyMiddleWare struct{}
+
+func (MyMiddleWare) ProcessRequest(request *goi.Request) interface{} {
 	// fmt.Println("请求中间件", request.Object.URL)
 
 	var apiList = []string{
@@ -38,7 +38,7 @@ func RequestMiddleWare(request *goi.Request) interface{} {
 
 	token := request.Object.Header.Get("Authorization")
 
-	payloads := &example.Payloads{}
+	payloads := &utils.Payloads{}
 	err := jwt.CkeckToken(token, goi.Settings.SECRET_KEY, payloads)
 	if errors.Is(err, jwt.ErrDecode) { // token 解码错误
 		return goi.Data{
@@ -53,20 +53,37 @@ func RequestMiddleWare(request *goi.Request) interface{} {
 			Results: err,
 		}
 	}
+	// 写入请求上下文
 	ctx := context.WithValue(request.Object.Context(), "user_id", payloads.User_id)
 	request.WithContext(ctx)
 
+	sqlite3DB := db.SQLite3Connect("default")
+
+	userInfo := user.UserModel{}
+	sqlite3DB.SetModel(user.UserModel{})
+	err = sqlite3DB.Where("`id` = ?", payloads.User_id).First(&userInfo)
+	if errors.Is(err, sql.ErrNoRows) {
+		return goi.Data{
+			Code:    http.StatusBadRequest,
+			Message: "用户不存在",
+			Results: nil,
+		}
+	} else if err != nil {
+		return goi.Data{
+			Code:    http.StatusInternalServerError,
+			Message: "查询数据库错误",
+			Results: err.Error(),
+		}
+	}
+
+	// 写入请求参数
+	request.Params.Set("user", userInfo)
 	return nil
 }
 
-// 视图中间件
-func ViewMiddleWare(request *goi.Request) interface{} {
-	// fmt.Println("视图中间件", request.Object.URL)
-	return nil
-}
+func (MyMiddleWare) ProcessView(*goi.Request) interface{} { return nil }
 
-// 响应中间件
-func ResponseMiddleWare(request *goi.Request, viewResponse interface{}) interface{} {
-	// fmt.Println("响应中间件", request.Object.URL)
-	return nil
+func (MyMiddleWare) ProcessException(*goi.Request, any) interface{} { return nil }
+
+func (MyMiddleWare) ProcessResponse(request *goi.Request, response *goi.Response) {
 }

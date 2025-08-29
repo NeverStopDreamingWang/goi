@@ -9,7 +9,7 @@ import (
 
 func init() {
 	// sqlite 数据库
-	sqlite3DB := db.SQLite3Connect("sqlite")
+	sqlite3DB := db.SQLite3Connect("default")
 	sqlite3DB.Migrate("test_goi", UserModel{})
 }
 
@@ -18,13 +18,13 @@ func init() {
 type UserModel struct {
 	Id          *int64  `field_name:"id" field_type:"INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" json:"id"`
 	Username    *string `field_name:"username" field_type:"TEXT NOT NULL" json:"username"`
-	Password    *string `field_name:"password" field_type:"TEXT NOT NULL" json:"password"`
+	Password    *string `field_name:"password" field_type:"TEXT NOT NULL" json:"-"`
 	Create_time *string `field_name:"create_time" field_type:"TEXT NOT NULL" json:"create_time"`
 	Update_time *string `field_name:"update_time" field_type:"TEXT" json:"update_time"`
 }
 
 // 设置表配置
-func (userSqliteModel UserModel) ModelSet() *sqlite3.SQLite3Settings {
+func (self UserModel) ModelSet() *sqlite3.SQLite3Settings {
 	encryptFields := []string{
 		"username",
 		"password",
@@ -39,34 +39,47 @@ func (userSqliteModel UserModel) ModelSet() *sqlite3.SQLite3Settings {
 		TABLE_NAME: "user_tb", // 设置表名
 
 		// 自定义配置
-		Settings: model.Settings{
+		Settings: goi.Params{
 			"encrypt_fields": encryptFields,
 		},
 	}
 	return modelSettings
 }
 
+var initUserList = [][]any{
+	{"张三", "123"},
+	{"李四", "456"},
+}
+
 // 初始化数据
 func InitUserData() error {
-	sqlite3DB := db.SQLite3Connect("sqlite")
+	var err error
 
-	userData := [][]string{
-		{"张三", "123"},
-		{"李四", "456"},
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.SetModel(UserModel{})
+	total, err := sqlite3DB.Count()
+	if err != nil {
+		return err
+	}
+	if total > 0 {
+		return nil
 	}
 
-	for i, item := range userData {
-		id := int64(i + 1)
-		create_time := goi.GetTime().Format("2006-01-02 15:04:05")
+	for _, item := range initUserList {
+		var (
+			username = item[0].(string)
+			password = item[1].(string)
+		)
 
 		user := &UserModel{
-			Id:          &id,
-			Username:    &item[0],
-			Password:    &item[1],
-			Create_time: &create_time,
+			Username: &username,
+			Password: &password,
 		}
-		sqlite3DB.SetModel(UserModel{})
-		_, err := sqlite3DB.Insert(user)
+		err = user.Validate()
+		if err != nil {
+			return err
+		}
+		err = user.Create()
 		if err != nil {
 			return err
 		}

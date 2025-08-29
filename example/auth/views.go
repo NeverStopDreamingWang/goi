@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"example/user"
+
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/auth"
 	"github.com/NeverStopDreamingWang/goi/db"
@@ -14,8 +15,8 @@ import (
 )
 
 type loginParams struct {
-	Username *string `name:"username" optional:"string"`
-	Password string  `name:"password" required:"string"`
+	Username *string `name:"username" type:"string"`
+	Password string  `name:"password" type:"string" required:"true"`
 }
 
 func loginView(request *goi.Request) interface{} {

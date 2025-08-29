@@ -9,9 +9,9 @@ import (
 
 // 参数验证
 type testCacheSetParams struct {
-	Key   string `name:"key" required:"string"`
-	Value string `name:"value" required:"string"`
-	Exp   int    `name:"exp" required:"int"`
+	Key   string `name:"key" type:"string" required:"true"`
+	Value string `name:"value" type:"string" required:"true"`
+	Exp   int    `name:"exp" type:"int" required:"true"`
 }
 
 // 设置一条数据到缓存
@@ -54,7 +54,7 @@ func TestCacheSet(request *goi.Request) interface{} {
 
 // 参数验证
 type cacheKeyParams struct {
-	Key string `name:"key" required:"string"`
+	Key string `name:"key" type:"string" required:"true"`
 }
 
 // 通过 key 获取缓存

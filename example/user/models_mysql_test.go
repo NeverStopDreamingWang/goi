@@ -1,8 +1,6 @@
 package user_test
 
 import (
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/auth"
 	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/model"
 	"github.com/NeverStopDreamingWang/goi/model/mysql"
@@ -60,36 +58,24 @@ func (userModel UserModel) ModelSet() *mysql.MySQLSettings {
 	return modelSettings
 }
 
-var InitUserList = [][]any{
-	{int64(1), "admin", "admin"},
+var initUserList = [][]any{
+	{"admin", "admin"},
 }
 
 // 初始化数据
 func InitUser() error {
+	var err error
+
 	mysqlDB := db.MySQLConnect("default")
-	for _, item := range InitUserList {
-		var (
-			Id              = item[0].(int64)
-			Username        = item[1].(string)
-			Password        = item[2].(string)
-			Create_Time     = goi.GetTime().Format("2006-01-02 15:04:05")
-			encryptPassword string
-		)
-		encryptPassword, err := auth.MakePassword(Password)
-		if err != nil {
-			return err
-		}
-		user := &UserModel{
-			Id:          &Id,
-			Username:    &Username,
-			Password:    &encryptPassword,
-			Create_time: &Create_Time,
-		}
-		mysqlDB.SetModel(UserModel{})
-		_, err = mysqlDB.Insert(user)
-		if err != nil {
-			return err
-		}
+	mysqlDB.SetModel(UserModel{})
+	total, err := mysqlDB.Count()
+	if err != nil {
+		return err
 	}
+	if total > 0 {
+		return nil
+	}
+
+	// 初始化数据
 	return nil
 }
