@@ -23,7 +23,7 @@ func init() {
 	// 插入初始测试数据
 	username := "test_user"
 	password := "test123456"
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := time.Now().Format(time.DateTime)
 
 	user := UserModel{
 		Username:    &username,
@@ -72,10 +72,10 @@ func (userModel UserModel) ModelSet() *mysql.MySQLSettings {
 		DATA_DIRECTORY:  "",                   // 设置数据存储目录
 		INDEX_DIRECTORY: "",                   // 设置数据存储目录
 		PARTITION_BY:    "",                   // 定义分区方式，如 RANGE、HASH、LIST
-		COMMENT:         "用户表",                // 设置表注释
+		COMMENT:         "用户表",             // 设置表注释
 
 		// 自定义配置
-		Settings: model.Settings{
+		Settings: goi.Params{
 			"encrypt_fields": encryptFields,
 		},
 	}
@@ -91,7 +91,7 @@ func InitUser() error {
 		id              int64  = 1
 		username        string = "超级管理员"
 		password        string = "admin"
-		create_Datetime        = goi.GetTime().Format("2006-01-02 15:04:05")
+		create_Datetime        = goi.GetTime().Format(time.DateTime)
 		err             error
 	)
 
@@ -127,7 +127,7 @@ func ExampleMySQLDB_Insert() {
 	// 准备测试数据
 	username := "test_user"
 	password := "test123456"
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := time.Now().Format(time.DateTime)
 
 	user := UserModel{
 		Username:    &username,
@@ -419,7 +419,7 @@ func ExampleMySQLDB_WithTransaction() {
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"
 		password := "test123456"
-		now := time.Now().Format("2006-01-02 15:04:05")
+		now := time.Now().Format(time.DateTime)
 
 		// 插入第一个用户
 		user1 := UserModel{

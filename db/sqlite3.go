@@ -304,7 +304,6 @@ func (sqlite3DB *SQLite3DB) isSetModel() {
 //   - 解析模型的字段信息用于后续操作
 func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 	sqlite3DB.model = model
-	ModelType := reflect.TypeOf(sqlite3DB.model)
 	// 获取字段
 	sqlite3DB.fields = nil
 	sqlite3DB.field_sql = nil
@@ -315,6 +314,10 @@ func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 	sqlite3DB.sql = ""
 	sqlite3DB.args = nil
 
+	ModelType := reflect.TypeOf(sqlite3DB.model)
+	if ModelType.Kind() == reflect.Ptr {
+		ModelType = ModelType.Elem()
+	}
 	for i := 0; i < ModelType.NumField(); i++ {
 		field := ModelType.Field(i)
 
@@ -348,6 +351,9 @@ func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 //   - 如果字段不存在则会panic
 func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 	ModelType := reflect.TypeOf(sqlite3DB.model)
+	if ModelType.Kind() == reflect.Ptr {
+		ModelType = ModelType.Elem()
+	}
 	// 获取字段
 	sqlite3DB.fields = nil
 	sqlite3DB.field_sql = nil
@@ -684,7 +690,9 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 			}
 		} else {
 			ModelType := reflect.TypeOf(sqlite3DB.model)
-
+			if ModelType.Kind() == reflect.Ptr {
+				ModelType = ModelType.Elem()
+			}
 			for i, fieldName := range sqlite3DB.fields {
 				field, _ := ModelType.FieldByName(fieldName)
 				val := reflect.New(field.Type) // 获取模型字段类型
@@ -790,7 +798,9 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		}
 	} else {
 		ModelType := reflect.TypeOf(sqlite3DB.model)
-
+		if ModelType.Kind() == reflect.Ptr {
+			ModelType = ModelType.Elem()
+		}
 		for i, fieldName := range sqlite3DB.fields {
 			field, _ := ModelType.FieldByName(fieldName)
 			val := reflect.New(field.Type) // 获取模型字段类型
