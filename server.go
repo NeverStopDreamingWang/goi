@@ -3,14 +3,11 @@ package goi
 import (
 	"context"
 	"crypto/tls"
-	"embed"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
 	"sync"
 	"syscall"
 	"time"
@@ -20,7 +17,6 @@ import (
 )
 
 // Http 服务
-var version = "v1.4.4"
 var Settings *metaSettings
 var Cache *metaCache
 var Log *metaLog
@@ -37,17 +33,12 @@ type ShutdownCallback struct {
 	handler ShutdownHandler
 }
 
-// 版本
-func Version() string {
-	return version
-}
-
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
 	startTime               *time.Time         // 启动时间
 	server                  http.Server        // net/http 服务
 	Router                  *MetaRouter        // 路由
-	MiddleWares             *metaMiddleWares   // 中间件
+	MiddleWare              []MiddleWare       // 中间件
 	Settings                *metaSettings      // 设置
 	Cache                   *metaCache         // 缓存
 	Log                     *metaLog           // 日志
@@ -66,17 +57,17 @@ func NewHttpServer() *Engine {
 	Validator = newValidator()
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Engine{
-		startTime:   nil,
-		server:      http.Server{},
-		Router:      newRouter(),
-		MiddleWares: newMiddleWares(),
-		Settings:    Settings,
-		Cache:       Cache,
-		Log:         Log,
-		Validator:   Validator,
-		ctx:         ctx,
-		cancel:      cancel,
-		waitGroup:   &sync.WaitGroup{},
+		startTime:  nil,
+		server:     http.Server{},
+		Router:     newRouter(),
+		MiddleWare: make([]MiddleWare, 0),
+		Settings:   Settings,
+		Cache:      Cache,
+		Log:        Log,
+		Validator:  Validator,
+		ctx:        ctx,
+		cancel:     cancel,
+		waitGroup:  &sync.WaitGroup{},
 	}
 }
 
@@ -369,189 +360,72 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.WithValue(r.Context(), "requestID", requestID)
 	r = r.WithContext(ctx)
 
-	var log string
-	var err error
 	// 初始化请求
 	request := &Request{
 		Object:     r,
 		PathParams: make(Params),
+		Params:     make(Params),
 	}
-	// 创建自定义响应写入器
-	response := &customResponseWriter{
-		ResponseWriter: w,
-	}
+	responseWriter := &ResponseWriter{ResponseWriter: w}
 
-	defer metaRecovery(request, response) // 异常处理
+	defer engine.recovery(request, responseWriter, GetTime().Sub(requestID))
 
-	// 处理 HTTP 请求
-	StatusCode := http.StatusOK
-	var ResponseData []byte
-
-	responseData := engine.HandlerHTTP(request, response)
-
-	defer func() {
-		log = fmt.Sprintf("- %v - %v %v => generated %v byte status (%v %v)",
-			request.Object.Host,
-			request.Object.Method,
-			request.Object.URL.Path,
-			response.Bytes,
-			request.Object.Proto,
-			response.StatusCode,
-		)
-		engine.Log.Info(log)
-	}()
-
-	// 判断 responseData 是否为指针类型，如果是，则解引用获取指向的值
-	responseDataValue := reflect.ValueOf(responseData)
-	if responseDataValue.Kind() == reflect.Ptr {
-		responseData = responseDataValue.Elem().Interface()
-	}
-
-	// 文件处理
-	fileObject, isFile := responseData.(os.File)
-	if isFile {
-		// 返回文件内容
-		metaResponseStatic(fileObject, request, response)
-		return
-	}
-
-	// 文件系统处理
-	fs, isFileFS := responseData.(embed.FS)
-	if isFileFS {
-		staticServer := http.FileServer(http.FS(fs))
-		staticServer.ServeHTTP(response, request.Object)
-		return
-	}
-
-	// 响应处理
-	responseObject, isResponse := responseData.(Response)
-	if isResponse {
-		StatusCode = responseObject.Status
-		responseData = responseObject.Data
-	}
-
-	switch value := responseData.(type) {
-	case string:
-		ResponseData = []byte(value)
-	case []byte:
-		ResponseData = value
-	default:
-		ResponseData, err = json.Marshal(value)
-	}
-	// 返回响应
+	// 处理请求：构建洋葱链后获取响应
+	middlewareChain := engine.loadMiddleware(engine.getResponse)
+	response := middlewareChain(request)
+	_, err := response.write(request, responseWriter)
 	if err != nil {
-		responseJsonErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.response_json_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
-		})
-		panic(responseJsonErrorMsg)
-	}
-	// 返回响应
-	response.WriteHeader(StatusCode)
-	_, err = response.Write(ResponseData)
-	if err != nil {
-		responseErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.response_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
-		})
-		panic(responseErrorMsg)
+		panic(err)
 	}
 }
 
-// 处理 HTTP 请求
-func (engine *Engine) HandlerHTTP(request *Request, response http.ResponseWriter) (result interface{}) {
-	viewSet, isPattern := engine.Router.routeResolution(request.Object.URL.Path, request.PathParams)
-	if isPattern == false {
-		urlNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.url_not_allowed",
-			TemplateData: map[string]interface{}{
-				"path": request.Object.URL.Path,
-			},
-		})
-		return Response{
-			Status: http.StatusNotFound,
-			Data:   urlNotAllowedMsg,
+// getResponseFunc 定义“获取响应”的函数类型。
+// 我们用该类型来承载“被中间件层层包装后的最终处理器”。
+type getResponseFunc func(*Request) Response
+
+// getResponse 为最内层处理器：只负责路由解析、获取视图、执行视图并封装为 Response。
+func (engine *Engine) getResponse(request *Request) (response Response) {
+	defer func() {
+		// 异常捕获
+		err := recover()
+		if err != nil {
+			result := engine.processExceptionByMiddleware(request, err)
+			if result == nil {
+				panic(err)
+			}
+			response = toResponse(result)
+			return
 		}
-	}
-	var handlerFunc HandlerFunc
-	switch request.Object.Method {
-	case "GET":
-		handlerFunc = viewSet.GET
-	case "HEAD":
-		handlerFunc = viewSet.HEAD
-	case "POST":
-		handlerFunc = viewSet.POST
-	case "PUT":
-		handlerFunc = viewSet.PUT
-	case "PATCH":
-		handlerFunc = viewSet.PATCH
-	case "DELETE":
-		handlerFunc = viewSet.DELETE
-	case "CONNECT":
-		handlerFunc = viewSet.CONNECT
-	case "OPTIONS":
-		handlerFunc = viewSet.OPTIONS
-	case "TRACE":
-		handlerFunc = viewSet.TRACE
-	default:
-		methodNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.method_not_allowed",
-			TemplateData: map[string]interface{}{
-				"method": request.Object.Method,
-			},
-		})
-		return Response{
-			Status: http.StatusNotFound,
-			Data:   methodNotAllowedMsg,
-		}
+	}()
+
+	// 路由解析
+	viewSet, err := engine.Router.resolveRequest(request)
+	if err != nil {
+		return Response{Status: http.StatusNotFound, Data: err.Error()}
 	}
 
-	if viewSet.file != "" {
-		return metaStaticFileHandler(viewSet.file, request)
-	} else if viewSet.dir != "" {
-		return metaStaticDirHandler(viewSet.dir, request)
-	} else if viewSet.fileFS != nil {
-		return *viewSet.fileFS
-	} else if viewSet.dirFS != nil {
-		return *viewSet.dirFS
-	}
-
-	if handlerFunc == nil {
-		methodNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.method_not_allowed",
-			TemplateData: map[string]interface{}{
-				"method": request.Object.Method,
-			},
-		})
-		return Response{
-			Status: http.StatusNotFound,
-			Data:   methodNotAllowedMsg,
-		}
-	}
-
-	// 处理请求前的中间件
-	result = engine.MiddleWares.processRequest(request)
-	if result != nil {
-		return result
-	}
-
-	// 视图前的中间件
-	result = engine.MiddleWares.processView(request)
-	if result != nil {
-		return result
+	// 获取视图处理函数
+	handlerFunc, err := viewSet.GetHandlerFunc(request.Object.Method)
+	if handlerFunc == nil || err != nil {
+		return Response{Status: http.StatusMethodNotAllowed, Data: err.Error()}
 	}
 
 	// 视图处理
-	viewResponse := handlerFunc(request)
+	content := handlerFunc(request)
+	return toResponse(content)
+}
 
-	// 返回响应前的中间件
-	result = engine.MiddleWares.processResponse(request, viewResponse)
-	if result != nil {
-		return result
+// 统一把结果转换为 Response
+func toResponse(content interface{}) Response {
+	switch value := content.(type) {
+	case Response:
+		return value
+	case *Response:
+		if value == nil {
+			return Response{Status: http.StatusOK, Data: nil}
+		}
+		return *value
+	default:
+		return Response{Status: http.StatusOK, Data: value}
 	}
-	return viewResponse
 }

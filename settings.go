@@ -1,9 +1,7 @@
 package goi
 
 import (
-	"errors"
-	"fmt"
-	"reflect"
+	"os"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi/internal/language"
@@ -37,9 +35,6 @@ type metaSettings struct {
 	PUBLIC_KEY   string               // 项目 RSA 公钥
 	SSL          MetaSSL              // SSL
 	DATABASES    map[string]*DataBase // 数据库配置
-	time_zone    string               // 地区时区默认为空，本地时区
-	location     *time.Location       // 地区时区
-	language     Language             // 项目语言
 
 	// TIMEZONE
 	USE_TZ    bool           // USE_TZ=true: 返回 GetLocation() 时区的时间 “有感知时区”；USE_TZ=false: 返回 GetLocation() 时区的时间，但时区标注为 UTC “无感知时区”，避免任何时区换算，直存直取
@@ -47,8 +42,26 @@ type metaSettings struct {
 	location  *time.Location // 地区时区
 	language  Language       // 项目语言
 
+	// COMMON MIDDLEWARE
+	PREPEND_WWW            bool
+	DISALLOWED_USER_AGENTS []string // 正则字符串
+
+	// SECURITY MIDDLEWARE
+	SECURE_CONTENT_TYPE_NOSNIFF       bool
+	SECURE_CROSS_ORIGIN_OPENER_POLICY string
+	SECURE_HSTS_INCLUDE_SUBDOMAINS    bool
+	SECURE_HSTS_PRELOAD               bool
+	SECURE_HSTS_SECONDS               int
+	SECURE_REDIRECT_EXEMPT            []string
+	SECURE_REFERRER_POLICY            []string
+	SECURE_SSL_HOST                   string
+	SECURE_SSL_REDIRECT               bool
+
+	// XFRAME MIDDLEWARE
+	X_FRAME_OPTIONS string // "DENY" or "SAMEORIGIN"
+
 	// 自定义设置
-	mySettings map[string]interface{}
+	Params Params
 }
 
 func newSettings() *metaSettings {
@@ -64,14 +77,39 @@ func newSettings() *metaSettings {
 		PUBLIC_KEY:   "",
 		SSL:          MetaSSL{},
 		DATABASES:    make(map[string]*DataBase),
-		time_zone:    "",
-		location:     time.Local,
-		language:     ZH_CN,
-		mySettings:   make(map[string]interface{}),
+
+		// TIMEZONE
+		USE_TZ:    true,
+		time_zone: "",
+		location:  time.Local,
+		language:  ZH_CN,
+
+		// COMMON MIDDLEWARE
+		PREPEND_WWW:            false,
+		DISALLOWED_USER_AGENTS: []string{},
+
+		// SECURITY MIDDLEWARE
+		SECURE_CONTENT_TYPE_NOSNIFF:       true,
+		SECURE_CROSS_ORIGIN_OPENER_POLICY: "same-origin",
+		SECURE_HSTS_INCLUDE_SUBDOMAINS:    false,
+		SECURE_HSTS_PRELOAD:               false,
+		SECURE_HSTS_SECONDS:               0,
+		SECURE_REDIRECT_EXEMPT:            []string{},
+		SECURE_REFERRER_POLICY:            []string{"same-origin"},
+		SECURE_SSL_HOST:                   "",
+		SECURE_SSL_REDIRECT:               false,
+
+		// XFRAME MIDDLEWARE
+		X_FRAME_OPTIONS: "DENY",
+
+		Params: make(Params),
 	}
 }
 
 // 设置时区
+//
+// 参数:
+//   - time_zone string: 时区
 func (settings *metaSettings) SetTimeZone(time_zone string) error {
 	location, err := time.LoadLocation(time_zone)
 	if err != nil {
@@ -79,78 +117,51 @@ func (settings *metaSettings) SetTimeZone(time_zone string) error {
 	}
 	settings.time_zone = time_zone
 	settings.location = location
+
+	if settings.USE_TZ == true {
+		// 同时设置系统环境变量，确保子进程和其他组件使用相同时区
+		err = os.Setenv("TZ", settings.time_zone)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = os.Setenv("TZ", "UTC")
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 // 获取时区
+//
+// 返回:
+//   - string: 时区
 func (settings metaSettings) GetTimeZone() string {
 	return settings.time_zone
 }
 
-// 获取时区 Location
+// 获取时区
+//
+// 返回:
+//   - *time.Location: 时区 Location
 func (settings metaSettings) GetLocation() *time.Location {
 	return settings.location
 }
 
 // 设置代码语言
+//
+// 参数:
+//   - lang Language: 语言 ZH_CN、EN_US
 func (settings metaSettings) SetLanguage(lang Language) {
 	settings.language = lang
 	language.SetLocalize(string(settings.language))
 }
 
 // 获取代码语言
+//
+// 返回:
+//   - Language: 语言 ZH_CN、EN_US
 func (settings metaSettings) GetLanguage() Language {
 	return settings.language
-}
-
-// 设置自定义配置
-func (settings *metaSettings) Set(key string, value interface{}) {
-	settings.mySettings[key] = value
-}
-
-// 获取自定义配置
-func (settings metaSettings) Get(key string, dest interface{}) error {
-	// 获取目标变量的反射值
-	destValue := reflect.ValueOf(dest)
-	// 检查目标变量是否为指针类型
-	if destValue.Kind() != reflect.Ptr {
-		return errors.New("参数必须是指针类型")
-	}
-	destValue = destValue.Elem()
-	// 检查目标变量的可设置性
-	if !destValue.CanSet() {
-		return errors.New("目标变量不可设置")
-	}
-
-	value, ok := settings.mySettings[key]
-	if !ok {
-		return errors.New(fmt.Sprintf("%s 不存在", key))
-	}
-	valueValue := reflect.ValueOf(value)
-	// 获取值的类型
-	valueType := valueValue.Type()
-
-	// 直接类型匹配
-	if valueType.AssignableTo(destValue.Type()) {
-		destValue.Set(valueValue)
-		return nil
-	}
-
-	switch valueType.Kind() {
-	case reflect.Bool:
-		destValue.SetBool(valueValue.Bool())
-	case reflect.String:
-		destValue.SetString(valueValue.String())
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		destValue.SetInt(valueValue.Int())
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		destValue.SetUint(valueValue.Uint())
-	case reflect.Float32, reflect.Float64:
-		destValue.SetFloat(valueValue.Float())
-	case reflect.Slice, reflect.Array, reflect.Map:
-		destValue.Set(reflect.ValueOf(value))
-	default:
-		return errors.New("不支持的目标变量类型")
-	}
-	return nil
 }

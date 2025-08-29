@@ -210,7 +210,7 @@ func (metaLog *metaLog) splitLogger(ctx context.Context, wg *sync.WaitGroup) {
 //   - level Level: 日志级别
 //   - logs ...interface{}: 日志内容
 func defaultLoggerPrint(logger *MetaLogger, level Level, logs ...interface{}) {
-	timeStr := fmt.Sprintf("[%v]", GetTime().Format("2006-01-02 15:04:05"))
+	timeStr := fmt.Sprintf("[%v]", GetTime().Format(time.DateTime))
 	if level != "" {
 		timeStr += fmt.Sprintf(" %v", level)
 	}
