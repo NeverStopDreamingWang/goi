@@ -1,6 +1,7 @@
 package sqlite3
 
 import (
+	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/model"
 )
 
@@ -11,17 +12,7 @@ type SQLite3Settings struct {
 	TABLE_NAME string // 表名
 
 	// 自定义配置
-	Settings model.Settings
-}
-
-// 设置自定义配置
-func (modelsettings *SQLite3Settings) Set(name string, value interface{}) {
-	modelsettings.Settings[name] = value
-}
-
-// 获取自定义配置
-func (modelsettings SQLite3Settings) Get(name string) interface{} {
-	return modelsettings.Settings[name]
+	Settings goi.Params
 }
 
 // 模型类
