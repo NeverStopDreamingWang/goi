@@ -23,7 +23,7 @@ func init() {
 	// 插入初始测试数据
 	username := "test_user"
 	password := "test123456"
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := time.Now().Format(time.DateTime)
 
 	user := UserSqliteModel{
 		Username:    &username,
@@ -61,7 +61,7 @@ func (userModel UserSqliteModel) ModelSet() *sqlite3.SQLite3Settings {
 		TABLE_NAME: "user_tb", // 设置表名
 
 		// 自定义配置
-		Settings: model.Settings{
+		Settings: goi.Params{
 			"encrypt_fields": encryptFields,
 		},
 	}
@@ -77,7 +77,7 @@ func InitUserSqlite() error {
 		id              int64  = 1
 		username        string = "超级管理员"
 		password        string = "admin"
-		create_Datetime        = goi.GetTime().Format("2006-01-02 15:04:05")
+		create_Datetime        = goi.GetTime().Format(time.DateTime)
 		err             error
 	)
 
@@ -113,7 +113,7 @@ func ExampleSQLite3DB_Insert() {
 	// 准备测试数据
 	username := "test_user"
 	password := "test123456"
-	now := time.Now().Format("2006-01-02 15:04:05")
+	now := time.Now().Format(time.DateTime)
 
 	user := UserSqliteModel{
 		Username:    &username,
@@ -405,7 +405,7 @@ func ExampleSQLite3DB_WithTransaction() {
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"
 		password := "test123456"
-		now := time.Now().Format("2006-01-02 15:04:05")
+		now := time.Now().Format(time.DateTime)
 
 		// 插入第一个用户
 		user1 := UserSqliteModel{

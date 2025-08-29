@@ -344,7 +344,6 @@ func (mysqlDB *MySQLDB) isSetModel() {
 //   - 解析模型的字段信息用于后续操作
 func (mysqlDB *MySQLDB) SetModel(model mysql.MySQLModel) *MySQLDB {
 	mysqlDB.model = model
-	ModelType := reflect.TypeOf(mysqlDB.model)
 	// 获取字段
 	mysqlDB.fields = nil
 	mysqlDB.field_sql = nil
@@ -355,6 +354,10 @@ func (mysqlDB *MySQLDB) SetModel(model mysql.MySQLModel) *MySQLDB {
 	mysqlDB.sql = ""
 	mysqlDB.args = nil
 
+	ModelType := reflect.TypeOf(mysqlDB.model)
+	if ModelType.Kind() == reflect.Ptr {
+		ModelType = ModelType.Elem()
+	}
 	for i := 0; i < ModelType.NumField(); i++ {
 		field := ModelType.Field(i)
 
@@ -388,6 +391,9 @@ func (mysqlDB *MySQLDB) SetModel(model mysql.MySQLModel) *MySQLDB {
 //   - 如果字段不存在则会panic
 func (mysqlDB MySQLDB) Fields(fields ...string) *MySQLDB {
 	ModelType := reflect.TypeOf(mysqlDB.model)
+	if ModelType.Kind() == reflect.Ptr {
+		ModelType = ModelType.Elem()
+	}
 	// 获取字段
 	mysqlDB.fields = nil
 	mysqlDB.field_sql = nil
@@ -724,7 +730,9 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 			}
 		} else {
 			ModelType := reflect.TypeOf(mysqlDB.model)
-
+			if ModelType.Kind() == reflect.Ptr {
+				ModelType = ModelType.Elem()
+			}
 			for i, fieldName := range mysqlDB.fields {
 				field, _ := ModelType.FieldByName(fieldName)
 				val := reflect.New(field.Type) // 获取模型字段类型
@@ -830,7 +838,9 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 		}
 	} else {
 		ModelType := reflect.TypeOf(mysqlDB.model)
-
+		if ModelType.Kind() == reflect.Ptr {
+			ModelType = ModelType.Elem()
+		}
 		for i, fieldName := range mysqlDB.fields {
 			field, _ := ModelType.FieldByName(fieldName)
 			val := reflect.New(field.Type) // 获取模型字段类型
