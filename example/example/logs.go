@@ -12,7 +12,7 @@ import (
 
 // 日志输出
 func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
-	timeStr := fmt.Sprintf("[%v]", goi.GetTime().Format("2006-01-02 15:04:05"))
+	timeStr := fmt.Sprintf("[%v]", goi.GetTime().Format(time.DateTime))
 	if level != "" {
 		timeStr += fmt.Sprintf(" %v", level)
 	}

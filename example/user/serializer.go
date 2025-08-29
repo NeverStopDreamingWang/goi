@@ -2,37 +2,27 @@ package user
 
 import (
 	"errors"
+	"time"
+
+	"example/utils"
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/auth"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/serializer/sqlite3"
+	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
 )
 
-type UserModelSerializer struct {
-	sqlite3.ModelSerializer
-
-	// 实例
-	Instance *UserModel
-}
-
-func (serializer UserModelSerializer) Validate(sqlite3DB *db.SQLite3DB, attrs UserModel, partial bool) error {
-	var err error
-	// 调用 ModelSerializer.Validate
-	err = serializer.ModelSerializer.Validate(sqlite3DB, attrs, partial)
-	if err != nil {
-		return err
-	}
-
+func (self UserModel) Validate() error {
 	// 自定义验证
-	sqlite3DB.SetModel(attrs)
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.SetModel(self)
 
-	if serializer.Instance != nil {
-		sqlite3DB = sqlite3DB.Where("`id` != ?", serializer.Instance.Id)
+	if self.Id != nil {
+		sqlite3DB = sqlite3DB.Where("`id` != ?", self.Id)
 	}
 
-	if attrs.Username != nil {
-		flag, err := sqlite3DB.Where("`username` = ?", attrs.Username).Exists()
+	if self.Username != nil {
+		flag, err := sqlite3DB.Where("`username` = ?", self.Username).Exists()
 		if err != nil {
 			return errors.New("查询数据库错误")
 		}
@@ -43,23 +33,27 @@ func (serializer UserModelSerializer) Validate(sqlite3DB *db.SQLite3DB, attrs Us
 	return nil
 }
 
-func (serializer UserModelSerializer) Create(sqlite3DB *db.SQLite3DB, validated_data *UserModel) error {
-	var err error
-
-	if validated_data.Create_time == nil {
-		Create_time := goi.GetTime().Format("2006-01-02 15:04:05")
-		validated_data.Create_time = &Create_time
+func (self *UserModel) Create() error {
+	if self.Create_time == nil {
+		Create_time := goi.GetTime().Format(time.DateTime)
+		self.Create_time = &Create_time
 	}
 
 	// 密码加密
-	encryptPassword, err := auth.MakePassword(*validated_data.Password)
+	encryptPassword, err := auth.MakePassword(*self.Password)
 	if err != nil {
 		return errors.New("密码格式错误")
 	}
-	validated_data.Password = &encryptPassword
+	self.Password = &encryptPassword
 
-	sqlite3DB.SetModel(*validated_data)
-	result, err := sqlite3DB.Insert(*validated_data)
+	err = sqlite3.Validate(self, true)
+	if err != nil {
+		return err
+	}
+
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.SetModel(self)
+	result, err := sqlite3DB.Insert(self)
 	if err != nil {
 		return errors.New("添加用户错误")
 	}
@@ -67,16 +61,11 @@ func (serializer UserModelSerializer) Create(sqlite3DB *db.SQLite3DB, validated_
 	if err != nil {
 		return errors.New("添加用户错误")
 	}
-	validated_data.Id = &id
+	self.Id = &id
 	return nil
 }
 
-func (serializer UserModelSerializer) Update(sqlite3DB *db.SQLite3DB, validated_data *UserModel) error {
-	var err error
-
-	Update_time := goi.GetTime().Format("2006-01-02 15:04:05")
-	validated_data.Update_time = &Update_time
-
+func (self *UserModel) Update(validated_data *UserModel) error {
 	if validated_data.Password != nil {
 		// 密码加密
 		encryptPassword, err := auth.MakePassword(*validated_data.Password)
@@ -86,14 +75,44 @@ func (serializer UserModelSerializer) Update(sqlite3DB *db.SQLite3DB, validated_
 		validated_data.Password = &encryptPassword
 	}
 
-	sqlite3DB.SetModel(*validated_data)
+	Update_time := goi.GetTime().Format(time.DateTime)
+	validated_data.Update_time = &Update_time
 
-	_, err = sqlite3DB.Where("`id` = ?", serializer.Instance.Id).Update(validated_data)
+	if self.Password != nil {
+		// 密码加密
+		encryptPassword, err := auth.MakePassword(*self.Password)
+		if err != nil {
+			return errors.New("密码格式错误")
+		}
+		self.Password = &encryptPassword
+	}
+
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.SetModel(self)
+	_, err := sqlite3DB.Where("`id` = ?", self.Id).Update(validated_data)
 	if err != nil {
 		return errors.New("修改用户错误")
 	}
 
-	// 更新 instance 当前实例
-	serializer.ModelSerializer.Update(serializer.Instance, validated_data)
+	utils.Update(self, validated_data)
+	// if validated_data.Username != nil {
+	// 	self.Username = validated_data.Username
+	// }
+	// if validated_data.Password != nil {
+	// 	self.Password = validated_data.Password
+	// }
+	// if validated_data.Update_time != nil {
+	// 	self.Update_time = validated_data.Update_time
+	// }
+	return nil
+}
+
+func (self UserModel) Delete() error {
+	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB.SetModel(UserModel{})
+	_, err := sqlite3DB.Where("`id` = ?", self.Id).Delete()
+	if err != nil {
+		return errors.New("删除用户错误")
+	}
 	return nil
 }

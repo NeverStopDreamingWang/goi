@@ -12,7 +12,9 @@ import (
 	"example/utils/mysql_db"
 	"example/utils/redis_db"
 	"example/utils/sqlite3_db"
+
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/middleware"
 )
 
 // Http 服务
@@ -27,6 +29,13 @@ func init() {
 
 	// version := goi.Version() // 获取版本信息
 	// fmt.Println("goi 版本", version)
+
+	// 注册中间件
+	Server.MiddleWare = []goi.MiddleWare{
+		&middleware.SecurityMiddleWare{},
+		&middleware.CommonMiddleWare{},
+		&middleware.XFrameMiddleWare{},
+	}
 
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
@@ -136,6 +145,7 @@ hwIDAQAB
 		},
 	}
 
+	Server.Settings.USE_TZ = false
 	// 设置时区
 	err = Server.Settings.SetTimeZone("Asia/Shanghai") // 默认为空字符串 ''，本地时间
 	if err != nil {
@@ -153,7 +163,7 @@ hwIDAQAB
 	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
 	Server.Cache.MAX_SIZE = 100                   // 单位为字节，0 为不限制使用
 
-	// 日志 DEBUG 设置
+	// 日志设置 DEBUG = true 输出到控制台
 	Server.Log.DEBUG = true
 	// 注册日志
 	defaultLog := newDefaultLog() // 默认日志

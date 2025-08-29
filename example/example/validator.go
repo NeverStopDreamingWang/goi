@@ -12,30 +12,7 @@ import (
 func init() {
 	// 注册验证器
 	// 手机号
-	goi.RegisterValidate("phone", phoneValidate)
-}
-
-// phone 类型
-func phoneValidate(value interface{}) goi.ValidationError {
-	switch typeValue := value.(type) {
-	case int:
-		valueStr := strconv.Itoa(typeValue)
-		var reStr = `^(1[3456789]\d{9})$`
-		re := regexp.MustCompile(reStr)
-		if re.MatchString(valueStr) == false {
-			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
-		}
-	case string:
-		var reStr = `^(1[3456789]\d{9})$`
-		re := regexp.MustCompile(reStr)
-		if re.MatchString(typeValue) == false {
-			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
-		}
-	default:
-		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
-	}
-
-	return nil
+	goi.RegisterValidate("phone", phoneValidator{})
 }
 
 // 自定义参数验证错误
@@ -61,5 +38,44 @@ func (validationErr *exampleValidationError) Response() goi.Response {
 			Message: validationErr.Message,
 			Results: nil,
 		},
+	}
+}
+
+type phoneValidator struct{}
+
+func (validator phoneValidator) Validate(value interface{}) goi.ValidationError {
+	switch typeValue := value.(type) {
+	case int:
+		valueStr := strconv.Itoa(typeValue)
+		var reStr = `^(1[3456789]\d{9})$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(valueStr) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	case string:
+		var reStr = `^(1[3456789]\d{9})$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	default:
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
+	}
+	return nil
+}
+
+func (validator phoneValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+	switch typeValue := value.(type) {
+	case int:
+		return typeValue, nil
+	case string:
+		intValue, err := strconv.Atoi(typeValue)
+		if err != nil {
+			return nil, goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
+		}
+		return intValue, nil
+	default:
+		// 尝试转换为字符串
+		return fmt.Sprintf("%v", value), nil
 	}
 }

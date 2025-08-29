@@ -2,6 +2,7 @@ package user
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
@@ -9,9 +10,9 @@ import (
 
 // 参数验证
 type listValidParams struct {
-	Page     int    `name:"page" required:"int"`
-	Pagesize int    `name:"pagesize" required:"int"`
-	Username string `name:"username" optional:"string"`
+	Page     int    `name:"page" type:"int" required:"true"`
+	Pagesize int    `name:"pagesize" type:"int" required:"true"`
+	Username string `name:"username" type:"string"`
 }
 
 func listView(request *goi.Request) interface{} {
@@ -66,8 +67,8 @@ func listView(request *goi.Request) interface{} {
 
 // 参数验证
 type createValidParams struct {
-	Username string `name:"username" required:"string"`
-	Password string `name:"password" required:"string"`
+	Username string `name:"username" type:"string" required:"true"`
+	Password string `name:"password" type:"string" required:"true"`
 }
 
 func createView(request *goi.Request) interface{} {
@@ -81,18 +82,13 @@ func createView(request *goi.Request) interface{} {
 		return validationErr.Response()
 	}
 
-	sqlite3DB := db.SQLite3Connect("default")
-
-	Create_Time := goi.GetTime().Format("2006-01-02 15:04:05")
 	user := &UserModel{
-		Username:    &params.Username,
-		Password:    &params.Password,
-		Create_time: &Create_Time,
+		Username: &params.Username,
+		Password: &params.Password,
 	}
 
-	userSer := UserModelSerializer{}
 	// 参数验证
-	err := userSer.Validate(sqlite3DB, *user, false)
+	err := user.Validate()
 	if err != nil {
 		return goi.Data{
 			Code:    http.StatusBadRequest,
@@ -101,7 +97,7 @@ func createView(request *goi.Request) interface{} {
 		}
 	}
 	// 添加
-	err = userSer.Create(sqlite3DB, user)
+	err = user.Create()
 	if err != nil {
 		return goi.Data{
 			Code:    http.StatusInternalServerError,
@@ -146,8 +142,8 @@ func retrieveView(request *goi.Request) interface{} {
 
 // 参数验证
 type updateValidParams struct {
-	Username *string `name:"username" optional:"string"`
-	Password *string `name:"password" optional:"string"`
+	Username *string `name:"username" type:"string"`
+	Password *string `name:"password" type:"string"`
 }
 
 func updateView(request *goi.Request) interface{} {
@@ -179,15 +175,12 @@ func updateView(request *goi.Request) interface{} {
 		}
 	}
 
-	Update_time := goi.GetTime().Format("2006-01-02 15:04:05")
 	user := &UserModel{
-		Username:    params.Username,
-		Password:    params.Password,
-		Update_time: &Update_time,
+		Username: params.Username,
+		Password: params.Password,
 	}
-	userSer := UserModelSerializer{Instance: instance}
 	// 参数验证
-	err = userSer.Validate(sqlite3DB, *user, true)
+	err = user.Validate()
 	if err != nil {
 		return goi.Data{
 			Code:    http.StatusBadRequest,
@@ -196,7 +189,7 @@ func updateView(request *goi.Request) interface{} {
 		}
 	}
 	// 更新
-	err = userSer.Update(sqlite3DB, user)
+	err = instance.Update(user)
 	if err != nil {
 		return goi.Data{
 			Code:    http.StatusInternalServerError,
@@ -219,9 +212,19 @@ func deleteView(request *goi.Request) interface{} {
 	if validationErr != nil {
 		return validationErr.Response()
 	}
+
 	sqlite3DB := db.SQLite3Connect("default")
+
+	instance := &UserModel{}
 	sqlite3DB.SetModel(UserModel{})
-	_, err := sqlite3DB.Where("`id` = ?", pk).Delete()
+	err := sqlite3DB.Where("`id` = ?", pk).First(instance)
+	if err != nil {
+		return goi.Data{
+			Code:    http.StatusInternalServerError,
+			Message: "用户不存在",
+		}
+	}
+	err = instance.Delete()
 	if err != nil {
 		return goi.Data{
 			Code:    http.StatusInternalServerError,
@@ -261,7 +264,7 @@ func TestWithTransaction(request *goi.Request) interface{} {
 
 	// 返回错误事务自动回滚
 	err = sqlite3DB.WithTransaction(func(sqlite3DB *db.SQLite3DB, args ...interface{}) error {
-		create_time := goi.GetTime().Format("2006-01-02 15:04:05")
+		create_time := goi.GetTime().Format(time.DateTime)
 		// mysql 数据库
 		user := &UserModel{
 			Username:    &params.Username,
