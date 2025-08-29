@@ -41,6 +41,12 @@ type metaSettings struct {
 	location     *time.Location       // 地区时区
 	language     Language             // 项目语言
 
+	// TIMEZONE
+	USE_TZ    bool           // USE_TZ=true: 返回 GetLocation() 时区的时间 “有感知时区”；USE_TZ=false: 返回 GetLocation() 时区的时间，但时区标注为 UTC “无感知时区”，避免任何时区换算，直存直取
+	time_zone string         // 地区时区默认为空，本地时区
+	location  *time.Location // 地区时区
+	language  Language       // 项目语言
+
 	// 自定义设置
 	mySettings map[string]interface{}
 }
