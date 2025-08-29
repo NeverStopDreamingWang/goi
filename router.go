@@ -11,28 +11,6 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-// HandlerFunc 定义 goi 使用的请求处理程序
-type HandlerFunc func(request *Request) interface{}
-
-// type HandlerFunc func(*http.Request)
-
-// 路由视图
-type AsView struct {
-	GET     HandlerFunc
-	HEAD    HandlerFunc
-	POST    HandlerFunc
-	PUT     HandlerFunc
-	PATCH   HandlerFunc
-	DELETE  HandlerFunc
-	CONNECT HandlerFunc
-	OPTIONS HandlerFunc
-	TRACE   HandlerFunc
-	file    string   // 文件
-	dir     http.Dir // 文件夹
-	fileFS  *embed.FS
-	dirFS   *embed.FS
-}
-
 // 路由表
 type MetaRouter struct {
 	path          string        // 路由
