@@ -91,47 +91,39 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 
 	// 遍历参数结构体的字段
 	for i := 0; i < paramsType.NumField(); i++ {
-		var field reflect.StructField
+		var err error
+		var fieldValue reflect.Value
+		var fieldType reflect.StructField
 		var fieldName string
 		var validator_name string
-		var is_required bool
 
-		field = paramsType.Field(i)
+		fieldValue = paramsValue.Field(i)
+		fieldType = paramsType.Field(i)
 
-		fieldName = field.Tag.Get("name")
-		if fieldName == "" {
-			fieldName = strings.ToLower(field.Name) // 字段名
+		if !fieldValue.CanSet() {
+			continue
 		}
 
-		value, ok := values[fieldName]
-		if validator_name = field.Tag.Get("required"); validator_name != "" {
-			is_required = true
-			if !ok {
-				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "params.required_params",
-					TemplateData: map[string]interface{}{
-						"name": fieldName,
-					},
-				})
-				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
-			}
-		} else if validator_name = field.Tag.Get("optional"); validator_name != "" {
-			is_required = false
-			if !ok {
-				continue
-			}
-		} else {
-			isNotRequiredOrOptionalMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.is_not_required_or_optional",
+		fieldName = fieldType.Tag.Get("name")
+		if fieldName == "" {
+			fieldName = strings.ToLower(fieldType.Name) // 字段名
+		}
+		validator_name = fieldType.Tag.Get("type") // 类型
+		if validator_name == "" {
+			isNotTypeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "params.is_not_type",
 				TemplateData: map[string]interface{}{
 					"name": fieldName,
 				},
 			})
-			return NewValidationError(http.StatusInternalServerError, isNotRequiredOrOptionalMsg)
+			return NewValidationError(http.StatusInternalServerError, isNotTypeMsg)
 		}
 
-		if value == nil {
-			if is_required == true { // 必填项返回错误
+		value, ok := values[fieldName]
+
+		required := fieldType.Tag.Get("required")
+		if !ok {
+			if required == "true" { // 必填项返回错误
 				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 					MessageID: "params.required_params",
 					TemplateData: map[string]interface{}{
@@ -143,13 +135,47 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 			continue
 		}
 
-		validationErr = validateValue(validator_name, value)
+		// 判断是否允许空值
+		if value == nil {
+			allow_null := fieldType.Tag.Get("allow_null")
+			if allow_null == "true" {
+				continue
+			} else if allow_null == "" && required != "true" { // 可选参数允许空值
+				continue
+			} else {
+				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+					MessageID: "params.params_is_not_null",
+					TemplateData: map[string]interface{}{
+						"name": fieldName,
+					},
+				})
+				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
+			}
+		}
+
+		// 获取验证器
+		validate, ok := metaValidate[validator_name]
+		if !ok {
+			validatorNotExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+				MessageID: "validator.validator_not_exists",
+				TemplateData: map[string]interface{}{
+					"name": validator_name,
+				},
+			})
+			return NewValidationError(http.StatusBadRequest, validatorNotExistsMsg)
+		}
+		// 执行验证
+		validationErr = validate.Validate(value)
 		if validationErr != nil {
 			return validationErr
 		}
-
+		// 转换为Go值
+		value, validationErr = validate.ToGo(value)
+		if validationErr != nil {
+			return validationErr
+		}
 		// 设置到参数结构体中
-		err := SetValue(paramsValue.Field(i), value)
+		err = SetValue(fieldValue, value)
 		if err != nil {
 			return NewValidationError(http.StatusInternalServerError, err.Error())
 		}
