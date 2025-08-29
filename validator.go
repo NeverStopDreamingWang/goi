@@ -1,9 +1,13 @@
 package goi
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -43,6 +47,9 @@ type ValidationError interface {
 // 返回:
 //   - ValidationError: 验证错误实例
 func NewValidationError(status int, message string, args ...interface{}) ValidationError {
+	if Validator == nil {
+		return defaultValidationError{}.NewValidationError(status, message, args...)
+	}
 	return Validator.validation_error.NewValidationError(status, message, args...)
 }
 
@@ -52,7 +59,7 @@ func NewValidationError(status int, message string, args ...interface{}) Validat
 //   - *metaValidator: 验证器管理器实例
 func newValidator() *metaValidator {
 	return &metaValidator{
-		validation_error: &defaultValidationError{}, // 使用默认参数验证错误
+		validation_error: defaultValidationError{}, // 使用默认参数验证错误
 	}
 }
 
@@ -83,7 +90,7 @@ type defaultValidationError struct {
 }
 
 // 默认创建参数验证错误方法
-func (validationErr *defaultValidationError) NewValidationError(status int, message string, args ...interface{}) ValidationError {
+func (validationErr defaultValidationError) NewValidationError(status int, message string, args ...interface{}) ValidationError {
 	return &defaultValidationError{
 		Status:  status,
 		Message: message,
@@ -91,71 +98,46 @@ func (validationErr *defaultValidationError) NewValidationError(status int, mess
 }
 
 // 默认参数验证错误响应格式方法
-func (validationErr *defaultValidationError) Response() Response {
+func (validationErr defaultValidationError) Response() Response {
 	return Response{
 		Status: validationErr.Status,
 		Data:   validationErr.Message,
 	}
 }
 
-// validateFunc 验证器处理函数类型
+// Validate 验证器接口
 //
-// 参数:
-//   - value interface{}: 待验证的值
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-type validateFunc func(value interface{}) ValidationError
+// 方法:
+//   - Validate: 验证方法
+//   - ToGo: 将字符串转换为Go值，ToGo 的返回值要与读取字段类型一致
+type Validate interface {
+	Validate(value interface{}) ValidationError
+	ToGo(value interface{}) (interface{}, ValidationError)
+}
 
-var metaValidate = map[string]validateFunc{
-	"bool":   boolValidate,
-	"int":    intValidate,
-	"string": stringValidate,
-	"slice":  sliceValidate,
-	"map":    mapValidate,
-	"slug":   slugValidate,
-	"uuid":   uuidValidate,
+var metaValidate = map[string]Validate{
+	"bool":   &boolValidator{},
+	"int":    &intValidator{},
+	"string": &stringValidator{},
+	"slice":  &sliceValidator{},
+	"map":    &mapValidator{},
+	"slug":   &slugValidator{},
+	"uuid":   &uuidValidator{},
 }
 
 // RegisterValidate 注册自定义验证器
 //
 // 参数:
 //   - name string: 验证器名称
-//   - validate validateFunc: 验证处理函数
-func RegisterValidate(name string, validate validateFunc) {
+//   - validate Validate: 验证器实例
+func RegisterValidate(name string, validate Validate) {
 	metaValidate[name] = validate
 }
 
-// validateValue 执行验证
-//
-// 参数:
-//   - validator_name string: 验证器名称
-//   - value interface{}: 待验证的值
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-func validateValue(validator_name string, value interface{}) ValidationError {
-	validate, ok := metaValidate[validator_name]
-	if !ok {
-		validatorIsNotValidateFuncMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "validator.validator_is_not_validateFunc",
-			TemplateData: map[string]interface{}{
-				"name": validator_name,
-			},
-		})
-		return NewValidationError(http.StatusBadRequest, validatorIsNotValidateFuncMsg)
-	}
-	return validate(value)
-}
+// boolValidator 布尔类型验证器
+type boolValidator struct{}
 
-// boolValidate 布尔类型验证器
-//
-// 参数:
-//   - value interface{}: 待验证的值
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-func boolValidate(value interface{}) ValidationError {
+func (validator boolValidator) Validate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case bool:
 		return nil
@@ -183,14 +165,24 @@ func boolValidate(value interface{}) ValidationError {
 	}
 }
 
-// intValidate 整数类型验证器
-//
-// 参数:
-//   - value interface{}: 待验证的值
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-func intValidate(value interface{}) ValidationError {
+func (validator boolValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+	switch typeValue := value.(type) {
+	case bool:
+		return typeValue, nil
+	case string:
+		if strings.ToLower(typeValue) == "true" {
+			return true, nil
+		} else if strings.ToLower(typeValue) == "false" {
+			return false, nil
+		}
+	}
+	return value, nil
+}
+
+// intValidator 整数类型验证器
+type intValidator struct{}
+
+func (validator intValidator) Validate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
 		return nil
@@ -218,14 +210,23 @@ func intValidate(value interface{}) ValidationError {
 	}
 }
 
-// stringValidate 字符串类型验证器
-//
-// 参数:
-//   - value interface{}: 待验证的值
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-func stringValidate(value interface{}) ValidationError {
+func (validator intValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+	switch typeValue := value.(type) {
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
+		return typeValue, nil
+	case string:
+		// 尝试转换字符串为整数
+		if val, err := strconv.Atoi(typeValue); err == nil {
+			return val, nil
+		}
+	}
+	return value, nil
+}
+
+// stringValidator 字符串类型验证器
+type stringValidator struct{}
+
+func (validator stringValidator) Validate(value interface{}) ValidationError {
 	switch value.(type) {
 	case string:
 		return nil
@@ -240,17 +241,23 @@ func stringValidate(value interface{}) ValidationError {
 	}
 }
 
-// sliceValidate 切片类型验证器
-//
-// 参数:
-//   - value interface{}: 待验证的值
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-func sliceValidate(value interface{}) ValidationError {
+func (validator stringValidator) ToGo(value interface{}) (interface{}, ValidationError) {
 	switch typeValue := value.(type) {
 	case string:
-		var reStr = `^(\[.*\])$`
+		return typeValue, nil
+	default:
+		// 尝试转换为字符串
+		return fmt.Sprintf("%v", value), nil
+	}
+}
+
+// sliceValidator 切片类型验证器
+type sliceValidator struct{}
+
+func (validator sliceValidator) Validate(value interface{}) ValidationError {
+	switch typeValue := value.(type) {
+	case string:
+		var reStr = `^(\[.\])$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -281,17 +288,36 @@ func sliceValidate(value interface{}) ValidationError {
 	}
 }
 
-// mapValidate 映射类型验证器
-//
-// 参数:
-//   - value interface{}: 待验证的值
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-func mapValidate(value interface{}) ValidationError {
+func (validator sliceValidator) ToGo(value interface{}) (interface{}, ValidationError) {
 	switch typeValue := value.(type) {
 	case string:
-		var reStr = `^(\{.*\})$`
+		var sliceValue []interface{}
+		// 对于字符串形式的切片，这里可以根据需要进行JSON解析等
+		err := json.Unmarshal([]byte(typeValue), &sliceValue)
+		if err != nil {
+			return nil, NewValidationError(http.StatusBadRequest, err.Error())
+		}
+		return sliceValue, nil
+	default:
+		valueType := reflect.TypeOf(value)
+		if valueType.Kind() == reflect.Ptr {
+			valueType = valueType.Elem()
+		}
+		kind := valueType.Kind()
+		if kind == reflect.Slice || kind == reflect.Array {
+			return value, nil
+		}
+		return value, nil
+	}
+}
+
+// mapValidator 映射类型验证器
+type mapValidator struct{}
+
+func (validator mapValidator) Validate(value interface{}) ValidationError {
+	switch typeValue := value.(type) {
+	case string:
+		var reStr = `^(\{.\})$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
@@ -322,14 +348,34 @@ func mapValidate(value interface{}) ValidationError {
 	}
 }
 
-// slugValidate slug格式验证器
-//
-// 参数:
-//   - value interface{}: 待验证的值，必须是字符串且只包含字母、数字、下划线和连字符
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-func slugValidate(value interface{}) ValidationError {
+func (validator mapValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+	switch typeValue := value.(type) {
+	case string:
+		// 对于字符串形式的映射，这里可以根据需要进行JSON解析等
+		var mapValue map[string]interface{}
+		// 对于字符串形式的切片，这里可以根据需要进行JSON解析等
+		err := json.Unmarshal([]byte(typeValue), &mapValue)
+		if err != nil {
+			return nil, NewValidationError(http.StatusBadRequest, err.Error())
+		}
+		return mapValue, nil
+	default:
+		valueType := reflect.TypeOf(value)
+		if valueType.Kind() == reflect.Ptr {
+			valueType = valueType.Elem()
+		}
+		kind := valueType.Kind()
+		if kind == reflect.Map {
+			return value, nil
+		}
+		return value, nil
+	}
+}
+
+// slugValidator slug格式验证器
+type slugValidator struct{}
+
+func (validator slugValidator) Validate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
 		var reStr = `^([-a-zA-Z0-9_]+)`
@@ -355,14 +401,19 @@ func slugValidate(value interface{}) ValidationError {
 	}
 }
 
-// uuidValidate UUID格式验证器
-//
-// 参数:
-//   - value interface{}: 待验证的值，必须是符合UUID格式的字符串
-//
-// 返回:
-//   - ValidationError: 验证错误，如果验证通过则返回nil
-func uuidValidate(value interface{}) ValidationError {
+func (validator slugValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+	switch typeValue := value.(type) {
+	case string:
+		return typeValue, nil
+	default:
+		return fmt.Sprintf("%v", value), nil
+	}
+}
+
+// uuidValidator UUID格式验证器
+type uuidValidator struct{}
+
+func (validator uuidValidator) Validate(value interface{}) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
 		var reStr = `^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`
@@ -385,5 +436,14 @@ func uuidValidate(value interface{}) ValidationError {
 			},
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
+	}
+}
+
+func (validator uuidValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+	switch typeValue := value.(type) {
+	case string:
+		return typeValue, nil
+	default:
+		return fmt.Sprintf("%v", value), nil
 	}
 }
