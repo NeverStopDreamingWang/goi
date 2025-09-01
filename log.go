@@ -107,12 +107,47 @@ func (metaLog *metaLog) RegisterLogger(logger *MetaLogger) error {
 	return nil
 }
 
+// DebugF 记录调试级别日志
+//
+// 参数:
+//   - format string: 日志格式
+//   - log ...interface{}: 日志内容
+func (metaLog *metaLog) DebugF(format string, log ...interface{}) {
+	metaLog.Debug(fmt.Sprintf(format, log...))
+}
+
+// Debug 记录调试级别日志
+//
+// 参数:
+//   - log ...interface{}: 日志内容
+func (metaLog *metaLog) Debug(log ...interface{}) {
+	metaLog.Log(DEBUG, log...)
+}
+
+// InfoF 记录信息级别日志
+//
+// 参数:
+//   - format string: 日志格式
+//   - log ...interface{}: 日志内容
+func (metaLog *metaLog) InfoF(format string, log ...interface{}) {
+	metaLog.Info(fmt.Sprintf(format, log...))
+}
+
 // Info 记录信息级别日志
 //
 // 参数:
 //   - log ...interface{}: 日志内容
 func (metaLog *metaLog) Info(log ...interface{}) {
 	metaLog.Log(INFO, log...)
+}
+
+// WarningF 记录警告级别日志
+//
+// 参数:
+//   - format string: 日志格式
+//   - log ...interface{}: 日志内容
+func (metaLog *metaLog) WarningF(format string, log ...interface{}) {
+	metaLog.Warning(fmt.Sprintf(format, log...))
 }
 
 // Warning 记录警告级别日志
@@ -123,12 +158,31 @@ func (metaLog *metaLog) Warning(log ...interface{}) {
 	metaLog.Log(WARNING, log...)
 }
 
+// ErrorF 记录错误级别日志
+//
+// 参数:
+//   - format string: 日志格式
+//   - log ...interface{}: 日志内容
+func (metaLog *metaLog) ErrorF(format string, log ...interface{}) {
+	metaLog.Error(fmt.Sprintf(format, log...))
+}
+
 // Error 记录错误级别日志
 //
 // 参数:
 //   - log ...interface{}: 日志内容
 func (metaLog *metaLog) Error(log ...interface{}) {
 	metaLog.Log(ERROR, log...)
+}
+
+// LogF 记录指定级别的日志
+//
+// 参数:
+//   - level Level: 日志级别
+//   - format string: 日志格式
+//   - log ...interface{}: 日志内容
+func (metaLog *metaLog) LogF(level Level, format string, log ...interface{}) {
+	metaLog.Log(level, fmt.Sprintf(format, log...))
 }
 
 // Log 记录指定级别的日志
