@@ -556,7 +556,7 @@ func (userModel UserSqliteModel) ModelSet() *sqlite3.SQLite3Settings {
 		TABLE_NAME: "user_tb", // 设置表名
 
 		// 自定义配置
-		Settings: model.Settings{
+		Settings: goi.Params{
 			"encrypt_fields": encryptFields,
 		},
 	}
