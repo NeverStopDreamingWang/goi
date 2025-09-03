@@ -882,9 +882,7 @@ func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
 
 	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
 	err := row.Err()
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	} else if err != nil {
+	if err != nil {
 		return false, err
 	}
 
