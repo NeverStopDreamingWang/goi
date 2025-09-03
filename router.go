@@ -75,6 +75,10 @@ func (router MetaRouter) hasChildRouter(child *MetaRouter) {
 }
 
 // Include 创建一个子路由
+//
+// 参数:
+//   - path: string 路由
+//   - desc: string 描述
 func (router *MetaRouter) Include(path string, desc string) *MetaRouter {
 	if strings.HasSuffix(path, "/") == false {
 		path = path + "/"
@@ -92,6 +96,11 @@ func (router *MetaRouter) Include(path string, desc string) *MetaRouter {
 }
 
 // Path 注册一个路由
+//
+// 参数:
+//   - path: string 路由
+//   - desc: string 描述
+//   - viewSet: ViewSet 视图方法
 func (router *MetaRouter) Path(path string, desc string, viewSet ViewSet) {
 	includeRouter := &MetaRouter{
 		path:          path,
@@ -105,6 +114,11 @@ func (router *MetaRouter) Path(path string, desc string, viewSet ViewSet) {
 }
 
 // StaticFile 注册静态文件路由
+//
+// 参数:
+//   - path: string 路由
+//   - desc: string 描述
+//   - filePath: string 文件路径
 func (router *MetaRouter) StaticFile(path string, desc string, filePath string) {
 	includeRouter := &MetaRouter{
 		path: path,
@@ -119,8 +133,12 @@ func (router *MetaRouter) StaticFile(path string, desc string, filePath string) 
 	router.includeRouter = append(router.includeRouter, includeRouter)
 }
 
-// 添加文件夹静态路由
 // StaticDir 注册静态目录路由
+//
+// 参数:
+//   - path: string 路由
+//   - desc: string 描述
+//   - dirPath: http.Dir 静态映射路径
 func (router *MetaRouter) StaticDir(path string, desc string, dirPath http.Dir) {
 	if dirPath == "" {
 		dirPath = "."
@@ -142,8 +160,12 @@ func (router *MetaRouter) StaticDir(path string, desc string, dirPath http.Dir) 
 	router.includeRouter = append(router.includeRouter, includeRouter)
 }
 
-// 添加文件静态路由
 // StaticFileFS 注册 embed.FS 静态文件路由
+//
+// 参数:
+//   - path: string 路由
+//   - desc: string 描述
+//   - fileFS: embed.FS 嵌入式文件系统
 func (router *MetaRouter) StaticFileFS(path string, desc string, fileFS embed.FS) {
 	includeRouter := &MetaRouter{
 		path: path,
@@ -158,8 +180,12 @@ func (router *MetaRouter) StaticFileFS(path string, desc string, fileFS embed.FS
 	router.includeRouter = append(router.includeRouter, includeRouter)
 }
 
-// 添加文件夹静态路由
 // StaticDirFS 注册 embed.FS 静态目录路由
+//
+// 参数:
+//   - path: string 路由
+//   - desc: string 描述
+//   - dirFS: embed.FS 嵌入式文件系统
 func (router *MetaRouter) StaticDirFS(path string, desc string, dirFS embed.FS) {
 	if strings.HasSuffix(path, "/") == false {
 		path = path + "/"
@@ -178,7 +204,10 @@ func (router *MetaRouter) StaticDirFS(path string, desc string, dirFS embed.FS) 
 	router.includeRouter = append(router.includeRouter, includeRouter)
 }
 
-// Next 方法用于遍历每个路径并获取路由信息
+// Next 方法以当前路由为起点递归获取所有子路由的信息
+//
+// 参数:
+//   - routerChan chan<- RouteInfo: 用于接收路由信息的通道
 func (router MetaRouter) Next(routerChan chan<- RouteInfo) {
 	// 遍历子路由
 	for _, itemRouter := range router.includeRouter {
