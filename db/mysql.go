@@ -922,9 +922,7 @@ func (mysqlDB *MySQLDB) Exists() (bool, error) {
 
 	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 	err := row.Err()
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	} else if err != nil {
+	if err != nil {
 		return false, err
 	}
 
