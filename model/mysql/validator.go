@@ -73,18 +73,13 @@ func validateField(field reflect.StructField, fieldValue reflect.Value) error {
 	if !ok {
 		field_name = strings.ToLower(field.Name)
 	}
-	if field_name == "id" {
+	fieldType, ok := field.Tag.Lookup("field_type")
+	if !ok { // 无 field_type 标签，跳过验证
 		return nil
 	}
-	fieldType, ok := field.Tag.Lookup("field_type")
-	if !ok {
-		fieldTagFieldTypeErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "serializer.field_tag_field_type_error",
-			TemplateData: map[string]interface{}{
-				"name": field_name,
-			},
-		})
-		panic(fieldTagFieldTypeErrorMsg)
+
+	if field_name == "id" {
+		return nil
 	}
 
 	err := validateFieldType(fieldType, fieldValue)

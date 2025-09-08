@@ -80,7 +80,6 @@
   },
   "serializer": {
     "is_not_struct_ptr": "{{ .name }} is not a struct pointer",
-    "field_tag_field_type_error": "The '{{ .name }}' field label `field_type` is undefined\n",
     "field_is_not_null_error": "field cannot be empty",
     "field_type_string_error": "field is not a string type",
     "varchar_len_error": "contains more than {{ .length }} character"
