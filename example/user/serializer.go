@@ -78,15 +78,6 @@ func (self *UserModel) Update(validated_data *UserModel) error {
 	Update_time := goi.GetTime().Format(time.DateTime)
 	validated_data.Update_time = &Update_time
 
-	if self.Password != nil {
-		// 密码加密
-		encryptPassword, err := auth.MakePassword(*self.Password)
-		if err != nil {
-			return errors.New("密码格式错误")
-		}
-		self.Password = &encryptPassword
-	}
-
 	sqlite3DB := db.SQLite3Connect("default")
 	sqlite3DB.SetModel(self)
 	_, err := sqlite3DB.Where("`id` = ?", self.Id).Update(validated_data)
@@ -109,7 +100,7 @@ func (self *UserModel) Update(validated_data *UserModel) error {
 
 func (self UserModel) Delete() error {
 	sqlite3DB := db.SQLite3Connect("default")
-	sqlite3DB.SetModel(UserModel{})
+	sqlite3DB.SetModel(self)
 	_, err := sqlite3DB.Where("`id` = ?", self.Id).Delete()
 	if err != nil {
 		return errors.New("删除用户错误")

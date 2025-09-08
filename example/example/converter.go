@@ -1,8 +1,6 @@
 package example
 
 import (
-	"fmt"
-
 	"github.com/NeverStopDreamingWang/goi"
 )
 
@@ -10,7 +8,6 @@ import (
 var phoneConverter = goi.Converter{
 	Regex: `(1[3456789]\d{9})`,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
-	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
 }
 
 func init() {

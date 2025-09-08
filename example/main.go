@@ -3,47 +3,57 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"example/example"
-
-	"github.com/NeverStopDreamingWang/goi"
 
 	// 注册中间件
 	_ "example/middleware"
 	// 注册app
 	_ "example/test"
 	_ "example/user"
+
+	"github.com/NeverStopDreamingWang/goi"
 )
 
 func main() {
-	// go routerInfo()
+	// 获取所有路径信息
+	fmt.Println("Route:")
+	route := example.Server.Router.GetRoute()
+	printRouteInfo(route, 1)
 
 	// 启动服务
 	example.Server.RunServer()
 }
 
-func routerInfo() {
-	// 获取所有路径信息
-	var routerInfoChan = make(chan goi.RouteInfo, 50)
-	go func() {
-		defer close(routerInfoChan)
-		example.Server.Router.Next(routerInfoChan)
-	}()
+var replaceStr = "  "
 
-	fmt.Println("Router List:")
-	for RouterInfo := range routerInfoChan {
-		fmt.Println(fmt.Sprintf("  Path:%v,Desc:%v,IsParent:%v,ParentRouter:%v", RouterInfo.Path, RouterInfo.Desc, RouterInfo.IsParent, RouterInfo.ParentRouter))
-		fmt.Println("    ViewSet:")
-		// ViewSet
-		ViewSetValue := reflect.ValueOf(RouterInfo.ViewSet)
-		ViewSetType := ViewSetValue.Type()
-		// 获取字段
-		for i := 0; i < ViewSetType.NumField(); i++ {
-			method := ViewSetType.Field(i).Name
-			if ViewSetValue.Field(i).IsZero() {
-				continue
-			}
-			fmt.Println("      Method:", method)
+func printRouteInfo(route goi.Route, count int) {
+	fmt.Printf("%vPath: %v Desc: %v Pattern: %v Regex:%v ParamInfos:%+v\n",
+		strings.Repeat(replaceStr, count),
+		route.Path,
+		route.Desc,
+		route.Pattern,
+		route.Regex,
+		route.ParamInfos,
+	)
+	var method_list []string
+	// ViewSet
+	ViewSetValue := reflect.ValueOf(route.ViewSet)
+	ViewSetType := ViewSetValue.Type()
+	// 获取字段
+	for i := 0; i < ViewSetType.NumField(); i++ {
+		method := ViewSetType.Field(i).Name
+		if ViewSetValue.Field(i).IsZero() {
+			continue
+		}
+		method_list = append(method_list, method)
+	}
+	fmt.Printf("%vViewSet: %v\n", strings.Repeat(replaceStr, count+1), strings.Join(method_list, ", "))
+	if len(route.Children) > 0 {
+		fmt.Printf("%vChildren:\n", strings.Repeat(replaceStr, count))
+		for _, child := range route.Children {
+			printRouteInfo(child, count+1)
 		}
 	}
 }
