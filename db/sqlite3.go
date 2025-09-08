@@ -140,6 +140,26 @@ func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Resu
 	}
 }
 
+// QueryRow 执行查询SQL语句
+//
+// 参数:
+//   - query: string SQL查询语句
+//   - args: ...interface{} SQL参数值列表
+//
+// 返回:
+//   - *sql.Row: 查询结果行
+//
+// 说明:
+//   - 查询失败时返回nil
+//   - 支持在事务中使用
+func (sqlite3DB *SQLite3DB) QueryRow(query string, args ...interface{}) *sql.Row {
+	if sqlite3DB.transaction != nil {
+		return sqlite3DB.transaction.QueryRow(query, args...)
+	} else {
+		return sqlite3DB.DB.QueryRow(query, args...)
+	}
+}
+
 // Query 执行查询SQL语句
 //
 // 参数:
@@ -177,7 +197,7 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 	var err error
 	modelSettings := model.ModelSet()
 
-	row := sqlite3DB.DB.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name =?;", modelSettings.TABLE_NAME)
+	row := sqlite3DB.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name =?;", modelSettings.TABLE_NAME)
 
 	var exists int
 	err = row.Scan(&exists)
@@ -664,7 +684,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		sqlite3DB.sql += sqlite3DB.limit_sql
 	}
 
-	rows, err := sqlite3DB.DB.Query(sqlite3DB.sql, sqlite3DB.args...)
+	rows, err := sqlite3DB.Query(sqlite3DB.sql, sqlite3DB.args...)
 	defer rows.Close()
 	if err != nil {
 		return err
@@ -780,7 +800,7 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 	if sqlite3DB.limit_sql != "" {
 		sqlite3DB.sql += sqlite3DB.limit_sql
 	}
-	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	row := sqlite3DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
 	err := row.Err()
 	if err != nil {
 		return err
@@ -844,7 +864,7 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
 	}
 
-	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	row := sqlite3DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
 	err := row.Err()
 	if err != nil {
 		return 0, err
@@ -880,7 +900,7 @@ func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
 		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
 	}
 
-	row := sqlite3DB.DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	row := sqlite3DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
 	err := row.Err()
 	if err != nil {
 		return false, err
