@@ -80,7 +80,6 @@
   },
   "serializer": {
     "is_not_struct_ptr": "{{ .name }} 不是结构体指针",
-    "field_tag_field_type_error": "'{{ .name }}' 字段标签 `field_type` 未定义\n",
     "field_is_not_null_error": "字段不允许为空",
     "field_type_string_error": "字段不是字符串类型",
     "varchar_len_error": "长度超过 {{ .length }} 字符"
