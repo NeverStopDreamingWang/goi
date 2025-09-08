@@ -13,23 +13,14 @@ import (
 // 路由表
 type MetaRouter struct {
 	path          string        // 路由
-	desc          string        // 简介
+	desc          string        // 描述
 	viewSet       ViewSet       // 视图方法
 	includeRouter []*MetaRouter // 子路由
 
 	// 预编译
-	pattern    string
-	regex      *regexp.Regexp
-	paramInfos []ParamInfo // 参数信息列表
-}
-
-// 路由信息
-type RouteInfo struct {
-	Path         string  // 路由
-	Desc         string  // 简介
-	ViewSet      ViewSet // 视图方法
-	IsParent     bool    // 是否是父路由
-	ParentRouter string  // 父路由
+	pattern    string         // 路由正则表达式
+	regex      *regexp.Regexp // 路由正则表达式匹配对象
+	paramInfos []ParamInfo    // 参数信息列表
 }
 
 // 创建路由
@@ -204,24 +195,38 @@ func (router *MetaRouter) StaticDirFS(path string, desc string, dirFS embed.FS) 
 	router.includeRouter = append(router.includeRouter, includeRouter)
 }
 
-// Next 方法以当前路由为起点递归获取所有子路由的信息
+// Route 为 MetaRouter 路由的副本
+type Route struct {
+	Path     string  // 路由
+	Desc     string  // 描述
+	ViewSet  ViewSet // 视图方法
+	Children []Route // 子路由
+
+	// 预编译
+	Pattern    string         // 路由正则表达式
+	Regex      *regexp.Regexp // 路由正则表达式匹配对象
+	ParamInfos []ParamInfo    // 参数信息列表
+}
+
+// GetRoute 获取路由信息
 //
-// 参数:
-//   - routerChan chan<- RouteInfo: 用于接收路由信息的通道
-func (router MetaRouter) Next(routerChan chan<- RouteInfo) {
-	// 遍历子路由
-	for _, itemRouter := range router.includeRouter {
-		// 发送路由的信息到通道
-		routerChan <- RouteInfo{
-			Path:         itemRouter.path,
-			Desc:         itemRouter.desc,
-			ViewSet:      itemRouter.viewSet,
-			IsParent:     itemRouter.includeRouter != nil,
-			ParentRouter: router.path,
+// 返回:
+//   - Route: 路由信息
+func (router MetaRouter) GetRoute() Route {
+	var children []Route
+	if len(router.includeRouter) > 0 {
+		children = make([]Route, 0, len(router.includeRouter))
+		for _, itemRouter := range router.includeRouter {
+			children = append(children, itemRouter.GetRoute())
 		}
-		if itemRouter.includeRouter != nil {
-			// 递归调用 Next 方法获取子路由的信息
-			itemRouter.Next(routerChan)
-		}
+	}
+	return Route{
+		Path:       router.path,
+		Desc:       router.desc,
+		ViewSet:    router.viewSet,
+		Children:   children,
+		Pattern:    router.pattern,
+		Regex:      router.regex,
+		ParamInfos: router.paramInfos,
 	}
 }
