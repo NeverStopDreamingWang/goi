@@ -140,6 +140,26 @@ func (mysqlDB *MySQLDB) Execute(query string, args ...interface{}) (sql.Result, 
 	}
 }
 
+// QueryRow 执行查询SQL语句
+//
+// 参数:
+//   - query: string SQL查询语句
+//   - args: ...interface{} SQL参数值列表
+//
+// 返回:
+//   - *sql.Row: 查询结果行
+//
+// 说明:
+//   - 查询失败时返回nil
+//   - 支持在事务中使用
+func (mysqlDB *MySQLDB) QueryRow(query string, args ...interface{}) *sql.Row {
+	if mysqlDB.transaction != nil {
+		return mysqlDB.transaction.QueryRow(query, args...)
+	} else {
+		return mysqlDB.DB.QueryRow(query, args...)
+	}
+}
+
 // Query 执行查询SQL语句
 //
 // 参数:
@@ -178,7 +198,7 @@ func (mysqlDB *MySQLDB) Migrate(db_name string, model mysql.MySQLModel) {
 	var err error
 	modelSettings := model.ModelSet()
 
-	row := mysqlDB.DB.QueryRow("SELECT 1 FROM information_schema.tables WHERE table_schema=? AND table_name=?;", db_name, modelSettings.TABLE_NAME)
+	row := mysqlDB.QueryRow("SELECT 1 FROM information_schema.tables WHERE table_schema=? AND table_name=?;", db_name, modelSettings.TABLE_NAME)
 
 	var exists int
 	err = row.Scan(&exists)
@@ -704,7 +724,7 @@ func (mysqlDB *MySQLDB) Select(queryResult interface{}) error {
 		mysqlDB.sql += mysqlDB.limit_sql
 	}
 
-	rows, err := mysqlDB.DB.Query(mysqlDB.sql, mysqlDB.args...)
+	rows, err := mysqlDB.Query(mysqlDB.sql, mysqlDB.args...)
 	defer rows.Close()
 	if err != nil {
 		return err
@@ -820,7 +840,7 @@ func (mysqlDB *MySQLDB) First(queryResult interface{}) error {
 	if mysqlDB.limit_sql != "" {
 		mysqlDB.sql += mysqlDB.limit_sql
 	}
-	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
+	row := mysqlDB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 	err := row.Err()
 	if err != nil {
 		return err
@@ -884,7 +904,7 @@ func (mysqlDB *MySQLDB) Count() (int, error) {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
 	}
 
-	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
+	row := mysqlDB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 	err := row.Err()
 	if err != nil {
 		return 0, err
@@ -920,7 +940,7 @@ func (mysqlDB *MySQLDB) Exists() (bool, error) {
 		mysqlDB.sql += fmt.Sprintf(" WHERE %v", strings.Join(mysqlDB.where_sql, " AND "))
 	}
 
-	row := mysqlDB.DB.QueryRow(mysqlDB.sql, mysqlDB.args...)
+	row := mysqlDB.QueryRow(mysqlDB.sql, mysqlDB.args...)
 	err := row.Err()
 	if err != nil {
 		return false, err
