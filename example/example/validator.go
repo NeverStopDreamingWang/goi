@@ -15,7 +15,7 @@ func init() {
 	goi.RegisterValidate("phone", phoneValidator{})
 }
 
-// 自定义参数验证错误
+// 自定义参数验证错误处理器
 type exampleValidationError struct {
 	Status  int
 	Message string
@@ -27,6 +27,10 @@ func (validationErr *exampleValidationError) NewValidationError(status int, mess
 		Status:  status,
 		Message: message,
 	}
+}
+
+func (validationErr *exampleValidationError) Error() string {
+	return validationErr.Message
 }
 
 // 参数验证错误响应格式

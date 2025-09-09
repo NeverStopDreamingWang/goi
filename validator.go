@@ -13,10 +13,11 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-// ValidationError 参数验证错误接口
+// ValidationError 参数验证错误处理器接口
 //
 // 方法:
 //   - NewValidationError: 创建参数验证错误
+//   - Error: 实现 error 接口，返回错误消息
 //   - Response: 生成错误响应
 type ValidationError interface {
 	// NewValidationError 创建参数验证错误
@@ -29,6 +30,9 @@ type ValidationError interface {
 	// 返回:
 	//   - ValidationError: 验证错误实例
 	NewValidationError(status int, message string, args ...interface{}) ValidationError
+
+	// Error 返回错误消息
+	Error() string
 
 	// Response 生成错误响应
 	//
@@ -95,6 +99,11 @@ func (validationErr defaultValidationError) NewValidationError(status int, messa
 		Status:  status,
 		Message: message,
 	}
+}
+
+// Error 返回错误消息
+func (validationErr defaultValidationError) Error() string {
+	return validationErr.Message
 }
 
 // 默认参数验证错误响应格式方法
