@@ -1,6 +1,8 @@
 package user
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -127,9 +129,17 @@ func retrieveView(request *goi.Request) interface{} {
 	sqlite3DB.SetModel(UserModel{})
 	err := sqlite3DB.Where("`id` = ?", pk).First(&user)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return goi.Data{
+				Code:    http.StatusBadRequest,
+				Message: "用户不存在",
+				Results: nil,
+			}
+		}
 		return goi.Data{
 			Code:    http.StatusInternalServerError,
-			Message: "用户不存在",
+			Message: "查询用户失败",
+			Results: nil,
 		}
 	}
 
@@ -169,9 +179,17 @@ func updateView(request *goi.Request) interface{} {
 	sqlite3DB.SetModel(UserModel{})
 	err := sqlite3DB.Where("`id` = ?", pk).First(instance)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return goi.Data{
+				Code:    http.StatusBadRequest,
+				Message: "用户不存在",
+				Results: nil,
+			}
+		}
 		return goi.Data{
 			Code:    http.StatusInternalServerError,
-			Message: "用户不存在",
+			Message: "查询用户失败",
+			Results: nil,
 		}
 	}
 
@@ -219,11 +237,20 @@ func deleteView(request *goi.Request) interface{} {
 	sqlite3DB.SetModel(UserModel{})
 	err := sqlite3DB.Where("`id` = ?", pk).First(instance)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return goi.Data{
+				Code:    http.StatusBadRequest,
+				Message: "用户不存在",
+				Results: nil,
+			}
+		}
 		return goi.Data{
 			Code:    http.StatusInternalServerError,
-			Message: "用户不存在",
+			Message: "查询用户失败",
+			Results: nil,
 		}
 	}
+
 	err = instance.Delete()
 	if err != nil {
 		return goi.Data{
