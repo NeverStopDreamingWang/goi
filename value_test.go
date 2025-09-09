@@ -9,9 +9,10 @@ import (
 )
 
 type testStruct struct {
-	Username string `name:"username"`
-	Password string `name:"password"`
-	Age      int    `name:"age"`
+	Username string   `name:"username"`
+	Password string   `name:"password"`
+	Age      int      `name:"age"`
+	Custom   []string `name:"custom" type:"custom" required:"true"`
 }
 
 func ExampleSetValue() {
@@ -19,6 +20,7 @@ func ExampleSetValue() {
 		"username": "test_user",
 		"password": "test123456",
 		"age":      18,
+		"custom":   []interface{}{111, "test1", "test2"},
 	}
 	dest := &testStruct{}
 
@@ -30,11 +32,13 @@ func ExampleSetValue() {
 	fmt.Printf("Username: %+v %T\n", dest.Username, dest.Username)
 	fmt.Printf("Password: %+v %T\n", dest.Password, dest.Password)
 	fmt.Printf("Age: %+v %T\n", dest.Age, dest.Age)
+	fmt.Printf("Custom: %+v %T\n", dest.Custom, dest.Custom)
 
 	// Output:
 	// Username: test_user string
 	// Password: test123456 string
 	// Age: 18 int
+	// Custom: [111 test1 test2] []string
 }
 
 func ExampleSetValue_manual() {
@@ -42,6 +46,7 @@ func ExampleSetValue_manual() {
 		"username": "test_user",
 		"password": "test123456",
 		"age":      18,
+		"custom":   []interface{}{111, "test1", "test2"},
 	}
 	dest := &testStruct{}
 
@@ -84,9 +89,11 @@ func ExampleSetValue_manual() {
 	fmt.Printf("Username: %+v %T\n", dest.Username, dest.Username)
 	fmt.Printf("Password: %+v %T\n", dest.Password, dest.Password)
 	fmt.Printf("Age: %+v %T\n", dest.Age, dest.Age)
+	fmt.Printf("Custom: %+v %T\n", dest.Custom, dest.Custom)
 
 	// Output:
 	// Username: test_user string
 	// Password: test123456 string
 	// Age: 18 int
+	// Custom: [111 test1 test2] []string
 }
