@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"testing"
 
 	"github.com/NeverStopDreamingWang/goi"
 )
@@ -73,13 +72,45 @@ func (validator emailValidator) ToGo(value interface{}) (interface{}, goi.Valida
 	}
 }
 
+type CustomValidator struct{}
+
+func (validator CustomValidator) Validate(value interface{}) goi.ValidationError {
+	switch typeValue := value.(type) {
+	case string:
+		var reStr = `^(\d{16})$`
+		re := regexp.MustCompile(reStr)
+		if re.MatchString(typeValue) == false {
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+		}
+	default:
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
+	}
+	return nil
+}
+
+func (validator CustomValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+	switch typeValue := value.(type) {
+	case string:
+		// 转换为自定义类型，并返回
+		return Custom(typeValue), nil
+	default:
+		// 尝试转换为字符串
+		return fmt.Sprintf("%v", value), nil
+	}
+}
+
 // 支持自定义类型
 type Email struct {
 	Address string `json:"address"`
+	// 其它自定义字段
 }
+
+type Custom []byte
+
 type testParamsValidParams struct {
-	Phone string `name:"phone" type:"phone" required:"true"`
-	Email *Email `name:"email" type:"email" required:"true"`
+	Phone  string `name:"phone" type:"phone" required:"true"`
+	Email  *Email `name:"email" type:"email" required:"true"`
+	Custom Custom `name:"custom" type:"custom" required:"true"`
 }
 
 // ExampleRegisterValidate 展示如何注册和使用自定义验证器
@@ -90,12 +121,16 @@ func ExampleRegisterValidate() {
 	// 注册邮箱验证器
 	goi.RegisterValidate("email", emailValidator{})
 
+	// 注册自定义验证器
+	goi.RegisterValidate("custom", CustomValidator{})
+
 	var validationErr goi.ValidationError
 
 	var params testParamsValidParams
 	bodyParams := goi.Params{
-		"phone": "13800000000",
-		"email": "test@example.com",
+		"phone":  "13800000000",
+		"email":  "test@example.com",
+		"custom": "1234567890123456",
 	}
 	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
@@ -103,8 +138,10 @@ func ExampleRegisterValidate() {
 	}
 	fmt.Printf("Phone %+v %T\n", params.Phone, params.Phone)
 	fmt.Printf("Email %+v %T\n", params.Email, params.Email)
-}
+	fmt.Printf("Custom %+v %T\n", params.Custom, params.Custom)
 
-func TestRegisterValidate(t *testing.T) {
-	ExampleRegisterValidate()
+	// Output:
+	// Phone 13800000000 string
+	// Email &{Address:test@example.com} *goi_test.Email
+	// Custom [49 50 51 52 53 54 55 56 57 48 49 50 51 52 53 54] goi_test.Custom
 }
