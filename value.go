@@ -222,8 +222,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 			return errors.New(valueInvalidMsg)
 		}
 
-		// 如果目标切片的长度小于源切片的长度，扩展目标切片
-		if destValue.Len() < sourceValue.Len() {
+		if destValue.IsNil() {
 			// 创建一个新的切片并设置给 destValue
 			newSlice := reflect.MakeSlice(fieldType, sourceValue.Len(), sourceValue.Len())
 			destValue.Set(newSlice)
