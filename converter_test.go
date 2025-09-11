@@ -50,23 +50,23 @@ func ExampleRegisterConverter() {
 	// 注册路由转换器
 
 	// 手机号
-	goi.RegisterConverter(phoneConverter, "my_phone")
+	goi.RegisterConverter("my_phone", phoneConverter)
 
 	// 邮箱
-	goi.RegisterConverter(emailConverter, "my_email")
+	goi.RegisterConverter("my_email", emailConverter)
 
 	// URL
-	goi.RegisterConverter(urlConverter, "my_url")
+	goi.RegisterConverter("my_url", urlConverter)
 
 	// 日期 (YYYY-MM-DD)
-	goi.RegisterConverter(dateConverter, "my_date")
+	goi.RegisterConverter("my_date", dateConverter)
 
 	// 时间 (HH:MM:SS)
-	goi.RegisterConverter(timeConverter, "my_time")
+	goi.RegisterConverter("my_time", timeConverter)
 
 	// IP地址 (IPv4)
-	goi.RegisterConverter(ipv4Converter, "my_ipv4")
+	goi.RegisterConverter("my_ipv4", ipv4Converter)
 
 	// 用户名 (字母开头，允许字母数字下划位)
-	goi.RegisterConverter(usernameConverter, "my_username")
+	goi.RegisterConverter("my_username", usernameConverter)
 }

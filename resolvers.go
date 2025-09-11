@@ -22,8 +22,6 @@ func (router *MetaRouter) compilePattern() {
 		return
 	}
 
-	converters := GetConverters()
-
 	// 查找占位符 <type:name>
 	re := regexp.MustCompile(`<([^/<>]+):([^/<>]+)>`)
 	matches := re.FindAllStringSubmatchIndex(router.path, -1)
@@ -45,7 +43,7 @@ func (router *MetaRouter) compilePattern() {
 		typeName := router.path[typeStart:typeEnd]
 		paramName := router.path[nameStart:nameEnd]
 
-		converter, ok := converters[typeName]
+		converter, ok := GetConverter(typeName)
 		if !ok {
 			converterIsNotExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "router.converter_is_not_exists",
