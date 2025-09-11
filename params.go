@@ -154,7 +154,7 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 		}
 
 		// 获取验证器
-		validate, ok := metaValidate[validator_name]
+		validate, ok := GetValidate(validator_name)
 		if !ok {
 			validatorNotExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
 				MessageID: "validator.validator_not_exists",

@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/NeverStopDreamingWang/goi/internal/language"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -124,6 +125,12 @@ type Validate interface {
 	ToGo(value interface{}) (interface{}, ValidationError)
 }
 
+// metaValidateMu 保护 metaValidate
+var metaValidateMu sync.RWMutex
+
+// metaValidate 存储验证器映射
+// key: 验证器名称
+// value: 验证器实例
 var metaValidate = map[string]Validate{
 	"bool":   &boolValidator{},
 	"int":    &intValidator{},
@@ -140,7 +147,24 @@ var metaValidate = map[string]Validate{
 //   - name string: 验证器名称
 //   - validate Validate: 验证器实例
 func RegisterValidate(name string, validate Validate) {
+	metaValidateMu.Lock()
+	defer metaValidateMu.Unlock()
 	metaValidate[name] = validate
+}
+
+// GetValidate 获取验证器
+//
+// 参数:
+//   - name string: 验证器名称
+//
+// 返回:
+//   - Validate: 验证器实例
+//   - bool: 是否存在
+func GetValidate(name string) (Validate, bool) {
+	metaValidateMu.RLock()
+	defer metaValidateMu.RUnlock()
+	validate, ok := metaValidate[name]
+	return validate, ok
 }
 
 // boolValidator 布尔类型验证器
