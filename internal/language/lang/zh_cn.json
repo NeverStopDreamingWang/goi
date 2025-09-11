@@ -60,9 +60,13 @@
     "split_log_stat_error": "日志切割-[{{ .name }}] 获取日志文件信息错误: {{ .err }}\n",
     "split_log_rename_error": "日志切割-[{{ .name }}] 日志重命名错误: {{ .err }}\n"
   },
-  "database": {
+  "db": {
     "transaction_cannot_be_nested_error": "不可嵌套事务",
     "databases_not_error": "DATABASES 中没有 \"{{ .name }}\"\n",
+    "register_engine_connect_is_not_nil": "注册的数据库 Engine 连接函数为 nil\n",
+    "register_engine_connect_twice": "注册的数据库 Engine 连接函数重复: \"{{ .name }}\"\n",
+    "engine_not_registered": "Engine 未注册: \"{{ .engine }}\"\n",
+    "engine_type_is_not_match": "Engine 类型不匹配，期望 {{ .want_type }}，实际 {{ .got_type }}\n",
     "select_error": "{{ .engine }} 数据库 \"{{ .db_name }}\" 查询错误: {{ .err }}\n",
     "before_migration": "迁移之前 BeforeHandler...",
     "before_migration_error": "迁移之前 BeforeHandler 错误: {{ .err }}\n",

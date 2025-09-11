@@ -1,4 +1,4 @@
-package db
+package mysql
 
 import (
 	"database/sql"
@@ -9,52 +9,46 @@ import (
 	"strings"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-// SQLite3DB 结构体用于管理SQLite3数据库连接和操作
-type SQLite3DB struct {
-	name        string               // 数据库连接名称
-	DB          *sql.DB              // 数据库连接对象
-	transaction *sql.Tx              // 当前事务对象
-	model       sqlite3.SQLite3Model // 当前操作的数据模型
-	fields      []string             // 模型结构体字段名
-	field_sql   []string             // 数据库表字段名
-	where_sql   []string             // WHERE条件语句
-	limit_sql   string               // LIMIT分页语句
-	group_sql   string               // GROUP BY分组语句
-	order_sql   string               // ORDER BY排序语句
-	sql         string               // 最终执行的SQL语句
-	args        []interface{}        // SQL语句的参数值
+const driverName = "mysql"
+
+func init() {
+	db.Register(driverName, factory)
 }
 
-// SQLite3Connect 连接SQLite3数据库
+// factory 是 db.Engine 的工厂函数
+func factory(UseDataBases string) db.Engine {
+	return Connect(UseDataBases)
+}
+
+// Connect 连接MySQL数据库
 //
 // 参数:
 //   - UseDataBases: string 数据库配置名称
 //
 // 返回:
-//   - *SQLite3DB: SQLite3数据库操作实例
+//   - *Engine: MySQL数据库操作实例
 //
 // 说明:
 //   - 从全局配置中获取数据库连接信息
 //   - 如果配置不存在或连接失败则panic
-func SQLite3Connect(UseDataBases string) *SQLite3DB {
+func Connect(UseDataBases string) *Engine {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {
 		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.databases_not_error",
+			MessageID: "db.databases_not_error",
 			TemplateData: map[string]interface{}{
 				"name": UseDataBases,
 			},
 		})
-		goi.Log.Error(databasesNotErrorMsg)
 		panic(databasesNotErrorMsg)
 	}
-	return &SQLite3DB{
+	return &Engine{
 		name:      UseDataBases,
 		DB:        database.DB(),
 		model:     nil,
@@ -69,26 +63,45 @@ func SQLite3Connect(UseDataBases string) *SQLite3DB {
 	}
 }
 
+// Engine 结构体用于管理MySQL数据库连接和操作
+type Engine struct {
+	name        string        // 数据库连接名称
+	DB          *sql.DB       // 数据库连接对象
+	transaction *sql.Tx       // 当前事务对象
+	model       Model         // 当前操作的数据模型
+	fields      []string      // 模型结构体字段名
+	field_sql   []string      // 数据库表字段名
+	where_sql   []string      // WHERE条件语句
+	limit_sql   string        // LIMIT分页语句
+	group_sql   string        // GROUP BY分组语句
+	order_sql   string        // ORDER BY排序语句
+	sql         string        // 最终执行的SQL语句
+	args        []interface{} // SQL语句的参数值
+}
+
 // Name 获取数据库连接名称
 //
 // 返回:
 //   - string: 当前数据库连接名称
-func (sqlite3DB SQLite3DB) Name() string {
-	return sqlite3DB.name
+func (engine Engine) Name() string {
+	return engine.name
 }
 
 // GetSQL 获取最近一次执行的SQL语句
 //
 // 返回:
 //   - string: 最近一次执行的SQL语句
-func (sqlite3DB SQLite3DB) GetSQL() string {
-	return sqlite3DB.sql
+func (engine Engine) GetSQL() string {
+	return engine.sql
 }
+
+// 事务执行函数
+type TransactionFunc func(engine *Engine, args ...interface{}) error
 
 // WithTransaction 在事务中执行指定的函数
 //
 // 参数:
-//   - transactionFunc: func(sqlite3DB *SQLite3DB, args ...interface{}) error 事务执行函数
+//   - transactionFunc: TransactionFunc func(engine *Engine, args ...interface{}) error 事务执行函数
 //   - args: ...interface{} 传递给事务函数的参数列表
 //
 // 返回:
@@ -97,27 +110,27 @@ func (sqlite3DB SQLite3DB) GetSQL() string {
 // 说明:
 //   - 不支持嵌套事务，如果当前已在事务中则返回错误
 //   - 事务函数执行失败时自动回滚
-func (sqlite3DB SQLite3DB) WithTransaction(transactionFunc func(sqlite3DB *SQLite3DB, args ...interface{}) error, args ...interface{}) error {
+func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...interface{}) error {
 	var err error
-	if sqlite3DB.transaction != nil {
+	if engine.transaction != nil {
 		transactionCannotBeNestedErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.transaction_cannot_be_nested_error",
+			MessageID: "db.transaction_cannot_be_nested_error",
 		})
 		return errors.New(transactionCannotBeNestedErrorMsg)
 	}
 
-	sqlite3DB.transaction, err = sqlite3DB.DB.Begin()
+	engine.transaction, err = engine.DB.Begin()
 	if err != nil {
 		return err
 	}
-	err = transactionFunc(&sqlite3DB, args...)
+	err = transactionFunc(&engine, args...)
 	if err != nil {
-		_ = sqlite3DB.transaction.Rollback()
+		_ = engine.transaction.Rollback()
 		return err
 	}
 
 	// 提交事务
-	return sqlite3DB.transaction.Commit()
+	return engine.transaction.Commit()
 }
 
 // Execute 执行SQL语句
@@ -132,11 +145,11 @@ func (sqlite3DB SQLite3DB) WithTransaction(transactionFunc func(sqlite3DB *SQLit
 //
 // 说明:
 //   - 支持在事务中使用
-func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Result, error) {
-	if sqlite3DB.transaction != nil {
-		return sqlite3DB.transaction.Exec(query, args...)
+func (engine *Engine) Execute(query string, args ...interface{}) (sql.Result, error) {
+	if engine.transaction != nil {
+		return engine.transaction.Exec(query, args...)
 	} else {
-		return sqlite3DB.DB.Exec(query, args...)
+		return engine.DB.Exec(query, args...)
 	}
 }
 
@@ -152,11 +165,11 @@ func (sqlite3DB *SQLite3DB) Execute(query string, args ...interface{}) (sql.Resu
 // 说明:
 //   - 查询失败时返回nil
 //   - 支持在事务中使用
-func (sqlite3DB *SQLite3DB) QueryRow(query string, args ...interface{}) *sql.Row {
-	if sqlite3DB.transaction != nil {
-		return sqlite3DB.transaction.QueryRow(query, args...)
+func (engine *Engine) QueryRow(query string, args ...interface{}) *sql.Row {
+	if engine.transaction != nil {
+		return engine.transaction.QueryRow(query, args...)
 	} else {
-		return sqlite3DB.DB.QueryRow(query, args...)
+		return engine.DB.QueryRow(query, args...)
 	}
 }
 
@@ -174,11 +187,11 @@ func (sqlite3DB *SQLite3DB) QueryRow(query string, args ...interface{}) *sql.Row
 //   - 返回的结果集需要调用方手动关闭
 //   - 查询失败时返回nil和错误信息
 //   - 支持在事务中使用
-func (sqlite3DB *SQLite3DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
-	if sqlite3DB.transaction != nil {
-		return sqlite3DB.transaction.Query(query, args...)
+func (engine *Engine) Query(query string, args ...interface{}) (*sql.Rows, error) {
+	if engine.transaction != nil {
+		return engine.transaction.Query(query, args...)
 	} else {
-		return sqlite3DB.DB.Query(query, args...)
+		return engine.DB.Query(query, args...)
 	}
 }
 
@@ -186,27 +199,28 @@ func (sqlite3DB *SQLite3DB) Query(query string, args ...interface{}) (*sql.Rows,
 //
 // 参数:
 //   - db_name: string 数据库名称
-//   - model: sqlite3.SQLite3Model 数据模型
+//   - model: Model 数据模型
 //
 // 说明:
 //   - 检查表是否已存在，存在则跳过创建
 //   - 解析模型结构体的字段标签
+//   - 支持表的存储引擎、字符集等配置
 //   - 支持自定义迁移前后处理函数
 //   - 创建失败时会panic
-func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) {
+func (engine *Engine) Migrate(db_name string, model Model) {
 	var err error
 	modelSettings := model.ModelSet()
 
-	row := sqlite3DB.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name =?;", modelSettings.TABLE_NAME)
+	row := engine.QueryRow("SELECT 1 FROM information_schema.tables WHERE table_schema=? AND table_name=?;", db_name, modelSettings.TABLE_NAME)
 
 	var exists int
 	err = row.Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) == false && err != nil {
 		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.select_error",
+			MessageID: "db.select_error",
 			TemplateData: map[string]interface{}{
-				"engine":  "SQLite3",
-				"db_name": sqlite3DB.name,
+				"engine":  "MySQL",
+				"db_name": engine.name,
 				"err":     err,
 			},
 		})
@@ -234,17 +248,56 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 		fieldSqlSlice = append(fieldSqlSlice, fmt.Sprintf("  `%v` %v", fieldName, fieldType))
 	}
 	createSql := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", modelSettings.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
+	if modelSettings.ENGINE != "" { // 设置存储引擎
+		createSql += fmt.Sprintf(" Engine=%v", modelSettings.ENGINE)
+	}
+	if modelSettings.AUTO_INCREMENT != 0 { // 设置自增长起始值
+		createSql += fmt.Sprintf(" AUTO_INCREMENT=%v", modelSettings.AUTO_INCREMENT)
+	}
+	if modelSettings.DEFAULT_CHARSET != "" { // 设置默认字符集
+		createSql += fmt.Sprintf(" DEFAULT CHARSET=%v", modelSettings.DEFAULT_CHARSET)
+	}
+	if modelSettings.COLLATE != "" { // 设置校对规则
+		createSql += fmt.Sprintf(" COLLATE=%v", modelSettings.COLLATE)
+	}
+	if modelSettings.MIN_ROWS != 0 { // 设置最小行数
+		createSql += fmt.Sprintf(" MIN_ROWS=%v", modelSettings.MIN_ROWS)
+	}
+	if modelSettings.MAX_ROWS != 0 { // 设置最大行数
+		createSql += fmt.Sprintf(" MAX_ROWS=%v", modelSettings.MAX_ROWS)
+	}
+	if modelSettings.CHECKSUM != 0 { // 表格的校验和算法
+		createSql += fmt.Sprintf(" CHECKSUM=%v", modelSettings.CHECKSUM)
+	}
+	if modelSettings.DELAY_KEY_WRITE != 0 { // 控制非唯一索引的写延迟
+		createSql += fmt.Sprintf(" DELAY_KEY_WRITE=%v", modelSettings.DELAY_KEY_WRITE)
+	}
+	if modelSettings.ROW_FORMAT != "" { // 设置行的存储格式
+		createSql += fmt.Sprintf(" ROW_FORMAT=%v", modelSettings.ROW_FORMAT)
+	}
+	if modelSettings.DATA_DIRECTORY != "" { // 设置数据存储目录
+		createSql += fmt.Sprintf(" DATA DIRECTORY='%v'", modelSettings.DATA_DIRECTORY)
+	}
+	if modelSettings.INDEX_DIRECTORY != "" { // 设置索引存储目录
+		createSql += fmt.Sprintf(" INDEX DIRECTORY='%v'", modelSettings.INDEX_DIRECTORY)
+	}
+	if modelSettings.PARTITION_BY != "" { // 定义分区方式
+		createSql += fmt.Sprintf(" PARTITION_BY %v", modelSettings.PARTITION_BY)
+	}
+	if modelSettings.COMMENT != "" { // 设置表注释
+		createSql += fmt.Sprintf(" COMMENT='%v'", modelSettings.COMMENT)
+	}
 
 	if exists != 1 { // 创建表
 		if modelSettings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
 			beforeMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "database.before_migration",
+				MessageID: "db.before_migration",
 			})
 			goi.Log.Info(beforeMigrationMsg)
 			err = modelSettings.MigrationsHandler.BeforeHandler()
 			if err != nil {
 				beforeMigrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "database.before_migration_error",
+					MessageID: "db.before_migration_error",
 					TemplateData: map[string]interface{}{
 						"err": err,
 					},
@@ -254,19 +307,19 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 			}
 		}
 		migrationModelMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.migration",
+			MessageID: "db.migration",
 			TemplateData: map[string]interface{}{
-				"engine":  "SQLite3",
-				"name":    sqlite3DB.name,
+				"engine":  "MySQL",
+				"name":    engine.name,
 				"db_name": db_name,
 				"tb_name": modelSettings.TABLE_NAME,
 			},
 		})
 		goi.Log.Info(migrationModelMsg)
-		_, err = sqlite3DB.Execute(createSql)
+		_, err = engine.Execute(createSql)
 		if err != nil {
 			migrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "database.migration_error",
+				MessageID: "db.migration_error",
 				TemplateData: map[string]interface{}{
 					"err": err,
 				},
@@ -277,13 +330,13 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 
 		if modelSettings.MigrationsHandler.AfterHandler != nil { // 迁移之后处理
 			afterMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "database.after_migration",
+				MessageID: "db.after_migration",
 			})
 			goi.Log.Info(afterMigrationMsg)
 			err = modelSettings.MigrationsHandler.AfterHandler()
 			if err != nil {
 				afterMigrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "database.after_migration_error",
+					MessageID: "db.after_migration_error",
 					TemplateData: map[string]interface{}{
 						"err": err,
 					},
@@ -301,10 +354,10 @@ func (sqlite3DB *SQLite3DB) Migrate(db_name string, model sqlite3.SQLite3Model) 
 // 说明:
 //   - 内部方法，用于验证模型是否已设置
 //   - 如果未设置模型则panic
-func (sqlite3DB *SQLite3DB) isSetModel() {
-	if sqlite3DB.model == nil {
+func (engine *Engine) isSetModel() {
+	if engine.model == nil {
 		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.not_SetModel_error",
+			MessageID: "db.not_SetModel_error",
 		})
 		goi.Log.Error(notSetModelErrorMsg)
 		panic(notSetModelErrorMsg)
@@ -314,27 +367,27 @@ func (sqlite3DB *SQLite3DB) isSetModel() {
 // SetModel 设置当前操作的数据模型
 //
 // 参数:
-//   - model: sqlite3.SQLite3Model 数据模型实例
+//   - model: Model 数据模型实例
 //
 // 返回:
-//   - *SQLite3DB: 当前实例指针，支持链式调用
+//   - *Engine: 当前实例指针，支持链式调用
 //
 // 说明:
 //   - 设置后会重置所有查询条件
 //   - 解析模型的字段信息用于后续操作
-func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
-	sqlite3DB.model = model
+func (engine *Engine) SetModel(model Model) *Engine {
+	engine.model = model
 	// 获取字段
-	sqlite3DB.fields = nil
-	sqlite3DB.field_sql = nil
-	sqlite3DB.where_sql = nil
-	sqlite3DB.limit_sql = ""
-	sqlite3DB.group_sql = ""
-	sqlite3DB.order_sql = ""
-	sqlite3DB.sql = ""
-	sqlite3DB.args = nil
+	engine.fields = nil
+	engine.field_sql = nil
+	engine.where_sql = nil
+	engine.limit_sql = ""
+	engine.group_sql = ""
+	engine.order_sql = ""
+	engine.sql = ""
+	engine.args = nil
 
-	ModelType := reflect.TypeOf(sqlite3DB.model)
+	ModelType := reflect.TypeOf(engine.model)
 	if ModelType.Kind() == reflect.Ptr {
 		ModelType = ModelType.Elem()
 	}
@@ -346,14 +399,14 @@ func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 			continue
 		}
 
-		sqlite3DB.fields = append(sqlite3DB.fields, field.Name)
+		engine.fields = append(engine.fields, field.Name)
 		field_name, ok := field.Tag.Lookup("field_name")
 		if !ok {
 			field_name = strings.ToLower(field.Name)
 		}
-		sqlite3DB.field_sql = append(sqlite3DB.field_sql, field_name)
+		engine.field_sql = append(engine.field_sql, field_name)
 	}
-	return sqlite3DB
+	return engine
 }
 
 // Fields 指定查询要返回的字段
@@ -362,27 +415,27 @@ func (sqlite3DB *SQLite3DB) SetModel(model sqlite3.SQLite3Model) *SQLite3DB {
 //   - fields: ...string 要查询的字段名列表
 //
 // 返回:
-//   - *SQLite3DB: 当前实例的副本指针，支持链式调用
+//   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
 //   - 字段名必须是模型结构体中已定义的字段
 //   - 只返回带有field_type标签的字段
 //   - 字段名大小写不敏感，会自动转换为数据库字段名
 //   - 如果字段不存在则会panic
-func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
-	ModelType := reflect.TypeOf(sqlite3DB.model)
+func (engine Engine) Fields(fields ...string) *Engine {
+	ModelType := reflect.TypeOf(engine.model)
 	if ModelType.Kind() == reflect.Ptr {
 		ModelType = ModelType.Elem()
 	}
 	// 获取字段
-	sqlite3DB.fields = nil
-	sqlite3DB.field_sql = nil
+	engine.fields = nil
+	engine.field_sql = nil
 
 	for _, fieldName := range fields {
 		field, ok := ModelType.FieldByName(fieldName)
 		if !ok {
 			fieldIsNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "database.field_is_not_error",
+				MessageID: "db.field_is_not_error",
 				TemplateData: map[string]interface{}{
 					"name": fieldName,
 				},
@@ -397,22 +450,22 @@ func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 			continue
 		}
 
-		sqlite3DB.fields = append(sqlite3DB.fields, field.Name)
+		engine.fields = append(engine.fields, field.Name)
 
 		// 获取数据库字段名，如果没有field_name标签则使用字段名小写
 		field_name, ok := field.Tag.Lookup("field_name")
 		if !ok {
 			field_name = strings.ToLower(field.Name)
 		}
-		sqlite3DB.field_sql = append(sqlite3DB.field_sql, field_name)
+		engine.field_sql = append(engine.field_sql, field_name)
 	}
-	return &sqlite3DB
+	return &engine
 }
 
 // Insert 向数据库插入一条记录
 //
 // 参数:
-//   - ModelData: sqlite3.SQLite3Model 要插入的数据模型实例
+//   - model: Model 要插入的数据模型实例
 //
 // 返回:
 //   - sql.Result: 插入操作的结果
@@ -422,18 +475,18 @@ func (sqlite3DB SQLite3DB) Fields(fields ...string) *SQLite3DB {
 //   - 调用前必须先通过SetModel设置数据模型
 //   - 支持指针和非指针类型的字段值
 //   - 只插入带有field_type标签的字段
-func (sqlite3DB *SQLite3DB) Insert(ModelData sqlite3.SQLite3Model) (sql.Result, error) {
-	sqlite3DB.isSetModel()
+func (engine *Engine) Insert(model Model) (sql.Result, error) {
+	engine.isSetModel()
 
-	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TABLE_NAME
 
-	ModelValue := reflect.ValueOf(ModelData)
+	ModelValue := reflect.ValueOf(model)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
 	}
 
-	insertValues := make([]interface{}, len(sqlite3DB.fields))
-	for i, fieldName := range sqlite3DB.fields {
+	insertValues := make([]interface{}, len(engine.fields))
+	for i, fieldName := range engine.fields {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Elem().IsValid() {
 			insertValues[i] = field.Elem().Interface()
@@ -442,16 +495,16 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData sqlite3.SQLite3Model) (sql.Result, 
 		}
 	}
 
-	fieldsSQL := strings.Join(sqlite3DB.field_sql, "`,`")
+	fieldsSQL := strings.Join(engine.field_sql, "`,`")
 
-	tempValues := make([]string, len(sqlite3DB.fields))
-	for i := 0; i < len(sqlite3DB.fields); i++ {
+	tempValues := make([]string, len(engine.fields))
+	for i := 0; i < len(engine.fields); i++ {
 		tempValues[i] = "?"
 	}
 	valuesSQL := strings.Join(tempValues, ",")
 
-	sqlite3DB.sql = fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
-	return sqlite3DB.Execute(sqlite3DB.sql, insertValues...)
+	engine.sql = fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
+	return engine.Execute(engine.sql, insertValues...)
 }
 
 // Where 设置查询条件
@@ -461,17 +514,17 @@ func (sqlite3DB *SQLite3DB) Insert(ModelData sqlite3.SQLite3Model) (sql.Result, 
 //   - args: ...interface{} 条件参数值列表
 //
 // 返回:
-//   - *SQLite3DB: 当前实例的副本指针，支持链式调用
+//   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
 //   - 支持多次调用，条件之间使用AND连接
 //   - 支持参数占位符?自动替换
 //   - 支持 in 切片类型的参数
-func (sqlite3DB SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
+func (engine Engine) Where(query string, args ...interface{}) *Engine {
 	queryParts := strings.Split(query, "?")
 	if len(queryParts)-1 != len(args) {
 		whereArgsPlaceholderErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.where_args_placeholder_error",
+			MessageID: "db.where_args_placeholder_error",
 		})
 		goi.Log.Error(whereArgsPlaceholderErrorMsg)
 		panic(whereArgsPlaceholderErrorMsg)
@@ -492,18 +545,18 @@ func (sqlite3DB SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
 
 			// 将切片元素加入 args
 			for j := 0; j < paramValue.Len(); j++ {
-				sqlite3DB.args = append(sqlite3DB.args, paramValue.Index(j).Interface())
+				engine.args = append(engine.args, paramValue.Index(j).Interface())
 			}
 		} else {
 			// 普通参数，直接添加占位符
 			queryBuilder.WriteString("?")
-			sqlite3DB.args = append(sqlite3DB.args, param)
+			engine.args = append(engine.args, param)
 		}
 		// 添加切割后的下一部分
 		queryBuilder.WriteString(queryParts[i+1])
 	}
-	sqlite3DB.where_sql = append(sqlite3DB.where_sql, queryBuilder.String())
-	return &sqlite3DB
+	engine.where_sql = append(engine.where_sql, queryBuilder.String())
+	return &engine
 }
 
 // GroupBy 设置分组条件
@@ -512,14 +565,14 @@ func (sqlite3DB SQLite3DB) Where(query string, args ...interface{}) *SQLite3DB {
 //   - groups: ...string 分组字段名列表
 //
 // 返回:
-//   - *SQLite3DB: 当前实例的副本指针，支持链式调用
+//   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
 //   - 字段名会自动去除首尾的空格和引号字符
 //   - 字段名会自动添加反引号
 //   - 空字段名会被忽略
 //   - 不传参数时清空分组条件
-func (sqlite3DB SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
+func (engine Engine) GroupBy(groups ...string) *Engine {
 	var groupFields []string
 	for _, group := range groups {
 		group = strings.Trim(group, " `'\"")
@@ -529,11 +582,11 @@ func (sqlite3DB SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
 		groupFields = append(groupFields, fmt.Sprintf("`%s`", group))
 	}
 	if len(groupFields) > 0 {
-		sqlite3DB.group_sql = fmt.Sprintf(" GROUP BY %s", strings.Join(groupFields, ", "))
+		engine.group_sql = fmt.Sprintf(" GROUP BY %s", strings.Join(groupFields, ", "))
 	} else {
-		sqlite3DB.group_sql = ""
+		engine.group_sql = ""
 	}
-	return &sqlite3DB
+	return &engine
 }
 
 // OrderBy 设置排序条件
@@ -542,14 +595,14 @@ func (sqlite3DB SQLite3DB) GroupBy(groups ...string) *SQLite3DB {
 //   - orders: ...string 排序规则列表，字段名前加"-"表示降序，否则为升序
 //
 // 返回:
-//   - *SQLite3DB: 当前实例的副本指针，支持链式调用
+//   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
 //   - 字段名会自动去除首尾的空格和引号字符
 //   - 字段名会自动添加反引号
 //   - 空字段名会被忽略
 //   - 不传参数时清空排序条件
-func (sqlite3DB SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
+func (engine Engine) OrderBy(orders ...string) *Engine {
 	var orderFields []string
 	for _, order := range orders {
 		// 去除字段名首尾的空格和引号
@@ -571,11 +624,11 @@ func (sqlite3DB SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 		orderFields = append(orderFields, fmt.Sprintf("`%s` %s", orderSQL, sequence))
 	}
 	if len(orderFields) > 0 {
-		sqlite3DB.order_sql = fmt.Sprintf(" ORDER BY %s", strings.Join(orderFields, ", "))
+		engine.order_sql = fmt.Sprintf(" ORDER BY %s", strings.Join(orderFields, ", "))
 	} else {
-		sqlite3DB.order_sql = ""
+		engine.order_sql = ""
 	}
-	return &sqlite3DB
+	return &engine
 }
 
 // Page 设置分页参数
@@ -594,17 +647,17 @@ func (sqlite3DB SQLite3DB) OrderBy(orders ...string) *SQLite3DB {
 //   - 每页记录数小于等于0时设为默认值10
 //   - 总页数根据总记录数和每页记录数计算
 //   - 会自动执行一次COUNT查询获取总记录数
-func (sqlite3DB *SQLite3DB) Page(page int, pagesize int) (int, int, error) {
+func (engine *Engine) Page(page int, pageSize int) (int, int, error) {
 	if page <= 0 {
 		page = 1
 	}
-	if pagesize <= 0 {
-		pagesize = 10 // 默认分页大小
+	if pageSize <= 0 {
+		pageSize = 10 // 默认分页大小
 	}
-	offset := (page - 1) * pagesize
-	sqlite3DB.limit_sql = fmt.Sprintf(" LIMIT %d OFFSET %d", pagesize, offset)
-	total, err := sqlite3DB.Count()
-	totalPages := int(math.Ceil(float64(total) / float64(pagesize)))
+	offset := (page - 1) * pageSize
+	engine.limit_sql = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+	total, err := engine.Count()
+	totalPages := int(math.Ceil(float64(total) / float64(pageSize)))
 	return total, totalPages, err
 }
 
@@ -621,10 +674,10 @@ func (sqlite3DB *SQLite3DB) Page(page int, pagesize int) (int, int, error) {
 //   - 支持指针和非指针类型的字段
 //   - 自动映射数据库字段到结构体字段
 //   - 查询失败时返回错误信息
-func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
-	sqlite3DB.isSetModel()
+func (engine *Engine) Select(queryResult interface{}) error {
+	engine.isSetModel()
 
-	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TABLE_NAME
 
 	var (
 		isPtr    bool
@@ -633,7 +686,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	)
 	if result.Kind() != reflect.Ptr {
 		isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.is_not_ptr",
+			MessageID: "db.is_not_ptr",
 			TemplateData: map[string]interface{}{
 				"name": "queryResult",
 			},
@@ -645,7 +698,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	kind := result.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
 		isNotSlicePtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.is_not_slice_or_array",
+			MessageID: "db.is_not_slice_or_array",
 			TemplateData: map[string]interface{}{
 				"name": "queryResult",
 			},
@@ -660,7 +713,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	}
 	if kind := ItemType.Kind(); kind != reflect.Struct && kind != reflect.Map {
 		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.is_not_slice_struct_ptr_or_map",
+			MessageID: "db.is_not_slice_struct_ptr_or_map",
 			TemplateData: map[string]interface{}{
 				"name": "queryResult",
 			},
@@ -668,23 +721,23 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQl := strings.Join(sqlite3DB.field_sql, "`,`")
+	fieldsSQl := strings.Join(engine.field_sql, "`,`")
 
-	sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
-	if len(sqlite3DB.where_sql) > 0 {
-		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	engine.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
+	if len(engine.where_sql) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
-	if sqlite3DB.group_sql != "" {
-		sqlite3DB.sql += sqlite3DB.group_sql
+	if engine.group_sql != "" {
+		engine.sql += engine.group_sql
 	}
-	if sqlite3DB.order_sql != "" {
-		sqlite3DB.sql += sqlite3DB.order_sql
+	if engine.order_sql != "" {
+		engine.sql += engine.order_sql
 	}
-	if sqlite3DB.limit_sql != "" {
-		sqlite3DB.sql += sqlite3DB.limit_sql
+	if engine.limit_sql != "" {
+		engine.sql += engine.limit_sql
 	}
 
-	rows, err := sqlite3DB.Query(sqlite3DB.sql, sqlite3DB.args...)
+	rows, err := engine.Query(engine.sql, engine.args...)
 	defer rows.Close()
 	if err != nil {
 		return err
@@ -693,14 +746,14 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 	}
 
 	for rows.Next() {
-		values := make([]interface{}, len(sqlite3DB.fields))
+		values := make([]interface{}, len(engine.fields))
 
 		var item reflect.Value
 		if ItemType.Kind() == reflect.Struct {
 			// 如果是结构体类型，使用 New 创建
 			item = reflect.New(ItemType).Elem()
 
-			for i, fieldName := range sqlite3DB.fields {
+			for i, fieldName := range engine.fields {
 				fieldValue := item.FieldByName(fieldName)
 				if !fieldValue.IsValid() {
 					values[i] = new(interface{})
@@ -709,11 +762,11 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 				}
 			}
 		} else {
-			ModelType := reflect.TypeOf(sqlite3DB.model)
+			ModelType := reflect.TypeOf(engine.model)
 			if ModelType.Kind() == reflect.Ptr {
 				ModelType = ModelType.Elem()
 			}
-			for i, fieldName := range sqlite3DB.fields {
+			for i, fieldName := range engine.fields {
 				field, _ := ModelType.FieldByName(fieldName)
 				val := reflect.New(field.Type) // 获取模型字段类型
 				values[i] = val.Interface()
@@ -728,7 +781,7 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 		// 设置 map 值
 		if ItemType.Kind() == reflect.Map {
 			item = reflect.MakeMap(ItemType)
-			for i, field_name := range sqlite3DB.field_sql {
+			for i, field_name := range engine.field_sql {
 				val := reflect.ValueOf(values[i])
 				item.SetMapIndex(reflect.ValueOf(field_name), val.Elem())
 			}
@@ -756,16 +809,16 @@ func (sqlite3DB *SQLite3DB) Select(queryResult interface{}) error {
 //   - 自动映射数据库字段到结构体字段
 //   - 无记录时返回sql.ErrNoRows
 //   - 查询失败时返回错误信息
-func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
-	sqlite3DB.isSetModel()
+func (engine *Engine) First(queryResult interface{}) error {
+	engine.isSetModel()
 
-	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TABLE_NAME
 
 	result := reflect.ValueOf(queryResult)
 	if result.Kind() != reflect.Map {
 		if result.Kind() != reflect.Ptr {
 			isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "database.is_not_ptr",
+				MessageID: "db.is_not_ptr",
 				TemplateData: map[string]interface{}{
 					"name": "queryResult",
 				},
@@ -777,7 +830,7 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 
 	if kind := result.Kind(); kind != reflect.Struct && kind != reflect.Map {
 		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "database.is_not_struct_ptr_or_map",
+			MessageID: "db.is_not_struct_ptr_or_map",
 			TemplateData: map[string]interface{}{
 				"name": "queryResult",
 			},
@@ -785,30 +838,30 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQl := strings.Join(sqlite3DB.field_sql, "`,`")
+	fieldsSQl := strings.Join(engine.field_sql, "`,`")
 
-	sqlite3DB.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
-	if len(sqlite3DB.where_sql) > 0 {
-		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	engine.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQl, TableName)
+	if len(engine.where_sql) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
-	if sqlite3DB.group_sql != "" {
-		sqlite3DB.sql += sqlite3DB.group_sql
+	if engine.group_sql != "" {
+		engine.sql += engine.group_sql
 	}
-	if sqlite3DB.order_sql != "" {
-		sqlite3DB.sql += sqlite3DB.order_sql
+	if engine.order_sql != "" {
+		engine.sql += engine.order_sql
 	}
-	if sqlite3DB.limit_sql != "" {
-		sqlite3DB.sql += sqlite3DB.limit_sql
+	if engine.limit_sql != "" {
+		engine.sql += engine.limit_sql
 	}
-	row := sqlite3DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	row := engine.QueryRow(engine.sql, engine.args...)
 	err := row.Err()
 	if err != nil {
 		return err
 	}
 
-	values := make([]interface{}, len(sqlite3DB.fields))
+	values := make([]interface{}, len(engine.fields))
 	if result.Kind() == reflect.Struct {
-		for i, fieldName := range sqlite3DB.fields {
+		for i, fieldName := range engine.fields {
 			fieldValue := result.FieldByName(fieldName)
 			if !fieldValue.IsValid() {
 				values[i] = new(interface{})
@@ -817,11 +870,11 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 			}
 		}
 	} else {
-		ModelType := reflect.TypeOf(sqlite3DB.model)
+		ModelType := reflect.TypeOf(engine.model)
 		if ModelType.Kind() == reflect.Ptr {
 			ModelType = ModelType.Elem()
 		}
-		for i, fieldName := range sqlite3DB.fields {
+		for i, fieldName := range engine.fields {
 			field, _ := ModelType.FieldByName(fieldName)
 			val := reflect.New(field.Type) // 获取模型字段类型
 			values[i] = val.Interface()
@@ -835,7 +888,7 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 
 	// 更新实际扫描到的值
 	if result.Kind() == reflect.Map {
-		for i, field_name := range sqlite3DB.field_sql {
+		for i, field_name := range engine.field_sql {
 			val := reflect.ValueOf(values[i])
 			result.SetMapIndex(reflect.ValueOf(field_name), val.Elem())
 		}
@@ -854,17 +907,17 @@ func (sqlite3DB *SQLite3DB) First(queryResult interface{}) error {
 //   - 必须先通过SetModel设置数据模型
 //   - 会考虑当前设置的WHERE条件
 //   - 查询失败时返回0和错误信息
-func (sqlite3DB *SQLite3DB) Count() (int, error) {
-	sqlite3DB.isSetModel()
+func (engine *Engine) Count() (int, error) {
+	engine.isSetModel()
 
-	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TABLE_NAME
 
-	sqlite3DB.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
-	if len(sqlite3DB.where_sql) > 0 {
-		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	engine.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
+	if len(engine.where_sql) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
 
-	row := sqlite3DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	row := engine.QueryRow(engine.sql, engine.args...)
 	err := row.Err()
 	if err != nil {
 		return 0, err
@@ -890,17 +943,17 @@ func (sqlite3DB *SQLite3DB) Count() (int, error) {
 //   - 使用SELECT 1优化查询性能
 //   - 查询出错时返回false和错误信息
 //   - 无记录时返回false和nil
-func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
-	sqlite3DB.isSetModel()
+func (engine *Engine) Exists() (bool, error) {
+	engine.isSetModel()
 
-	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TABLE_NAME
 
-	sqlite3DB.sql = fmt.Sprintf("SELECT 1 FROM `%v`", TableName)
-	if len(sqlite3DB.where_sql) > 0 {
-		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	engine.sql = fmt.Sprintf("SELECT 1 FROM `%v`", TableName)
+	if len(engine.where_sql) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
 
-	row := sqlite3DB.QueryRow(sqlite3DB.sql, sqlite3DB.args...)
+	row := engine.QueryRow(engine.sql, engine.args...)
 	err := row.Err()
 	if err != nil {
 		return false, err
@@ -919,7 +972,7 @@ func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
 // Update 更新符合条件的记录
 //
 // 参数:
-//   - ModelData: sqlite3.SQLite3Model 包含更新数据的模型实例
+//   - model: Model 包含更新数据的模型实例
 //
 // 返回:
 //   - sql.Result: 更新操作的结果
@@ -930,12 +983,12 @@ func (sqlite3DB *SQLite3DB) Exists() (bool, error) {
 //   - 只更新非空字段
 //   - 支持指针和非指针类型的字段值
 //   - 会考虑当前设置的WHERE条件
-func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, error) {
-	sqlite3DB.isSetModel()
+func (engine *Engine) Update(model Model) (sql.Result, error) {
+	engine.isSetModel()
 
-	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TABLE_NAME
 
-	ModelValue := reflect.ValueOf(ModelData)
+	ModelValue := reflect.ValueOf(model)
 	if ModelValue.Kind() == reflect.Ptr {
 		ModelValue = ModelValue.Elem()
 	}
@@ -944,7 +997,7 @@ func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, 
 	updateFields := make([]string, 0)
 	// 值
 	updateValues := make([]interface{}, 0)
-	for _, fieldName := range sqlite3DB.fields {
+	for _, fieldName := range engine.fields {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Kind() == reflect.Ptr {
 			field = field.Elem()
@@ -957,13 +1010,13 @@ func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, 
 	}
 	fieldsSQl := strings.Join(updateFields, ",")
 
-	sqlite3DB.sql = fmt.Sprintf("UPDATE `%v` SET %v", TableName, fieldsSQl)
-	if len(sqlite3DB.where_sql) > 0 {
-		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	engine.sql = fmt.Sprintf("UPDATE `%v` SET %v", TableName, fieldsSQl)
+	if len(engine.where_sql) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
 
-	updateValues = append(updateValues, sqlite3DB.args...)
-	return sqlite3DB.Execute(sqlite3DB.sql, updateValues...)
+	updateValues = append(updateValues, engine.args...)
+	return engine.Execute(engine.sql, updateValues...)
 }
 
 // Delete 删除符合条件的记录
@@ -975,14 +1028,14 @@ func (sqlite3DB *SQLite3DB) Update(ModelData sqlite3.SQLite3Model) (sql.Result, 
 // 说明:
 //   - 调用前必须先通过SetModel设置数据模型
 //   - 根据当前设置的WHERE条件删除记录
-func (sqlite3DB *SQLite3DB) Delete() (sql.Result, error) {
-	sqlite3DB.isSetModel()
+func (engine *Engine) Delete() (sql.Result, error) {
+	engine.isSetModel()
 
-	TableName := sqlite3DB.model.ModelSet().TABLE_NAME
-	sqlite3DB.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
-	if len(sqlite3DB.where_sql) > 0 {
-		sqlite3DB.sql += fmt.Sprintf(" WHERE %v", strings.Join(sqlite3DB.where_sql, " AND "))
+	TableName := engine.model.ModelSet().TABLE_NAME
+	engine.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
+	if len(engine.where_sql) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
 
-	return sqlite3DB.Execute(sqlite3DB.sql, sqlite3DB.args...)
+	return engine.Execute(engine.sql, engine.args...)
 }

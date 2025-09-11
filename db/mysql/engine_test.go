@@ -1,18 +1,36 @@
-package db_test
+package mysql_test
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/model"
-	"github.com/NeverStopDreamingWang/goi/model/mysql"
+	"github.com/NeverStopDreamingWang/goi/db/mysql"
 )
 
 func init() {
+	goi.Settings.DATABASES["default"] = &goi.DataBase{
+		ENGINE: "mysql",
+		Connect: func(ENGINE string) *sql.DB {
+			var DB *sql.DB
+			var err error
+			DataSourceName := "root:xxx@tcp(127.0.0.1:3306)/test_goi"
+			DB, err = sql.Open(ENGINE, DataSourceName)
+			if err != nil {
+				goi.Log.Error(err)
+				panic(err)
+			}
+			return DB
+		},
+	}
 	// 初始化测试数据库
-	mysqlDB := db.MySQLConnect("default") // 改为default,因为后续示例都用default
+	// 使用泛型通用连接
+	mysqlDB := db.Connect[*mysql.Engine]("default")
+
+	// 使用专用连接
+	// mysqlDB := mysql.Connect("default")
 
 	// 迁移模型前清理旧表(如果存在)
 	_, _ = mysqlDB.Execute("DROP TABLE IF EXISTS user_tb")
@@ -33,10 +51,15 @@ func init() {
 	}
 
 	mysqlDB.SetModel(UserModel{})
-	mysqlDB.Insert(user)
+	result, err := mysqlDB.Insert(user)
+	if err != nil {
+		fmt.Println("插入错误:", err)
+		return
+	}
+	id, _ := result.LastInsertId()
+	user.Id = &id
 }
 
-// 支持数据库 MySQL SQLite3
 // 用户表
 type UserModel struct {
 	Id          *int64  `field_name:"id" field_type:"int NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'ID'" json:"id"`
@@ -47,14 +70,14 @@ type UserModel struct {
 }
 
 // 设置表配置
-func (userModel UserModel) ModelSet() *mysql.MySQLSettings {
+func (userModel UserModel) ModelSet() *mysql.Settings {
 	encryptFields := []string{
 		"username",
 		"password",
 	}
 
-	modelSettings := &mysql.MySQLSettings{
-		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
+	modelSettings := &mysql.Settings{
+		MigrationsHandler: mysql.MigrationsHandler{ // 迁移时处理函数
 			BeforeHandler: nil,      // 迁移之前处理函数
 			AfterHandler:  InitUser, // 迁移之后处理函数
 		},
@@ -85,7 +108,7 @@ func (userModel UserModel) ModelSet() *mysql.MySQLSettings {
 
 // 初始化用户
 func InitUser() error {
-	mysqlDB := db.MySQLConnect("default")
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	var (
 		id              int64  = 1
@@ -111,9 +134,9 @@ func InitUser() error {
 	return nil
 }
 
-func ExampleMySQLDB_Migrate() {
+func ExampleEngine_Migrate() {
 	// 连接数据库
-	mysqlDB := db.MySQLConnect("default")
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 迁移模型
 	mysqlDB.Migrate("test_db", UserModel{})
@@ -121,8 +144,8 @@ func ExampleMySQLDB_Migrate() {
 	// Output:
 }
 
-func ExampleMySQLDB_Insert() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Insert() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 准备测试数据
 	username := "test_user"
@@ -150,8 +173,8 @@ func ExampleMySQLDB_Insert() {
 	// 插入成功, ID: 1
 }
 
-func ExampleMySQLDB_Where() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Where() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	var users []*UserModel
 	mysqlDB.SetModel(UserModel{})
@@ -187,8 +210,8 @@ func ExampleMySQLDB_Where() {
 	// 用户名: where_test2
 }
 
-func ExampleMySQLDB_Select() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Select() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 查询多条记录 Select 支持 map 以及 结构体
 	// var users []map[string]interface{}
@@ -209,8 +232,8 @@ func ExampleMySQLDB_Select() {
 	// 用户名: test_user
 }
 
-func ExampleMySQLDB_Page() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Page() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 分页查询
 	var users []*UserModel
@@ -238,8 +261,8 @@ func ExampleMySQLDB_Page() {
 	// 当前页记录数: 5
 }
 
-func ExampleMySQLDB_First() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_First() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 查询单条记录 First 支持 map 以及 结构体
 	// var user map[string]interface{}
@@ -259,8 +282,8 @@ func ExampleMySQLDB_First() {
 	// 用户名: test_user
 }
 
-func ExampleMySQLDB_Fields() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Fields() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 指定查询字段
 	var user map[string]interface{}
@@ -281,8 +304,8 @@ func ExampleMySQLDB_Fields() {
 	// 用户名: user_1
 }
 
-func ExampleMySQLDB_Update() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Update() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 准备更新数据
 	newPassword := "new_password"
@@ -306,8 +329,8 @@ func ExampleMySQLDB_Update() {
 	// 更新成功, 影响行数: 1
 }
 
-func ExampleMySQLDB_Delete() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Delete() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	mysqlDB.SetModel(UserModel{})
 	mysqlDB = mysqlDB.Where("username = ?", "test_user")
@@ -326,8 +349,8 @@ func ExampleMySQLDB_Delete() {
 	// 删除成功, 影响行数: 1
 }
 
-func ExampleMySQLDB_GroupBy() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_GroupBy() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 使用分组查询
 	type Result struct {
@@ -353,8 +376,8 @@ func ExampleMySQLDB_GroupBy() {
 	// 日期: 2024-03-21, 注册人数: 15
 }
 
-func ExampleMySQLDB_OrderBy() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_OrderBy() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 使用排序查询
 	var users []UserModel
@@ -376,8 +399,8 @@ func ExampleMySQLDB_OrderBy() {
 	// 用户名: test_user
 }
 
-func ExampleMySQLDB_Count() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Count() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 统计记录数
 	mysqlDB.SetModel(UserModel{})
@@ -393,8 +416,8 @@ func ExampleMySQLDB_Count() {
 	// 总记录数: 1
 }
 
-func ExampleMySQLDB_Exists() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_Exists() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	mysqlDB.SetModel(UserModel{})
 	// 检查记录是否存在
@@ -410,11 +433,11 @@ func ExampleMySQLDB_Exists() {
 	// 记录是否存在: true
 }
 
-func ExampleMySQLDB_WithTransaction() {
-	mysqlDB := db.MySQLConnect("default")
+func ExampleEngine_WithTransaction() {
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 事务
-	err := mysqlDB.WithTransaction(func(db *db.MySQLDB, args ...interface{}) error {
+	err := mysqlDB.WithTransaction(func(engine *mysql.Engine, args ...interface{}) error {
 		// 准备测试数据
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"
@@ -427,8 +450,8 @@ func ExampleMySQLDB_WithTransaction() {
 			Password:    &password,
 			Create_time: &now,
 		}
-		db.SetModel(UserModel{})
-		_, err := db.Insert(user1)
+		engine.SetModel(UserModel{})
+		_, err := engine.Insert(user1)
 		if err != nil {
 			return err
 		}
@@ -439,7 +462,7 @@ func ExampleMySQLDB_WithTransaction() {
 			Password:    &password,
 			Create_time: &now,
 		}
-		_, err = db.Insert(user2)
+		_, err = engine.Insert(user2)
 		if err != nil {
 			return err
 		}
