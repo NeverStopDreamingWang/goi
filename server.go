@@ -17,10 +17,10 @@ import (
 )
 
 // Http 服务
-var Settings *metaSettings
-var Cache *metaCache
-var Log *metaLog
-var Validator *metaValidator
+var Settings *metaSettings = newSettings()
+var Cache *metaCache = newCache()
+var Log *metaLog = newLog()
+var Validator *metaValidator = newValidator()
 
 var serverChan = make(chan os.Signal, 1)
 
@@ -51,10 +51,6 @@ type Engine struct {
 
 // 创建一个 Http 服务
 func NewHttpServer() *Engine {
-	Settings = newSettings()
-	Cache = newCache()
-	Log = newLog()
-	Validator = newValidator()
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Engine{
 		startTime:  nil,
