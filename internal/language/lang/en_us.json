@@ -30,7 +30,7 @@
   "day": "day",
   "router": {
     "path_already_exists": "Path already exists: \"{{ .path }}\"\n",
-    "path_collision": "The router path \"{{ .path }}\" conflicts with the regular expression match of \"{{ .collision_path }}\": \"{{ .pattern }}\"\n",
+    "path_regexp_collision": "Path \"{{ .path }}\" and \"{{ .collision_path }}\" regexp collision: \"{{ .pattern }}\"\n",
     "converter_is_not_exists": "The route converter does not exist: \"{{ .name }}\""
   },
   "context": {
