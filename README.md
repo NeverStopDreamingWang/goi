@@ -16,7 +16,7 @@
 编译
 
 ```cmd
-go build -o goi.exe
+go build -p=1 -o goi.exe
 ```
 
 **Linux**: `cp mypath\go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi mypath\go\bin\goi`

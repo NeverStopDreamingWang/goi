@@ -86,15 +86,6 @@ func (self *UserModel) Update(validated_data *UserModel) error {
 	}
 
 	utils.Update(self, validated_data)
-	// if validated_data.Username != nil {
-	// 	self.Username = validated_data.Username
-	// }
-	// if validated_data.Password != nil {
-	// 	self.Password = validated_data.Password
-	// }
-	// if validated_data.Update_time != nil {
-	// 	self.Update_time = validated_data.Update_time
-	// }
 	return nil
 }
 
