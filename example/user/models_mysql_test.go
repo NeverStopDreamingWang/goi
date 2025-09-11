@@ -3,13 +3,12 @@ package user_test
 import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/model"
-	"github.com/NeverStopDreamingWang/goi/model/mysql"
+	"github.com/NeverStopDreamingWang/goi/db/mysql"
 )
 
 func init() {
 	// MySQL 数据库
-	mysqlDB := db.MySQLConnect("default")
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 	mysqlDB.Migrate("test_goi", UserModel{})
 }
 
@@ -23,14 +22,14 @@ type UserModel struct {
 }
 
 // 设置表配置
-func (userModel UserModel) ModelSet() *mysql.MySQLSettings {
+func (userModel UserModel) ModelSet() *mysql.Settings {
 	encryptFields := []string{
 		"username",
 		"password",
 	}
 
-	modelSettings := &mysql.MySQLSettings{
-		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
+	modelSettings := &mysql.Settings{
+		MigrationsHandler: mysql.MigrationsHandler{ // 迁移时处理函数
 			BeforeHandler: nil,      // 迁移之前处理函数
 			AfterHandler:  InitUser, // 迁移之后处理函数
 		},
@@ -67,7 +66,7 @@ var initUserList = [][]any{
 func InitUser() error {
 	var err error
 
-	mysqlDB := db.MySQLConnect("default")
+	mysqlDB := db.Connect[*mysql.Engine]("default")
 	mysqlDB.SetModel(UserModel{})
 	total, err := mysqlDB.Count()
 	if err != nil {

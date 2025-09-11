@@ -9,12 +9,12 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/auth"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
+	"github.com/NeverStopDreamingWang/goi/db/sqlite3"
 )
 
 func (self UserModel) Validate() error {
 	// 自定义验证
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
 
 	if self.Id != nil {
@@ -51,7 +51,7 @@ func (self *UserModel) Create() error {
 		return err
 	}
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
 	result, err := sqlite3DB.Insert(self)
 	if err != nil {
@@ -78,7 +78,7 @@ func (self *UserModel) Update(validated_data *UserModel) error {
 	Update_time := goi.GetTime().Format(time.DateTime)
 	validated_data.Update_time = &Update_time
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
 	_, err := sqlite3DB.Where("`id` = ?", self.Id).Update(validated_data)
 	if err != nil {
@@ -99,7 +99,7 @@ func (self *UserModel) Update(validated_data *UserModel) error {
 }
 
 func (self UserModel) Delete() error {
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
 	_, err := sqlite3DB.Where("`id` = ?", self.Id).Delete()
 	if err != nil {

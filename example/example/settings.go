@@ -1,11 +1,9 @@
 package example
 
 import (
-	"database/sql"
 	"os"
 	"path"
 	"path/filepath"
-	"time"
 
 	"example/utils"
 	"example/utils/mongo_db"
@@ -117,32 +115,12 @@ hwIDAQAB
 
 	// 数据库配置
 	Server.Settings.DATABASES["default"] = &goi.DataBase{
-		ENGINE:         "sqlite3",
-		DataSourceName: filepath.Join(Server.Settings.BASE_DIR, Config.SQLite3Config.Uri),
-		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
-			sqlite3_db.SQLite3DB, err = sql.Open(ENGINE, DataSourceName)
-			if err != nil {
-				goi.Log.Error(err)
-				panic(err)
-			}
-			return sqlite3_db.SQLite3DB
-		},
+		ENGINE:  "sqlite3",
+		Connect: sqlite3_db.Connect,
 	}
 	Server.Settings.DATABASES["mysql"] = &goi.DataBase{
-		ENGINE:         "mysql",
-		DataSourceName: Config.MySQLConfig.Uri,
-		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
-			mysql_db.MySQLDB, err = sql.Open(ENGINE, DataSourceName)
-			if err != nil {
-				goi.Log.Error(err)
-				panic(err)
-			}
-			// 设置连接池参数
-			mysql_db.MySQLDB.SetMaxOpenConns(10)           // 设置最大打开连接数
-			mysql_db.MySQLDB.SetMaxIdleConns(5)            // 设置最大空闲连接数
-			mysql_db.MySQLDB.SetConnMaxLifetime(time.Hour) // 设置连接的最大存活时间
-			return mysql_db.MySQLDB
-		},
+		ENGINE:  "mysql",
+		Connect: mysql_db.Connect,
 	}
 
 	Server.Settings.USE_TZ = false

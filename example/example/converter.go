@@ -14,5 +14,5 @@ func init() {
 	// 注册路由转换器
 
 	// 手机号
-	goi.RegisterConverter(phoneConverter, "phone")
+	goi.RegisterConverter("phone", phoneConverter)
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
+	"github.com/NeverStopDreamingWang/goi/db/sqlite3"
 )
 
 // 参数验证
@@ -30,7 +31,7 @@ func listView(request *goi.Request) interface{} {
 
 	}
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 
 	sqlite3DB.SetModel(UserModel{}) // 设置操作表
 
@@ -123,7 +124,7 @@ func retrieveView(request *goi.Request) interface{} {
 		return validationErr.Response()
 	}
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 
 	user := UserModel{}
 	sqlite3DB.SetModel(UserModel{})
@@ -173,7 +174,7 @@ func updateView(request *goi.Request) interface{} {
 		return validationErr.Response()
 	}
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 
 	instance := &UserModel{}
 	sqlite3DB.SetModel(UserModel{})
@@ -231,7 +232,7 @@ func deleteView(request *goi.Request) interface{} {
 		return validationErr.Response()
 	}
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 
 	instance := &UserModel{}
 	sqlite3DB.SetModel(UserModel{})
@@ -287,10 +288,10 @@ func TestWithTransaction(request *goi.Request) interface{} {
 
 	}
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 
 	// 返回错误事务自动回滚
-	err = sqlite3DB.WithTransaction(func(sqlite3DB *db.SQLite3DB, args ...interface{}) error {
+	err = sqlite3DB.WithTransaction(func(engine *sqlite3.Engine, args ...interface{}) error {
 		create_time := goi.GetTime().Format(time.DateTime)
 		// mysql 数据库
 		user := &UserModel{
@@ -299,14 +300,14 @@ func TestWithTransaction(request *goi.Request) interface{} {
 			Create_time: &create_time,
 		}
 
-		sqlite3DB.SetModel(UserModel{})
-		_, err = sqlite3DB.Insert(user)
+		engine.SetModel(UserModel{})
+		_, err = engine.Insert(user)
 		if err != nil {
 			return err
 		}
 
-		sqlite3DB.SetModel(UserModel{})
-		_, err = sqlite3DB.Where("id=?", pk).Delete()
+		engine.SetModel(UserModel{})
+		_, err = engine.Where("id=?", pk).Delete()
 		if err != nil {
 			return err
 		}
