@@ -67,13 +67,12 @@ var models = InitFile{
 import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/model"
-	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
+	"github.com/NeverStopDreamingWang/goi/db/sqlite3"
 )
 
 func init() {
 	// sqlite 数据库
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.Migrate("%s", MyModel{})
 }
 
@@ -88,9 +87,9 @@ type MyModel struct {
 
 
 // 设置表配置
-func (self MyModel) ModelSet() *sqlite3.SQLite3Settings {
-	modelSettings := &sqlite3.SQLite3Settings{
-		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
+func (self MyModel) ModelSet() *sqlite3.Settings {
+	modelSettings := &sqlite3.Settings{
+		MigrationsHandler: sqlite3.MigrationsHandler{ // 迁移时处理函数
 			BeforeHandler: nil,  // 迁移之前处理函数
 			AfterHandler:  nil,  // 迁移之后处理函数
 		},
@@ -122,12 +121,12 @@ import (
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
+	"github.com/NeverStopDreamingWang/goi/db/sqlite3"
 )
 
 func (self MyModel) Validate() error {
 	// 自定义验证
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
 
 	if self.Id != nil {
@@ -156,7 +155,7 @@ func (self *MyModel) Create() error {
 	if err != nil {
 		return err
 	}
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
 	result, err := sqlite3DB.Insert(self)
 	if err != nil {
@@ -174,7 +173,7 @@ func (self *MyModel) Update(validated_data *MyModel) error {
 	Update_time := goi.GetTime().Format(time.DateTime)
 	validated_data.Update_time = &Update_time
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
 	_, err := sqlite3DB.Where("` + "`" + `id` + "`" + ` = ?", self.Id).Update(validated_data)
 	if err != nil {
@@ -236,9 +235,10 @@ import (
 
 // 参数验证
 type listValidParams struct {
-	Page int            ` + "`" + `name:"page" type:"int" required:"true"` + "`" + `
-	Page_Size int            ` + "`" + `name:"page_size" type:"int" required:"true"` + "`" + `
+	Page      int ` + "`" + `name:"page" type:"int" required:"true"` + "`" + `
+	Page_Size int ` + "`" + `name:"page_size" type:"int" required:"true"` + "`" + `
 }
+
 func listView(request *goi.Request) interface{} {
 	var params listValidParams
 	var queryParams goi.Params
@@ -249,31 +249,32 @@ func listView(request *goi.Request) interface{} {
 	if validationErr != nil {
 		return validationErr.Response()
 	}
-	
+
 	return goi.Data{
-		Code: http.StatusOK,
-		Message:    "",
-		Results:   nil,
+		Code:    http.StatusOK,
+		Message: "",
+		Results: nil,
 	}
 }
 
 // 参数验证
 type createValidParams struct {
-	Name string            ` + "`" + `name:"name" type:"string" required:"true"` + "`" + `
+	Name string ` + "`" + `name:"name" type:"string" required:"true"` + "`" + `
 }
+
 func createView(request *goi.Request) interface{} {
 	var params createValidParams
 	var bodyParams goi.Params
 	var validationErr goi.ValidationError
-	
+
 	bodyParams = request.BodyParams() // Body 传参
 	validationErr = bodyParams.ParseParams(&params)
 	if validationErr != nil {
 		return validationErr.Response()
 	}
-	
+
 	return goi.Data{
-		Code:  http.StatusOK,
+		Code:    http.StatusOK,
 		Message: "创建成功",
 		Results: "",
 	}
@@ -286,9 +287,9 @@ func retrieveView(request *goi.Request) interface{} {
 	if validationErr != nil {
 		return validationErr.Response()
 	}
-	
+
 	return goi.Data{
-		Code:  http.StatusOK,
+		Code:    http.StatusOK,
 		Message: "",
 		Results: "",
 	}
@@ -296,8 +297,9 @@ func retrieveView(request *goi.Request) interface{} {
 
 // 参数验证
 type updateValidParams struct {
-	Name *string            ` + "`" + `name:"name" type:"string"` + "`" + `
+	Name *string ` + "`" + `name:"name" type:"string"` + "`" + `
 }
+
 func updateView(request *goi.Request) interface{} {
 	var pk int64
 	var params updateValidParams
@@ -314,9 +316,9 @@ func updateView(request *goi.Request) interface{} {
 	if validationErr != nil {
 		return validationErr.Response()
 	}
-	
+
 	return goi.Data{
-		Code:  http.StatusOK,
+		Code:    http.StatusOK,
 		Message: "修改成功",
 		Results: "",
 	}
@@ -332,7 +334,7 @@ func deleteView(request *goi.Request) interface{} {
 	}
 
 	return goi.Data{
-		Code:  http.StatusOK,
+		Code:    http.StatusOK,
 		Message: "删除成功",
 		Results: nil,
 	}

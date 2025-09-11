@@ -212,8 +212,8 @@ func init() {
 	// 数据库配置
 	Server.Settings.DATABASES["default"] = &goi.DataBase{
 		ENGINE:         "mysql",
-		DataSourceName: "root:123@tcp(127.0.0.1:3306)/%s",
-		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
+		Connect: func(ENGINE string) *sql.DB {
+			DataSourceName := "root:123@tcp(127.0.0.1:3306)/%s"
 			mysqlDB, err := sql.Open(ENGINE, DataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
@@ -228,10 +228,9 @@ func init() {
 	}
 	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
 		ENGINE:         "sqlite3",
-		DataSourceName: filepath.Join(Server.Settings.BASE_DIR, "data", "%s.db"),
-		Connect: func(ENGINE string, DataSourceName string) *sql.DB {
-			var sqliteDB *sql.DB
-			sqliteDB, err = sql.Open(ENGINE, DataSourceName)
+		Connect: func(ENGINE string) *sql.DB {
+			DataSourceName := filepath.Join(Server.Settings.BASE_DIR, "data", "%s.db")
+			sqliteDB, err := sql.Open(ENGINE, DataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
@@ -316,7 +315,7 @@ func init() {
 	// 注册路由转换器
 
 	// 手机号
-	goi.RegisterConverter(phoneConverter, "phone")
+	goi.RegisterConverter("phone", phoneConverter)
 }
 `
 		return fmt.Sprintf(content, projectName, "`(1[3456789]\\d{9})`")
@@ -359,6 +358,11 @@ func (validationErr *validationError) NewValidationError(status int, message str
 		Status:  status,
 		Message: message,
 	}
+}
+
+// 实现 error 接口，返回错误消息
+func (validationErr *validationError) Error() string {
+	return validationErr.Message
 }
 
 // 参数验证错误响应格式
