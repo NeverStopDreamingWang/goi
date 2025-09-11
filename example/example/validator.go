@@ -29,6 +29,7 @@ func (validationErr *exampleValidationError) NewValidationError(status int, mess
 	}
 }
 
+// 实现 error 接口，返回错误消息
 func (validationErr *exampleValidationError) Error() string {
 	return validationErr.Message
 }
