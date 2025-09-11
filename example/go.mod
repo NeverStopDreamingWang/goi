@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.7
 
 require (
-	github.com/NeverStopDreamingWang/goi v1.5.0
+	github.com/NeverStopDreamingWang/goi v1.6.0
 	github.com/redis/go-redis/v9 v9.12.1
 	go.mongodb.org/mongo-driver v1.17.4
 	gopkg.in/yaml.v3 v3.0.1
@@ -30,4 +30,4 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 )
 
-replace github.com/NeverStopDreamingWang/goi v1.5.0 => ../
+replace github.com/NeverStopDreamingWang/goi v1.6.0 => ../
