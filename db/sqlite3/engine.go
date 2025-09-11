@@ -48,6 +48,16 @@ func Connect(UseDataBases string) *Engine {
 		})
 		panic(databasesNotErrorMsg)
 	}
+	if database.ENGINE != driverName {
+		engineNotMatchErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
+			MessageID: "db.engine_not_match_error",
+			TemplateData: map[string]interface{}{
+				"want": driverName,
+				"got":  database.ENGINE,
+			},
+		})
+		panic(engineNotMatchErrorMsg)
+	}
 	return &Engine{
 		name:      UseDataBases,
 		DB:        database.DB(),
