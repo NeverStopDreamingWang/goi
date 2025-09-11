@@ -1,6 +1,6 @@
 # goi
 
-基于 `net/http` 进行开发的 Web 框架
+基于 `net/http` 开发的一个 Web 框架，语法与 `Django` 类似，简单易用，快速上手，详情请查看示例
 
 [详细示例：example](./example)
 
