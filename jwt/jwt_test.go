@@ -12,7 +12,7 @@ import (
 // 自定义负载结构体
 type CustomPayloads struct {
 	jwt.Payloads        // 嵌入基础 Payloads 结构体
-	UserID       int    `json:"user_id"`
+	User_id      int    `json:"user_id"`
 	Username     string `json:"username"`
 }
 
@@ -29,7 +29,7 @@ func ExampleNewJWT() {
 			// 设置过期时间为2小时后
 			Exp: jwt.ExpTime{Time: goi.GetTime().Add(time.Hour * 2)},
 		},
-		UserID:   1,
+		User_id:  1,
 		Username: "test_user",
 	}
 
@@ -52,7 +52,7 @@ func ExampleNewJWT() {
 		return
 	}
 
-	fmt.Println("解析的用户ID:", decodedPayload.UserID)
+	fmt.Println("解析的用户ID:", decodedPayload.User_id)
 	fmt.Println("解析的用户名:", decodedPayload.Username)
 
 	// Output:
@@ -76,7 +76,7 @@ func ExampleCkeckToken() {
 			// 设置过期时间为1小时前
 			Exp: jwt.ExpTime{Time: goi.GetTime().Add(-time.Hour)},
 		},
-		UserID:   1,
+		User_id:  1,
 		Username: "test_user",
 	}
 
@@ -88,7 +88,7 @@ func ExampleCkeckToken() {
 	err := jwt.CkeckToken(expiredToken, key, &decodedPayload)
 	if errors.Is(err, jwt.ErrExpiredSignature) {
 		fmt.Println("令牌已过期")
-	} else if err == jwt.ErrDecode {
+	} else if errors.Is(err, jwt.ErrDecode) {
 		fmt.Println("令牌格式错误")
 	} else if err != nil {
 		fmt.Println("其他错误:", err)

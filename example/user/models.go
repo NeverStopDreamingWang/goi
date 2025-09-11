@@ -3,13 +3,12 @@ package user
 import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/model"
-	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
+	"github.com/NeverStopDreamingWang/goi/db/sqlite3"
 )
 
 func init() {
 	// sqlite 数据库
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.Migrate("test_goi", UserModel{})
 }
 
@@ -24,14 +23,14 @@ type UserModel struct {
 }
 
 // 设置表配置
-func (self UserModel) ModelSet() *sqlite3.SQLite3Settings {
+func (self UserModel) ModelSet() *sqlite3.Settings {
 	encryptFields := []string{
 		"username",
 		"password",
 	}
 
-	modelSettings := &sqlite3.SQLite3Settings{
-		MigrationsHandler: model.MigrationsHandler{ // 迁移时处理函数
+	modelSettings := &sqlite3.Settings{
+		MigrationsHandler: sqlite3.MigrationsHandler{ // 迁移时处理函数
 			BeforeHandler: nil,          // 迁移之前处理函数
 			AfterHandler:  InitUserData, // 迁移之后处理函数
 		},
@@ -55,7 +54,7 @@ var initUserList = [][]any{
 func InitUserData() error {
 	var err error
 
-	sqlite3DB := db.SQLite3Connect("default")
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(UserModel{})
 	total, err := sqlite3DB.Count()
 	if err != nil {

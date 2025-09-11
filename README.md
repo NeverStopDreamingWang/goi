@@ -63,7 +63,7 @@ The commands are（命令如下）:
 * `Router.Path(path string, desc string, view ViewSet)` 注册一个路由
     * `path` 路由
     * `desc` 描述
-    * `view` 视图 `AsView` 类型
+  * `view` 视图 `ViewSet` 类型
         * `GET` `HandlerFunc`
         * `HEAD`    `HandlerFunc`
         * `POST`    `HandlerFunc`
@@ -131,18 +131,26 @@ router.Path("assets/", "静态FS目录", goi.ViewSet{GET: goi.NewStaticDirFS(ass
 框架采用接口式中间件，按职责可实现以下任意方法（可选实现）：
 
 ```go
+// 中间件
+// MiddleWare 定义四个阶段钩子：
+// - ProcessRequest：请求阶段（顺序执行）；返回非 nil 则短路，内层不再进入
+// - ProcessView：路由解析后、视图执行前（顺序执行）；返回非 nil 则短路，但响应阶段仍会全链执行
+// - ProcessException：异常阶段（逆序执行）；
+// - ProcessResponse：响应阶段（逆序执行、全链）；常用于追加/修改响应头
 type MiddleWare interface {
 ProcessRequest(*Request) interface{}                // 请求中间件
 ProcessView(*Request) interface{}                   // 视图中间件
 ProcessException(*Request, interface{}) interface{} // 异常中间件
-ProcessResponse(*Request, interface{}) interface{}  // 响应中间件
+ProcessResponse(*Request, *Response)                // 响应中间件
 }
 ```
 
 注册：
 
 ```go
-goi.RegisterMiddleWare(MyMiddleware{})
+func init() {
+example.Server.MiddleWare = append(example.Server.MiddleWare, &MyMiddleware{})
+}
 ```
 
 执行顺序：
@@ -248,8 +256,6 @@ func ExampleMakePassword() {
 package goi_test
 
 import (
-	"fmt"
-
 	"github.com/NeverStopDreamingWang/goi"
 )
 
@@ -257,76 +263,68 @@ import (
 var phoneConverter = goi.Converter{
 	Regex: `(1[3456789]\d{9})`,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
-	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
 }
 
 // 邮箱
 var emailConverter = goi.Converter{
 	Regex: `([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})`,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
-	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
 }
 
 // URL
 var urlConverter = goi.Converter{
 	Regex: `(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})`,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
-	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
 }
 
 // 日期 (YYYY-MM-DD)
 var dateConverter = goi.Converter{
 	Regex: `(\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))`,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
-	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
 }
 
 // 时间 (HH:MM:SS)
 var timeConverter = goi.Converter{
 	Regex: `((?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d)`,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
-	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
 }
 
 // IP地址 (IPv4)
 var ipv4Converter = goi.Converter{
 	Regex: `((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))`,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
-	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
 }
 
 // 用户名 (字母开头，允许字母数字下划位)
 var usernameConverter = goi.Converter{
 	Regex: `([a-zA-Z][a-zA-Z0-9_]{3,15})`,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
-	ToURL: func(value interface{}) (string, error) { return fmt.Sprint(value), nil },
 }
 
 func ExampleRegisterConverter() {
 	// 注册路由转换器
 
 	// 手机号
-	goi.RegisterConverter(phoneConverter, "my_phone")
+	goi.RegisterConverter("my_phone", phoneConverter)
 
 	// 邮箱
-	goi.RegisterConverter(emailConverter, "my_email")
+	goi.RegisterConverter("my_email", emailConverter)
 
 	// URL
-	goi.RegisterConverter(urlConverter, "my_url")
+	goi.RegisterConverter("my_url", urlConverter)
 
 	// 日期 (YYYY-MM-DD)
-	goi.RegisterConverter(dateConverter, "my_date")
+	goi.RegisterConverter("my_date", dateConverter)
 
 	// 时间 (HH:MM:SS)
-	goi.RegisterConverter(timeConverter, "my_time")
+	goi.RegisterConverter("my_time", timeConverter)
 
 	// IP地址 (IPv4)
-	goi.RegisterConverter(ipv4Converter, "my_ipv4")
+	goi.RegisterConverter("my_ipv4", ipv4Converter)
 
 	// 用户名 (字母开头，允许字母数字下划位)
-	goi.RegisterConverter(usernameConverter, "my_username")
+	goi.RegisterConverter("my_username", usernameConverter)
 }
-
 ```
 
 使用
@@ -493,46 +491,71 @@ func TestRegisterValidate(t *testing.T) {
 支持：MySQL、SQLite3
 
 ```go
-package db_test
+package sqlite3_test
 
 import (
+	"database/sql"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/model"
-	"github.com/NeverStopDreamingWang/goi/model/sqlite3"
+	"github.com/NeverStopDreamingWang/goi/db/sqlite3"
 )
 
 func init() {
+	goi.Settings.DATABASES["default"] = &goi.DataBase{
+		ENGINE: "sqlite3",
+		Connect: func(ENGINE string) *sql.DB {
+			var DB *sql.DB
+			var err error
+			DataSourceName := filepath.Join(goi.Settings.BASE_DIR, "sqlite3.db")
+			DB, err = sql.Open(ENGINE, DataSourceName)
+			if err != nil {
+				goi.Log.Error(err)
+				panic(err)
+			}
+			return DB
+		},
+	}
 	// 初始化测试数据库
-	sqliteDB := db.SQLite3Connect("sqlite")
+	// 使用泛型通用连接
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
+
+	// 使用专用连接
+	// sqliteDB := sqlite3.Connect("default")
 
 	// 迁移模型前清理旧表(如果存在)
 	_, _ = sqliteDB.Execute("DROP TABLE IF EXISTS user_tb")
 
 	// 迁移模型
-	sqliteDB.Migrate("test_db", UserSqliteModel{})
+	sqliteDB.Migrate("test_db", UserModel{})
 
 	// 插入初始测试数据
 	username := "test_user"
 	password := "test123456"
 	now := time.Now().Format(time.DateTime)
 
-	user := UserSqliteModel{
+	user := UserModel{
 		Username:    &username,
 		Password:    &password,
 		Create_time: &now,
 		Update_time: &now,
 	}
 
-	sqliteDB.SetModel(UserSqliteModel{})
-	sqliteDB.Insert(user)
+	sqliteDB.SetModel(UserModel{})
+	result, err := sqliteDB.Insert(user)
+	if err != nil {
+		fmt.Println("插入错误:", err)
+		return
+	}
+	id, _ := result.LastInsertId()
+	user.Id = &id
 }
 
 // 用户表模型
-type UserSqliteModel struct {
+type UserModel struct {
 	Id          *int64  `field_name:"id" field_type:"INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT" json:"id"`
 	Username    *string `field_name:"username" field_type:"TEXT NOT NULL" json:"username"`
 	Password    *string `field_name:"password" field_type:"TEXT NOT NULL" json:"-"`
@@ -541,16 +564,16 @@ type UserSqliteModel struct {
 }
 
 // 设置表配置
-func (userModel UserSqliteModel) ModelSet() *sqlite3.SQLite3Settings {
+func (userModel UserModel) ModelSet() *sqlite3.Settings {
 	encryptFields := []string{
 		"username",
 		"password",
 	}
 
-	modelSettings := &sqlite3.SQLite3Settings{
-		MigrationsHandler: model.MigrationsHandler{
-			BeforeHandler: nil,            // 迁移之前处理函数
-			AfterHandler:  InitUserSqlite, // 迁移之后处理函数
+	modelSettings := &sqlite3.Settings{
+		MigrationsHandler: sqlite3.MigrationsHandler{
+			BeforeHandler: nil,      // 迁移之前处理函数
+			AfterHandler:  InitUser, // 迁移之后处理函数
 		},
 
 		TABLE_NAME: "user_tb", // 设置表名
@@ -565,8 +588,8 @@ func (userModel UserSqliteModel) ModelSet() *sqlite3.SQLite3Settings {
 }
 
 // 初始化用户
-func InitUserSqlite() error {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func InitUser() error {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	var (
 		id              int64  = 1
@@ -576,14 +599,14 @@ func InitUserSqlite() error {
 		err             error
 	)
 
-	user := UserSqliteModel{
+	user := UserModel{
 		Id:          &id,
 		Username:    &username,
 		Password:    &password,
 		Create_time: &create_Datetime,
 		Update_time: nil,
 	}
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	_, err = sqliteDB.Insert(&user)
 	if err != nil {
 		return err
@@ -592,32 +615,32 @@ func InitUserSqlite() error {
 	return nil
 }
 
-func ExampleSQLite3DB_Migrate() {
+func ExampleEngine_Migrate() {
 	// 连接数据库
-	sqliteDB := db.SQLite3Connect("sqlite")
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 迁移模型
-	sqliteDB.Migrate("test_db", UserSqliteModel{})
+	sqliteDB.Migrate("test_db", UserModel{})
 
 	// Output:
 }
 
-func ExampleSQLite3DB_Insert() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Insert() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 准备测试数据
 	username := "test_user"
 	password := "test123456"
 	now := time.Now().Format(time.DateTime)
 
-	user := UserSqliteModel{
+	user := UserModel{
 		Username:    &username,
 		Password:    &password,
 		Create_time: &now,
 	}
 
 	// 设置模型并插入数据
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	result, err := sqliteDB.Insert(user)
 	if err != nil {
 		fmt.Println("插入错误:", err)
@@ -631,21 +654,21 @@ func ExampleSQLite3DB_Insert() {
 	// 插入成功, ID: 1
 }
 
-func ExampleSQLite3DB_Where() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Where() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
-	var users []*UserSqliteModel
-	sqliteDB.SetModel(UserSqliteModel{})
+	var users []*UserModel
+	sqliteDB.SetModel(UserModel{})
 
 	// Where 返回当前实例的副本指针
 	// 简单条件
-	sqliteDB = sqliteDB.Where("username = ?", "where_test1")
+	sqliteDB = sqliteDB.Where("username = ?", "test_user")
 
 	// AND条件
 	sqliteDB = sqliteDB.Where("create_time IS NULL")
 
 	// 支持 IN 参数值为 Slice 或 Array
-	testUsers := []string{"where_test1", "where_test2"}
+	testUsers := []string{"test_user", "test_user_1"}
 	sqliteDB = sqliteDB.Where("username IN ?", testUsers)
 
 	// LIKE条件
@@ -663,19 +686,18 @@ func ExampleSQLite3DB_Where() {
 	}
 
 	// Output:
-	// 查询到 2 条记录
-	// 用户名: where_test1
-	// 用户名: where_test2
+	// 查询到 1 条记录
+	// 用户名: test_user
 }
 
-func ExampleSQLite3DB_Select() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Select() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 查询多条记录 Select 支持 map 以及 结构体
 	// var users []map[string]interface{}
-	var users []*UserSqliteModel
+	var users []*UserModel
 
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	err := sqliteDB.Select(users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
@@ -690,13 +712,13 @@ func ExampleSQLite3DB_Select() {
 	// 用户名: test_user
 }
 
-func ExampleSQLite3DB_Page() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Page() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 分页查询
-	var users []*UserSqliteModel
+	var users []*UserModel
 
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	total, totalPages, err := sqliteDB.Page(2, 5) // 第2页,每页5条
 	if err != nil {
 		fmt.Println("分页错误:", err)
@@ -719,14 +741,14 @@ func ExampleSQLite3DB_Page() {
 	// 当前页记录数: 5
 }
 
-func ExampleSQLite3DB_First() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_First() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 查询单条记录 First 支持 map 以及 结构体
 	// var user map[string]interface{}
-	var user *UserSqliteModel
+	var user *UserModel
 
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	sqliteDB = sqliteDB.Where("username = ?", "test_user")
 	err := sqliteDB.First(user)
 	if err != nil {
@@ -740,13 +762,13 @@ func ExampleSQLite3DB_First() {
 	// 用户名: test_user
 }
 
-func ExampleSQLite3DB_Fields() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Fields() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 指定查询字段
 	var user map[string]interface{}
 
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 
 	// Fields 返回当前实例的副本指针
 	sqliteDB = sqliteDB.Fields("Username", "Create_time")
@@ -762,17 +784,17 @@ func ExampleSQLite3DB_Fields() {
 	// 用户名: user_1
 }
 
-func ExampleSQLite3DB_Update() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Update() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 准备更新数据
 	newPassword := "new_password"
-	updateUser := UserSqliteModel{
+	updateUser := UserModel{
 		Password: &newPassword,
 	}
 
 	// 更新记录
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	sqliteDB = sqliteDB.Where("username = ?", "test_user")
 	result, err := sqliteDB.Update(updateUser)
 	if err != nil {
@@ -787,10 +809,10 @@ func ExampleSQLite3DB_Update() {
 	// 更新成功, 影响行数: 1
 }
 
-func ExampleSQLite3DB_Delete() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Delete() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	sqliteDB = sqliteDB.Where("username = ?", "test_user")
 
 	// 删除记录
@@ -807,8 +829,8 @@ func ExampleSQLite3DB_Delete() {
 	// 删除成功, 影响行数: 1
 }
 
-func ExampleSQLite3DB_GroupBy() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_GroupBy() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 使用分组查询
 	type Result struct {
@@ -817,7 +839,7 @@ func ExampleSQLite3DB_GroupBy() {
 	}
 
 	var results []*Result
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	// GroupBy 返回当前实例的副本指针
 	sqliteDB = sqliteDB.GroupBy("DATE(create_time)")
 	err := sqliteDB.Select(&results)
@@ -834,12 +856,12 @@ func ExampleSQLite3DB_GroupBy() {
 	// 日期: 2024-03-21, 注册人数: 15
 }
 
-func ExampleSQLite3DB_OrderBy() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_OrderBy() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 使用排序查询
-	var users []UserSqliteModel
-	sqliteDB.SetModel(UserSqliteModel{})
+	var users []UserModel
+	sqliteDB.SetModel(UserModel{})
 
 	// OrderBy 返回当前实例的副本指针
 	sqliteDB = sqliteDB.OrderBy("-create_time")
@@ -857,11 +879,11 @@ func ExampleSQLite3DB_OrderBy() {
 	// 用户名: test_user
 }
 
-func ExampleSQLite3DB_Count() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Count() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 统计记录数
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	count, err := sqliteDB.Count()
 	if err != nil {
 		fmt.Println("统计错误:", err)
@@ -874,10 +896,10 @@ func ExampleSQLite3DB_Count() {
 	// 总记录数: 1
 }
 
-func ExampleSQLite3DB_Exists() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_Exists() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
-	sqliteDB.SetModel(UserSqliteModel{})
+	sqliteDB.SetModel(UserModel{})
 	// 检查记录是否存在
 	exists, err := sqliteDB.Where("username = ?", "test_user").Exists()
 	if err != nil {
@@ -891,11 +913,11 @@ func ExampleSQLite3DB_Exists() {
 	// 记录是否存在: true
 }
 
-func ExampleSQLite3DB_WithTransaction() {
-	sqliteDB := db.SQLite3Connect("sqlite")
+func ExampleEngine_WithTransaction() {
+	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 事务
-	err := sqliteDB.WithTransaction(func(db *db.SQLite3DB, args ...interface{}) error {
+	err := sqliteDB.WithTransaction(func(engine *sqlite3.Engine, args ...interface{}) error {
 		// 准备测试数据
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"
@@ -903,24 +925,24 @@ func ExampleSQLite3DB_WithTransaction() {
 		now := time.Now().Format(time.DateTime)
 
 		// 插入第一个用户
-		user1 := UserSqliteModel{
+		user1 := UserModel{
 			Username:    &username1,
 			Password:    &password,
 			Create_time: &now,
 		}
-		db.SetModel(UserSqliteModel{})
-		_, err := db.Insert(user1)
+		engine.SetModel(UserModel{})
+		_, err := engine.Insert(user1)
 		if err != nil {
 			return err
 		}
 
 		// 插入第二个用户
-		user2 := UserSqliteModel{
+		user2 := UserModel{
 			Username:    &username2,
 			Password:    &password,
 			Create_time: &now,
 		}
-		_, err = db.Insert(user2)
+		_, err = engine.Insert(user2)
 		if err != nil {
 			return err
 		}
@@ -943,43 +965,115 @@ func ExampleSQLite3DB_WithTransaction() {
 
 ## 内置 JWT Token
 
-* 生成 Token
-
 ```go
-type Payloads struct {
-    jwt.Payloads
-    User_id  int64  `json:"user_id"`
-    Username string `json:"username"`
+package jwt_test
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/jwt"
+)
+
+// 自定义负载结构体
+type CustomPayloads struct {
+	jwt.Payloads        // 嵌入基础 Payloads 结构体
+	User_id      int    `json:"user_id"`
+	Username     string `json:"username"`
 }
 
-header := jwt.Header{
-    Alg: jwt.AlgHS256,
-    Typ: jwt.TypJWT,
+func ExampleNewJWT() {
+	// 创建头部信息
+	header := jwt.Header{
+		Alg: jwt.AlgHS256,
+		Typ: jwt.TypJWT,
+	}
+
+	// 创建自定义负载
+	payload := CustomPayloads{
+		Payloads: jwt.Payloads{
+			// 设置过期时间为2小时后
+			Exp: jwt.ExpTime{Time: goi.GetTime().Add(time.Hour * 2)},
+		},
+		User_id:  1,
+		Username: "test_user",
+	}
+
+	// 签名密钥
+	key := "your-secret-key"
+
+	// 生成 JWT 令牌
+	token, err := jwt.NewJWT(header, payload, key)
+	if err != nil {
+		fmt.Println("生成令牌错误:", err)
+		return
+	}
+	fmt.Println("生成的令牌成功")
+
+	// 验证并解析令牌
+	var decodedPayload CustomPayloads
+	err = jwt.CkeckToken(token, key, &decodedPayload)
+	if err != nil {
+		fmt.Println("验证令牌错误:", err)
+		return
+	}
+
+	fmt.Println("解析的用户ID:", decodedPayload.User_id)
+	fmt.Println("解析的用户名:", decodedPayload.Username)
+
+	// Output:
+	// 生成的令牌成功
+	// 解析的用户ID: 1
+	// 解析的用户名: test_user
 }
 
-// 设置过期时间
-twoHoursLater := goi.GetTime().Add(24 * 15 * time.Hour)
+func ExampleCkeckToken() {
+	// 签名密钥
+	key := "your-secret-key"
 
-payloads := Payloads{ // 包含 jwt.Payloads
-    Payloads: jwt.Payloads{
-        Exp: jwt.ExpTime{twoHoursLater},
-    },
-    User_id:  *userInfo.Id,
-    Username: *userInfo.Username,
+	// 创建一个已过期的令牌
+	header := jwt.Header{
+		Alg: jwt.AlgHS256,
+		Typ: jwt.TypJWT,
+	}
+
+	payload := CustomPayloads{
+		Payloads: jwt.Payloads{
+			// 设置过期时间为1小时前
+			Exp: jwt.ExpTime{Time: goi.GetTime().Add(-time.Hour)},
+		},
+		User_id:  1,
+		Username: "test_user",
+	}
+
+	// 生成过期的令牌
+	expiredToken, _ := jwt.NewJWT(header, payload, key)
+
+	// 尝试验证过期的令牌
+	var decodedPayload CustomPayloads
+	err := jwt.CkeckToken(expiredToken, key, &decodedPayload)
+	if errors.Is(err, jwt.ErrExpiredSignature) {
+		fmt.Println("令牌已过期")
+	} else if errors.Is(err, jwt.ErrDecode) {
+		fmt.Println("令牌格式错误")
+	} else if err != nil {
+		fmt.Println("其他错误:", err)
+	}
+
+	// 使用错误的密钥验证令牌
+	wrongKey := "wrong-secret-key"
+	err = jwt.CkeckToken(expiredToken, wrongKey, &decodedPayload)
+	if err == jwt.ErrDecode {
+		fmt.Println("签名验证失败")
+	}
+
+	// Output:
+	// 令牌已过期
+	// 签名验证失败
 }
-token, err := jwt.NewJWT(header, payloads, goi.Settings.SECRET_KEY)
-```
 
-* 验证 Token
-
-```go
-payloads := &auth.Payloads{}
-err := jwt.CkeckToken(token, goi.Settings.SECRET_KEY, payloads)
-if jwt.JwtDecodeError(err) { // token 解码错误
-    pass
-} else if jwt.JwtExpiredSignatureError(err) { // token 已过期
-    pass
-}
 ```
 
 ##                  
