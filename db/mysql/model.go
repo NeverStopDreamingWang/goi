@@ -2,12 +2,17 @@ package mysql
 
 import (
 	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/model"
 )
 
+// 迁移处理函数
+type MigrationsHandler struct {
+	BeforeHandler func() error // 迁移之前处理函数
+	AfterHandler  func() error // 迁移之后处理函数
+}
+
 // MySQL 模型设置
-type MySQLSettings struct {
-	model.MigrationsHandler // 迁移处理函数
+type Settings struct {
+	MigrationsHandler // 迁移处理函数
 
 	TABLE_NAME      string // 设置表名
 	ENGINE          string // 设置存储引擎，默认: InnoDB
@@ -28,12 +33,12 @@ type MySQLSettings struct {
 }
 
 // 模型类
-type MySQLModel interface {
-	ModelSet() *MySQLSettings
+type Model interface {
+	ModelSet() *Settings
 }
 
 // MySQL 创建迁移
-type MySQLMakeMigrations struct {
+type MakeMigrations struct {
 	DATABASES []string
-	MODELS    []MySQLModel
+	MODELS    []Model
 }

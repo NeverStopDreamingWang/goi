@@ -60,9 +60,13 @@
     "split_log_stat_error": "Log splitting-[{{ .name }}] Error Obtaining log file information: {{ .err }}\n",
     "split_log_rename_error": "Log splitting-[{{ .name }}] Log renaming error: {{ .err }}\n"
   },
-  "database": {
+  "db": {
     "transaction_cannot_be_nested_error": "Transactions cannot be nested",
     "databases_not_error": "No \"{{ .name }}\" in DATABASES\n",
+    "register_engine_connect_is_not_nil": "The database engine connection function is nil\n",
+    "register_engine_connect_twice": "Register called twice for Engine connect: \"{{ .name }}\"\n",
+    "engine_not_registered": "Engine not registered: \"{{ .name }}\"\n",
+    "engine_type_is_not_match": "Engine type mismatch, want {{ .want_type }}, got {{ .got_type }}\n",
     "select_error": "{{ .engine }} DataBase \"{{ .db_name }}\" Query error: {{ .err }}\n",
     "before_migration": "Before migration BeforeHandler ...",
     "before_migration_error": "Before migration BeforeHandler error: {{ .err }}\n",
