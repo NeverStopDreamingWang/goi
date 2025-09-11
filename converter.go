@@ -2,6 +2,7 @@ package goi
 
 import (
 	"strconv"
+	"sync"
 )
 
 type Converter struct {
@@ -57,6 +58,9 @@ var uuidConverter = Converter{
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
 }
 
+// metaConverterMu 保护 metaConverter
+var metaConverterMu sync.RWMutex
+
 // metaConverter 存储URL路径参数的转换器映射
 // key: 转换器名称
 // value: 转换器
@@ -72,11 +76,23 @@ var metaConverter = map[string]Converter{
 //
 // 参数:
 //   - converter Converter: 转换器
-func RegisterConverter(converter Converter, type_name string) {
+func RegisterConverter(type_name string, converter Converter) {
+	metaConverterMu.Lock()
+	defer metaConverterMu.Unlock()
 	metaConverter[type_name] = converter
 }
 
-// GetConverters 获取所有转换器
-func GetConverters() map[string]Converter {
-	return metaConverter
+// GetConverter 获取转换器
+//
+// 参数:
+//   - name string: 转换器名称
+//
+// 返回:
+//   - Converter: 转换器
+//   - bool: 是否存在
+func GetConverter(name string) (Converter, bool) {
+	metaConverterMu.RLock()
+	defer metaConverterMu.RUnlock()
+	converter, ok := metaConverter[name]
+	return converter, ok
 }
