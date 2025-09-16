@@ -6,8 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // 路由表
@@ -44,21 +43,15 @@ func (router MetaRouter) hasChildRouter(child *MetaRouter) {
 	}
 	for _, itemRouter := range router.includeRouter {
 		if itemRouter.path == child.path { // 指针引用相等
-			pathAlreadyExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "router.path_already_exists",
-				TemplateData: map[string]interface{}{
-					"path": child.path,
-				},
+			pathAlreadyExistsMsg := i18n.T("router.path_already_exists", map[string]interface{}{
+				"path": child.path,
 			})
 			panic(pathAlreadyExistsMsg)
 		} else if itemRouter.pattern == child.pattern { // 指针引用相等
-			pathCollisionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "router.path_regexp_collision",
-				TemplateData: map[string]interface{}{
-					"path":           itemRouter.path,
-					"collision_path": child.path,
-					"pattern":        child.pattern,
-				},
+			pathCollisionMsg := i18n.T("router.path_regexp_collision", map[string]interface{}{
+				"path":           itemRouter.path,
+				"collision_path": child.path,
+				"pattern":        child.pattern,
 			})
 			panic(pathCollisionMsg)
 		}

@@ -9,9 +9,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 	"github.com/NeverStopDreamingWang/goi/parse"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 const ContentType = "Content-Type"
@@ -203,11 +202,8 @@ func (response *Response) write(request *Request, responseWriter http.ResponseWr
 	}
 	// 返回响应
 	if err != nil {
-		responseJsonErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.response_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
+		responseJsonErrorMsg := i18n.T("server.response_error", map[string]interface{}{
+			"err": err,
 		})
 		return 0, errors.New(responseJsonErrorMsg)
 	}

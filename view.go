@@ -3,8 +3,7 @@ package goi
 import (
 	"errors"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // HandlerFunc 定义 goi 使用的请求处理程序
@@ -47,20 +46,14 @@ func (viewSet ViewSet) GetHandlerFunc(method string) (HandlerFunc, error) {
 	case "TRACE":
 		handlerFunc = viewSet.TRACE
 	default:
-		methodNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.method_not_allowed",
-			TemplateData: map[string]interface{}{
-				"method": method,
-			},
+		methodNotAllowedMsg := i18n.T("server.method_not_allowed", map[string]interface{}{
+			"method": method,
 		})
 		return nil, errors.New(methodNotAllowedMsg)
 	}
 	if handlerFunc == nil {
-		methodNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.method_not_allowed",
-			TemplateData: map[string]interface{}{
-				"method": method,
-			},
+		methodNotAllowedMsg := i18n.T("server.method_not_allowed", map[string]interface{}{
+			"method": method,
 		})
 		return nil, errors.New(methodNotAllowedMsg)
 	}

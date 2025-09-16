@@ -10,8 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // EvictPolicy 缓存淘汰策略类型
@@ -117,25 +116,16 @@ func newCache() *metaCache {
 
 // initCache 初始化缓存配置
 func (cache *metaCache) initCache() {
-	MaxSizeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.cache.max_size",
-		TemplateData: map[string]interface{}{
-			"max_size": FormatBytes(cache.MAX_SIZE),
-		},
+	MaxSizeMsg := i18n.T("server.cache.max_size", map[string]interface{}{
+		"max_size": FormatBytes(cache.MAX_SIZE),
 	})
 	Log.Log(meta, MaxSizeMsg)
-	EvictPolicyMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.cache.evict_policy",
-		TemplateData: map[string]interface{}{
-			"evict_policy": evictPolicyNames[cache.EVICT_POLICY],
-		},
+	EvictPolicyMsg := i18n.T("server.cache.evict_policy", map[string]interface{}{
+		"evict_policy": evictPolicyNames[cache.EVICT_POLICY],
 	})
 	Log.Log(meta, EvictPolicyMsg)
-	ExpirationPolicyMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.cache.expiration_policy",
-		TemplateData: map[string]interface{}{
-			"expiration_policy": expirationPolicyNames[cache.EXPIRATION_POLICY],
-		},
+	ExpirationPolicyMsg := i18n.T("server.cache.expiration_policy", map[string]interface{}{
+		"expiration_policy": expirationPolicyNames[cache.EXPIRATION_POLICY],
 	})
 	Log.Log(meta, ExpirationPolicyMsg)
 }
@@ -317,11 +307,8 @@ func (cache *metaCache) cacheEvict() {
 
 	switch cache.EVICT_POLICY {
 	case NOEVICTION: // 直接返回错误，不淘汰任何已经存在的键
-		NoEvictionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.cache.noeviction",
-			TemplateData: map[string]interface{}{
-				"max_size": FormatBytes(Cache.MAX_SIZE),
-			},
+		NoEvictionMsg := i18n.T("server.cache.noeviction", map[string]interface{}{
+			"max_size": FormatBytes(Cache.MAX_SIZE),
 		})
 		Log.Error(NoEvictionMsg)
 		panic(NoEvictionMsg)

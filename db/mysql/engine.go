@@ -10,9 +10,8 @@ import (
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 const driverName = "mysql"
@@ -40,21 +39,15 @@ func factory(UseDataBases string) db.Engine {
 func Connect(UseDataBases string) *Engine {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {
-		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.databases_not_error",
-			TemplateData: map[string]interface{}{
-				"name": UseDataBases,
-			},
+		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]interface{}{
+			"name": UseDataBases,
 		})
 		panic(databasesNotErrorMsg)
 	}
 	if database.ENGINE != driverName {
-		engineNotMatchErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.engine_not_match_error",
-			TemplateData: map[string]interface{}{
-				"want": driverName,
-				"got":  database.ENGINE,
-			},
+		engineNotMatchErrorMsg := i18n.T("db.engine_not_match_error", map[string]interface{}{
+			"want": driverName,
+			"got":  database.ENGINE,
 		})
 		panic(engineNotMatchErrorMsg)
 	}
@@ -123,9 +116,7 @@ type TransactionFunc func(engine *Engine, args ...interface{}) error
 func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...interface{}) error {
 	var err error
 	if engine.transaction != nil {
-		transactionCannotBeNestedErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.transaction_cannot_be_nested_error",
-		})
+		transactionCannotBeNestedErrorMsg := i18n.T("db.transaction_cannot_be_nested_error")
 		return errors.New(transactionCannotBeNestedErrorMsg)
 	}
 
@@ -226,13 +217,10 @@ func (engine *Engine) Migrate(db_name string, model Model) {
 	var exists int
 	err = row.Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) == false && err != nil {
-		selectErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.select_error",
-			TemplateData: map[string]interface{}{
-				"engine":  "MySQL",
-				"db_name": engine.name,
-				"err":     err,
-			},
+		selectErrorMsg := i18n.T("db.select_error", map[string]interface{}{
+			"engine":  "MySQL",
+			"db_name": engine.name,
+			"err":     err,
 		})
 		goi.Log.Error(selectErrorMsg)
 		panic(selectErrorMsg)
@@ -300,56 +288,40 @@ func (engine *Engine) Migrate(db_name string, model Model) {
 
 	if exists != 1 { // 创建表
 		if modelSettings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
-			beforeMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "db.before_migration",
-			})
+			beforeMigrationMsg := i18n.T("db.before_migration")
 			goi.Log.Info(beforeMigrationMsg)
 			err = modelSettings.MigrationsHandler.BeforeHandler()
 			if err != nil {
-				beforeMigrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "db.before_migration_error",
-					TemplateData: map[string]interface{}{
-						"err": err,
-					},
+				beforeMigrationErrorMsg := i18n.T("db.before_migration_error", map[string]interface{}{
+					"err": err,
 				})
 				goi.Log.Error(beforeMigrationErrorMsg)
 				panic(beforeMigrationErrorMsg)
 			}
 		}
-		migrationModelMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.migration",
-			TemplateData: map[string]interface{}{
-				"engine":  "MySQL",
-				"name":    engine.name,
-				"db_name": db_name,
-				"tb_name": modelSettings.TABLE_NAME,
-			},
+		migrationModelMsg := i18n.T("db.migration", map[string]interface{}{
+			"engine":  "MySQL",
+			"name":    engine.name,
+			"db_name": db_name,
+			"tb_name": modelSettings.TABLE_NAME,
 		})
 		goi.Log.Info(migrationModelMsg)
 		_, err = engine.Execute(createSql)
 		if err != nil {
-			migrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "db.migration_error",
-				TemplateData: map[string]interface{}{
-					"err": err,
-				},
+			migrationErrorMsg := i18n.T("db.migration_error", map[string]interface{}{
+				"err": err,
 			})
 			goi.Log.Error(migrationErrorMsg)
 			panic(migrationErrorMsg)
 		}
 
 		if modelSettings.MigrationsHandler.AfterHandler != nil { // 迁移之后处理
-			afterMigrationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "db.after_migration",
-			})
+			afterMigrationMsg := i18n.T("db.after_migration")
 			goi.Log.Info(afterMigrationMsg)
 			err = modelSettings.MigrationsHandler.AfterHandler()
 			if err != nil {
-				afterMigrationErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "db.after_migration_error",
-					TemplateData: map[string]interface{}{
-						"err": err,
-					},
+				afterMigrationErrorMsg := i18n.T("db.after_migration_error", map[string]interface{}{
+					"err": err,
 				})
 				goi.Log.Error(afterMigrationErrorMsg)
 				panic(afterMigrationErrorMsg)
@@ -366,9 +338,7 @@ func (engine *Engine) Migrate(db_name string, model Model) {
 //   - 如果未设置模型则panic
 func (engine *Engine) isSetModel() {
 	if engine.model == nil {
-		notSetModelErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.not_SetModel_error",
-		})
+		notSetModelErrorMsg := i18n.T("db.not_SetModel_error")
 		goi.Log.Error(notSetModelErrorMsg)
 		panic(notSetModelErrorMsg)
 	}
@@ -444,11 +414,8 @@ func (engine Engine) Fields(fields ...string) *Engine {
 	for _, fieldName := range fields {
 		field, ok := ModelType.FieldByName(fieldName)
 		if !ok {
-			fieldIsNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "db.field_is_not_error",
-				TemplateData: map[string]interface{}{
-					"name": fieldName,
-				},
+			fieldIsNotErrorMsg := i18n.T("db.field_is_not_error", map[string]interface{}{
+				"name": fieldName,
 			})
 			goi.Log.Error(fieldIsNotErrorMsg)
 			panic(fieldIsNotErrorMsg)
@@ -533,9 +500,7 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 func (engine Engine) Where(query string, args ...interface{}) *Engine {
 	queryParts := strings.Split(query, "?")
 	if len(queryParts)-1 != len(args) {
-		whereArgsPlaceholderErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.where_args_placeholder_error",
-		})
+		whereArgsPlaceholderErrorMsg := i18n.T("db.where_args_placeholder_error")
 		goi.Log.Error(whereArgsPlaceholderErrorMsg)
 		panic(whereArgsPlaceholderErrorMsg)
 	}
@@ -695,11 +660,8 @@ func (engine *Engine) Select(queryResult interface{}) error {
 		result   = reflect.ValueOf(queryResult)
 	)
 	if result.Kind() != reflect.Ptr {
-		isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.is_not_ptr",
-			TemplateData: map[string]interface{}{
-				"name": "queryResult",
-			},
+		isNotPtrErrorMsg := i18n.T("db.is_not_ptr", map[string]interface{}{
+			"name": "queryResult",
 		})
 		return errors.New(isNotPtrErrorMsg)
 	}
@@ -707,11 +669,8 @@ func (engine *Engine) Select(queryResult interface{}) error {
 
 	kind := result.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		isNotSlicePtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.is_not_slice_or_array",
-			TemplateData: map[string]interface{}{
-				"name": "queryResult",
-			},
+		isNotSlicePtrErrorMsg := i18n.T("db.is_not_slice_or_array", map[string]interface{}{
+			"name": "queryResult",
 		})
 		return errors.New(isNotSlicePtrErrorMsg)
 	}
@@ -722,11 +681,8 @@ func (engine *Engine) Select(queryResult interface{}) error {
 		ItemType = ItemType.Elem()
 	}
 	if kind := ItemType.Kind(); kind != reflect.Struct && kind != reflect.Map {
-		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.is_not_slice_struct_ptr_or_map",
-			TemplateData: map[string]interface{}{
-				"name": "queryResult",
-			},
+		isNotStructPtrErrorMsg := i18n.T("db.is_not_slice_struct_ptr_or_map", map[string]interface{}{
+			"name": "queryResult",
 		})
 		return errors.New(isNotStructPtrErrorMsg)
 	}
@@ -827,11 +783,8 @@ func (engine *Engine) First(queryResult interface{}) error {
 	result := reflect.ValueOf(queryResult)
 	if result.Kind() != reflect.Map {
 		if result.Kind() != reflect.Ptr {
-			isNotPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "db.is_not_ptr",
-				TemplateData: map[string]interface{}{
-					"name": "queryResult",
-				},
+			isNotPtrErrorMsg := i18n.T("db.is_not_ptr", map[string]interface{}{
+				"name": "queryResult",
 			})
 			return errors.New(isNotPtrErrorMsg)
 		}
@@ -839,11 +792,8 @@ func (engine *Engine) First(queryResult interface{}) error {
 	}
 
 	if kind := result.Kind(); kind != reflect.Struct && kind != reflect.Map {
-		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.is_not_struct_ptr_or_map",
-			TemplateData: map[string]interface{}{
-				"name": "queryResult",
-			},
+		isNotStructPtrErrorMsg := i18n.T("db.is_not_struct_ptr_or_map", map[string]interface{}{
+			"name": "queryResult",
 		})
 		return errors.New(isNotStructPtrErrorMsg)
 	}

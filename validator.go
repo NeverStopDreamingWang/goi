@@ -10,8 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // ValidationError 参数验证错误处理器接口
@@ -178,21 +177,15 @@ func (validator boolValidator) Validate(value interface{}) ValidationError {
 		var reStr = `^(true|false)$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "validator.params_error",
-				TemplateData: map[string]interface{}{
-					"err": value,
-				},
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
-		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "validator.params_error",
-			TemplateData: map[string]interface{}{
-				"err": value,
-			},
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -223,21 +216,15 @@ func (validator intValidator) Validate(value interface{}) ValidationError {
 		var reStr = `^([0-9]+)$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "validator.params_error",
-				TemplateData: map[string]interface{}{
-					"err": value,
-				},
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
-		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "validator.params_error",
-			TemplateData: map[string]interface{}{
-				"err": value,
-			},
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -264,11 +251,8 @@ func (validator stringValidator) Validate(value interface{}) ValidationError {
 	case string:
 		return nil
 	default:
-		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "validator.params_error",
-			TemplateData: map[string]interface{}{
-				"err": value,
-			},
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -293,11 +277,8 @@ func (validator sliceValidator) Validate(value interface{}) ValidationError {
 		var reStr = `^(\[.\])$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "validator.params_error",
-				TemplateData: map[string]interface{}{
-					"err": value,
-				},
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
@@ -311,11 +292,8 @@ func (validator sliceValidator) Validate(value interface{}) ValidationError {
 		if kind == reflect.Slice || kind == reflect.Array {
 			return nil
 		}
-		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "validator.params_error",
-			TemplateData: map[string]interface{}{
-				"err": value,
-			},
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -353,11 +331,8 @@ func (validator mapValidator) Validate(value interface{}) ValidationError {
 		var reStr = `^(\{.\})$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "validator.params_error",
-				TemplateData: map[string]interface{}{
-					"err": value,
-				},
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
@@ -371,11 +346,8 @@ func (validator mapValidator) Validate(value interface{}) ValidationError {
 		if valueType.Kind() == reflect.Map {
 			return nil
 		}
-		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "validator.params_error",
-			TemplateData: map[string]interface{}{
-				"err": value,
-			},
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -414,21 +386,15 @@ func (validator slugValidator) Validate(value interface{}) ValidationError {
 		var reStr = `^([-a-zA-Z0-9_]+)`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "validator.params_error",
-				TemplateData: map[string]interface{}{
-					"err": value,
-				},
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
-		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "validator.params_error",
-			TemplateData: map[string]interface{}{
-				"err": value,
-			},
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -452,21 +418,15 @@ func (validator uuidValidator) Validate(value interface{}) ValidationError {
 		var reStr = `^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "validator.params_error",
-				TemplateData: map[string]interface{}{
-					"err": value,
-				},
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
-		paramsErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "validator.params_error",
-			TemplateData: map[string]interface{}{
-				"err": value,
-			},
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}

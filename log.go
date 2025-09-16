@@ -10,8 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // Level 日志等级类型
@@ -74,27 +73,19 @@ func newLog() *metaLog {
 //   - error: 注册过程中的错误信息
 func (metaLog *metaLog) RegisterLogger(logger *MetaLogger) error {
 	if logger.Path == "" {
-		invalidPathMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "log.invalid_path",
-		})
+		invalidPathMsg := i18n.T("log.invalid_path")
 		return errors.New(invalidPathMsg)
 	}
 	if len(logger.Level) == 0 {
-		invalidLevelMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "log.invalid_level",
-		})
+		invalidLevelMsg := i18n.T("log.invalid_level")
 		return errors.New(invalidLevelMsg)
 	}
 	if logger.File == nil {
-		invalidFileMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "log.invalid_file",
-		})
+		invalidFileMsg := i18n.T("log.invalid_file")
 		return errors.New(invalidFileMsg)
 	}
 	if logger.Logger == nil {
-		invalidObjectMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "log.invalid_object",
-		})
+		invalidObjectMsg := i18n.T("log.invalid_object")
 		return errors.New(invalidObjectMsg)
 	}
 	// 检查是否满足切割条件
@@ -294,12 +285,9 @@ func checkSplitLoggerFunc(metaLogger *MetaLogger) error {
 		}
 		fileInfo, err := metaLogger.File.Stat()
 		if err != nil {
-			splitLogStatErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "log.split_log_stat_error",
-				TemplateData: map[string]interface{}{
-					"name": metaLogger.Name,
-					"err":  err,
-				},
+			splitLogStatErrorMsg := i18n.T("log.split_log_stat_error", map[string]interface{}{
+				"name": metaLogger.Name,
+				"err":  err,
 			})
 			panic(splitLogStatErrorMsg)
 			return nil
@@ -370,12 +358,9 @@ func defaultSplitLoggerFunc(metaLogger *MetaLogger) (*os.File, error) {
 	}
 	err = os.Rename(metaLogger.Path, oldFilePath)
 	if err != nil {
-		splitLogReNameErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "log.split_log_rename_error",
-			TemplateData: map[string]interface{}{
-				"name": metaLogger.Name,
-				"err":  err,
-			},
+		splitLogReNameErrorMsg := i18n.T("log.split_log_rename_error", map[string]interface{}{
+			"name": metaLogger.Name,
+			"err":  err,
 		})
 		return nil, errors.New(splitLogReNameErrorMsg)
 	}

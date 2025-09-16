@@ -12,15 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // Http 服务
-var Settings *metaSettings = newSettings()
-var Cache *metaCache = newCache()
-var Log *metaLog = newLog()
-var Validator *metaValidator = newValidator()
+var Settings = newSettings()
+var Cache = newCache()
+var Log = newLog()
+var Validator = newValidator()
 
 var serverChan = make(chan os.Signal, 1)
 
@@ -76,47 +75,33 @@ func (engine *Engine) RunServer() {
 	// 日志切割
 	go engine.Log.splitLogger(engine.ctx, engine.waitGroup)
 
-	startMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.start",
-	})
+	startMsg := i18n.T("server.start")
 	engine.Log.Log(meta, startMsg, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
 
-	startTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.start_time",
-		TemplateData: map[string]interface{}{
-			"start_time": engine.startTime.Format(time.DateTime),
-		},
+	startTimeMsg := i18n.T("server.start_time", map[string]interface{}{
+		"start_time": engine.startTime.Format(time.DateTime),
 	})
 	engine.Log.Log(meta, startTimeMsg)
 
 	if engine.Log.DEBUG == true {
-		goiVersionMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.goi_version",
-			TemplateData: map[string]interface{}{
-				"version": version,
-			},
+		goiVersionMsg := i18n.T("server.goi_version", map[string]interface{}{
+			"version": version,
 		})
 		engine.Log.Log(meta, goiVersionMsg)
 	}
 
 	if engine.Settings.GetTimeZone() != "" {
-		currentTimeZoneMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.current_time_zone",
-			TemplateData: map[string]interface{}{
-				"time_zone": engine.Settings.GetTimeZone(),
-			},
+		currentTimeZoneMsg := i18n.T("server.current_time_zone", map[string]interface{}{
+			"time_zone": engine.Settings.GetTimeZone(),
 		})
 		engine.Log.Log(meta, currentTimeZoneMsg)
 	}
 
 	for _, logger := range engine.Log.loggers {
-		logInfoMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.log_info",
-			TemplateData: map[string]interface{}{
-				"name":       logger.Name,
-				"split_size": FormatBytes(logger.SPLIT_SIZE),
-				"split_time": logger.SPLIT_TIME,
-			},
+		logInfoMsg := i18n.T("server.log_info", map[string]interface{}{
+			"name":       logger.Name,
+			"split_size": FormatBytes(logger.SPLIT_SIZE),
+			"split_time": logger.SPLIT_TIME,
 		})
 		engine.Log.Log(meta, logInfoMsg)
 	}
@@ -141,11 +126,8 @@ func (engine *Engine) RunServer() {
 			}
 			return
 		default:
-			invalidOperationMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "server.invalid_operation",
-				TemplateData: map[string]interface{}{
-					"name": sig,
-				},
+			invalidOperationMsg := i18n.T("server.invalid_operation", map[string]interface{}{
+				"name": sig,
 			})
 			engine.Log.Log(meta, invalidOperationMsg)
 			return
@@ -177,37 +159,25 @@ func (engine *Engine) RunServer() {
 			Certificates: []tls.Certificate{cert},
 		}
 
-		listenAddressMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.listen_address",
-			TemplateData: map[string]interface{}{
-				"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
-			},
+		listenAddressMsg := i18n.T("server.listen_address", map[string]interface{}{
+			"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
 		})
 		engine.Log.Log(meta, listenAddressMsg)
 		if engine.Settings.BIND_DOMAIN != "" {
-			listenDomainMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "server.listen_address",
-				TemplateData: map[string]interface{}{
-					"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
-				},
+			listenDomainMsg := i18n.T("server.listen_address", map[string]interface{}{
+				"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
 			})
 			engine.Log.Log(meta, listenDomainMsg)
 		}
 		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
 	} else {
-		listenAddressMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.listen_address",
-			TemplateData: map[string]interface{}{
-				"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
-			},
+		listenAddressMsg := i18n.T("server.listen_address", map[string]interface{}{
+			"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
 		})
 		engine.Log.Log(meta, listenAddressMsg)
 		if engine.Settings.BIND_DOMAIN != "" {
-			listenDomainMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "server.listen_address",
-				TemplateData: map[string]interface{}{
-					"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
-				},
+			listenDomainMsg := i18n.T("server.listen_address", map[string]interface{}{
+				"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
 			})
 			engine.Log.Log(meta, listenDomainMsg)
 		}
@@ -232,42 +202,31 @@ func (engine *Engine) StopServer() error {
 
 	// 执行用户定义的回调函数
 	for _, shutdownCallback := range engine.ShutdownCallbackHandler {
-		shutdownHandlerMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.shutdown_handler",
-			TemplateData: map[string]interface{}{
-				"name": shutdownCallback.name,
-			},
+		shutdownHandlerMsg := i18n.T("server.shutdown_handler", map[string]interface{}{
+			"name": shutdownCallback.name,
 		})
 		engine.Log.Log(meta, shutdownHandlerMsg)
 
 		err = shutdownCallback.handler(engine)
 		if err != nil {
-			shutdownHandlerErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "server.shutdown_handler_error",
-				TemplateData: map[string]interface{}{
-					"err": err,
-				},
+			shutdownHandlerErrorMsg := i18n.T("server.shutdown_handler_error", map[string]interface{}{
+				"err": err,
 			})
 			engine.Log.Log(meta, shutdownHandlerErrorMsg)
 		}
 	}
 
 	if len(engine.Settings.DATABASES) != 0 {
-		closeDatabaseMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.close_database",
-		})
+		closeDatabaseMsg := i18n.T("server.close_database")
 		engine.Log.Log(meta, closeDatabaseMsg)
 	}
 	for name, database := range engine.Settings.DATABASES {
 		err = database.Close()
 		if err != nil {
-			closeDatabaseErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "server.close_database_error",
-				TemplateData: map[string]interface{}{
-					"engine": database.ENGINE,
-					"name":   name,
-					"err":    err,
-				},
+			closeDatabaseErrorMsg := i18n.T("server.close_database_error", map[string]interface{}{
+				"engine": database.ENGINE,
+				"name":   name,
+				"err":    err,
 			})
 			engine.Log.Log(meta, closeDatabaseErrorMsg)
 		}
@@ -278,23 +237,15 @@ func (engine *Engine) StopServer() error {
 	// 等待所有 goroutine 任务结束
 	engine.waitGroup.Wait()
 
-	stopTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.stop_time",
-		TemplateData: map[string]interface{}{
-			"stop_time": GetTime().Format(time.DateTime),
-		},
+	stopTimeMsg := i18n.T("server.stop_time", map[string]interface{}{
+		"stop_time": GetTime().Format(time.DateTime),
 	})
 	engine.Log.Log(meta, stopTimeMsg)
-	runTimeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.run_time",
-		TemplateData: map[string]interface{}{
-			"run_time": engine.runTimeStr(),
-		},
+	runTimeMsg := i18n.T("server.run_time", map[string]interface{}{
+		"run_time": engine.runTimeStr(),
 	})
 	engine.Log.Log(meta, runTimeMsg)
-	stopMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "server.stop",
-	})
+	stopMsg := i18n.T("server.stop")
 	engine.Log.Log(meta, stopMsg)
 	// 关闭服务器
 	err = engine.server.Shutdown(context.Background())
@@ -324,27 +275,19 @@ func (engine *Engine) runTimeStr() string {
 
 	var elapsedStr string
 	if days > 0 {
-		dayMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "day",
-		})
+		dayMsg := i18n.T("day")
 		elapsedStr += fmt.Sprintf("%d %v ", days, dayMsg)
 	}
 	if hours > 0 {
-		hourMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "hour",
-		})
+		hourMsg := i18n.T("hour")
 		elapsedStr += fmt.Sprintf("%02d %v ", hours, hourMsg)
 	}
 	if minutes > 0 {
-		minuteMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "minute",
-		})
+		minuteMsg := i18n.T("minute")
 		elapsedStr += fmt.Sprintf("%02d %v ", minutes, minuteMsg)
 	}
 	if seconds > 0 {
-		secondMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "second",
-		})
+		secondMsg := i18n.T("second")
 		elapsedStr += fmt.Sprintf("%02d %v ", seconds, secondMsg)
 	}
 	return elapsedStr

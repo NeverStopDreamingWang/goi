@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 type Language string
@@ -65,7 +65,7 @@ type metaSettings struct {
 }
 
 func newSettings() *metaSettings {
-	language.SetLocalize(string(ZH_CN))
+	i18n.SetLocalize(string(ZH_CN))
 	return &metaSettings{
 		NET_WORK:     "tcp",
 		BIND_ADDRESS: "127.0.0.1",
@@ -155,7 +155,7 @@ func (settings metaSettings) GetLocation() *time.Location {
 //   - lang Language: 语言 ZH_CN、EN_US
 func (settings metaSettings) SetLanguage(lang Language) {
 	settings.language = lang
-	language.SetLocalize(string(settings.language))
+	i18n.SetLocalize(string(settings.language))
 }
 
 // 获取代码语言

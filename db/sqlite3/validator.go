@@ -7,8 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // SQLite3 Engine Validate 验证器
@@ -25,11 +24,8 @@ func Validate(attrs Model, partial bool) error {
 		modelType = modelType.Elem()
 	}
 	if modelType.Kind() != reflect.Struct {
-		isNotStructPtrErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "serializer.is_not_struct_ptr",
-			TemplateData: map[string]interface{}{
-				"name": "ModelSerializer.model",
-			},
+		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]interface{}{
+			"name": "ModelSerializer.model",
 		})
 		return errors.New(isNotStructPtrErrorMsg)
 	}
@@ -87,9 +83,7 @@ func validateField(field reflect.StructField, fieldValue reflect.Value) error {
 func validateFieldType(fieldType string, fieldValue reflect.Value) error {
 	if fieldValue.Kind() == reflect.Ptr {
 		if fieldValue.IsNil() && isNotNullValidate(fieldType) {
-			fieldIsNotNullErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "serializer.field_is_not_null_error",
-			})
+			fieldIsNotNullErrorMsg := i18n.T("serializer.field_is_not_null_error")
 			return errors.New(fieldIsNotNullErrorMsg)
 		}
 		fieldValue = fieldValue.Elem()

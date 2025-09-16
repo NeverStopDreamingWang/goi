@@ -334,34 +334,35 @@ package goi_test
 
 import (
 	"goi_test/goi_test"
+
 	"github.com/NeverStopDreamingWang/goi"
 )
 
 func init() {
-    // 创建一个子路由
+	// 创建一个子路由
 	testRouter := goi_test.Server.Router.Include("test/", "测试路由")
-    {
-        // 注册一个路径 
-        // 类型 my_phone
-        // 名称 phone
+	{
+		// 注册一个路径 
+		// 类型 my_phone
+		// 名称 phone
 		testRouter.Path("test_phone/<my_phone:phone>", "", goi.ViewSet{GET: TestPhone}) // 测试路由转换器
-    }
+	}
 }
 
 // 测试手机号路由转换器
 func TestPhone(request *goi.Request) interface{} {
-    var phone string
-    var validationErr goi.ValidationError
-    validationErr = request.PathParams.Get("phone", &phone)
-    if validationErr != nil {
-    	return validationErr.Response()
-    }
-    resp := map[string]interface{}{
-    	"status": http.StatusOK,
-    	"msg":    phone,
-    	"data":   "OK",
-    }
-    return resp
+	var phone string
+	var validationErr goi.ValidationError
+	validationErr = request.PathParams.Get("phone", &phone)
+	if validationErr != nil {
+		return validationErr.Response()
+	}
+	resp := map[string]interface{}{
+		"status": http.StatusOK,
+		"msg":    phone,
+		"data":   "OK",
+	}
+	return resp
 }
 
 ```
@@ -375,6 +376,7 @@ func TestPhone(request *goi.Request) interface{} {
 
 ```go
 package goi_test
+
 import (
 	"fmt"
 	"net/http"
@@ -592,10 +594,10 @@ func InitUser() error {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	var (
-		id              int64  = 1
-		username        string = "超级管理员"
-		password        string = "admin"
-		create_Datetime = goi.GetTime().Format(time.DateTime)
+		id              int64 = 1
+		username              = "超级管理员"
+		password              = "admin"
+		create_Datetime       = goi.GetTime().Format(time.DateTime)
 		err             error
 	)
 
@@ -1076,4 +1078,4 @@ func ExampleCkeckToken() {
 
 ```
 
-##                  
+##                       
