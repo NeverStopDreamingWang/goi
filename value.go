@@ -222,7 +222,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 			fieldName := fieldType.Field(i).Name
 			// 尝试获取 tag 中的 name，如果没有则使用字段名
 			tagName := fieldType.Field(i).Tag.Get("json")
-			if tagName == "" {
+			if tagName == "" || tagName == "-" {
 				tagName = strings.ToLower(fieldName)
 			}
 			// 先尝试使用 tag name 获取值，如果没有则尝试使用字段名
