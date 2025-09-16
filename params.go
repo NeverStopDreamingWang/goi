@@ -122,16 +122,13 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 		// 判断是否允许空值
 		if value == nil {
 			allow_null := fieldType.Tag.Get("allow_null")
-			if allow_null == "true" {
-				continue
-			} else if allow_null == "" && required != "true" { // 可选参数允许空值
-				continue
-			} else {
+			if allow_null == "false" || (required == "true" && allow_null != "true") {
 				requiredParamsMsg := i18n.T("params.params_is_not_null", map[string]interface{}{
 					"name": fieldName,
 				})
 				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 			}
+			continue
 		}
 
 		// 获取验证器

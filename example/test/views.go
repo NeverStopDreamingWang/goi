@@ -97,8 +97,8 @@ type testParamsValidParams struct {
 }
 
 // type:"name" 字段类型, name 验证器名称
-// required:"bool" 字段是否必填，bool 布尔值 false 默认可选，true 必传参数
-// allow_null:"bool" 字段值是否允许为空，bool 布尔值 false 默认不允许，true 允许为空。当 required != true 并且 allow_null 未设置时，参数值可以为 null
+// required:"bool" 字段是否必填，bool 布尔值： false 默认可选，true 必传参数
+// allow_null:"bool" 字段值是否允许为空，bool 布尔值，当 required == true 时默认 allow_null=false 不允许为空，否则默认 allow_null=true 允许为空
 // 支持
 // int *int []*int []... map[string]*int map[...]...
 // ...
