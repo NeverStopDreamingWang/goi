@@ -5,8 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // ParamInfo 路由参数信息
@@ -45,11 +44,8 @@ func (router *MetaRouter) compilePattern() {
 
 		converter, ok := GetConverter(typeName)
 		if !ok {
-			converterIsNotExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "router.converter_is_not_exists",
-				TemplateData: map[string]interface{}{
-					"name": typeName,
-				},
+			converterIsNotExistsMsg := i18n.T("router.converter_is_not_exists", map[string]interface{}{
+				"name": typeName,
 			})
 			panic(converterIsNotExistsMsg)
 		}
@@ -128,11 +124,8 @@ func (router MetaRouter) resolveRequest(request *Request) (ViewSet, error) {
 	// 路由解析
 	viewSet, params, isPattern := router.resolve(request.Object.URL.Path)
 	if isPattern == false {
-		urlNotAllowedMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "server.url_not_allowed",
-			TemplateData: map[string]interface{}{
-				"path": request.Object.URL.Path,
-			},
+		urlNotAllowedMsg := i18n.T("server.url_not_allowed", map[string]interface{}{
+			"path": request.Object.URL.Path,
 		})
 		return ViewSet{}, errors.New(urlNotAllowedMsg)
 	}

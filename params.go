@@ -5,8 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 type Params map[string]interface{}
@@ -32,11 +31,8 @@ func (values Params) Get(key string, dest interface{}) ValidationError {
 	var err error
 	value, ok := values[key]
 	if !ok {
-		requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "params.required_params",
-			TemplateData: map[string]interface{}{
-				"name": key,
-			},
+		requiredParamsMsg := i18n.T("params.required_params", map[string]interface{}{
+			"name": key,
 		})
 		return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 	}
@@ -44,11 +40,8 @@ func (values Params) Get(key string, dest interface{}) ValidationError {
 	destValue := reflect.ValueOf(dest)
 	// 检查目标变量是否为指针类型
 	if destValue.Kind() != reflect.Ptr {
-		paramsIsNotPtrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "params.params_is_not_ptr",
-			TemplateData: map[string]interface{}{
-				"name": "dest",
-			},
+		paramsIsNotPtrMsg := i18n.T("params.params_is_not_ptr", map[string]interface{}{
+			"name": "dest",
 		})
 		return NewValidationError(http.StatusInternalServerError, paramsIsNotPtrMsg)
 	}
@@ -68,21 +61,15 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 
 	// 如果参数不是指针或者不是结构体类型，则返回错误
 	if paramsValue.Kind() != reflect.Ptr {
-		paramsIsNotPtrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "params.params_is_not_ptr",
-			TemplateData: map[string]interface{}{
-				"name": "paramsDest",
-			},
+		paramsIsNotPtrMsg := i18n.T("params.params_is_not_ptr", map[string]interface{}{
+			"name": "paramsDest",
 		})
 		return NewValidationError(http.StatusInternalServerError, paramsIsNotPtrMsg)
 	}
 	paramsValue = paramsValue.Elem()
 	if paramsValue.Kind() != reflect.Struct {
-		paramsIsNotStructPtrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "params.params_is_not_struct_ptr",
-			TemplateData: map[string]interface{}{
-				"name": "paramsDest",
-			},
+		paramsIsNotStructPtrMsg := i18n.T("params.params_is_not_struct_ptr", map[string]interface{}{
+			"name": "paramsDest",
 		})
 		return NewValidationError(http.StatusInternalServerError, paramsIsNotStructPtrMsg)
 	}
@@ -106,17 +93,17 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 
 		fieldName = fieldType.Tag.Get("name")
 		if fieldName == "" {
-			fieldName = strings.ToLower(fieldType.Name) // 字段名
+			// 无 name 标签则尝试获取 json 标签
+			fieldName = fieldType.Tag.Get("json")
+			if fieldName == "" {
+				// 无 json 标签则使用字段名小写
+				fieldName = strings.ToLower(fieldType.Name) // 字段名
+			}
 		}
 		validator_name = fieldType.Tag.Get("type") // 类型
 		if validator_name == "" {
-			isNotTypeMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "params.is_not_type",
-				TemplateData: map[string]interface{}{
-					"name": fieldName,
-				},
-			})
-			return NewValidationError(http.StatusInternalServerError, isNotTypeMsg)
+			// 无 type 标签，跳过验证读取
+			continue
 		}
 
 		value, ok := values[fieldName]
@@ -124,11 +111,8 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 		required := fieldType.Tag.Get("required")
 		if !ok {
 			if required == "true" { // 必填项返回错误
-				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "params.required_params",
-					TemplateData: map[string]interface{}{
-						"name": fieldName,
-					},
+				requiredParamsMsg := i18n.T("params.required_params", map[string]interface{}{
+					"name": fieldName,
 				})
 				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 			}
@@ -143,11 +127,8 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 			} else if allow_null == "" && required != "true" { // 可选参数允许空值
 				continue
 			} else {
-				requiredParamsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-					MessageID: "params.params_is_not_null",
-					TemplateData: map[string]interface{}{
-						"name": fieldName,
-					},
+				requiredParamsMsg := i18n.T("params.params_is_not_null", map[string]interface{}{
+					"name": fieldName,
 				})
 				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
 			}
@@ -156,14 +137,12 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 		// 获取验证器
 		validate, ok := GetValidate(validator_name)
 		if !ok {
-			validatorNotExistsMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "validator.validator_not_exists",
-				TemplateData: map[string]interface{}{
-					"name": validator_name,
-				},
+			validatorNotExistsMsg := i18n.T("validator.validator_not_exists", map[string]interface{}{
+				"name": validator_name,
 			})
 			return NewValidationError(http.StatusBadRequest, validatorNotExistsMsg)
 		}
+
 		// 执行验证
 		validationErr = validate.Validate(value)
 		if validationErr != nil {

@@ -7,8 +7,7 @@ import (
 	"encoding/pem"
 	"errors"
 
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // GenerateKey 生成 RSA 密钥对
@@ -70,29 +69,22 @@ func Encrypt(publicKeyBytes []byte, plaintext []byte) ([]byte, error) {
 	// 解析PEM格式的公钥
 	block, _ := pem.Decode(publicKeyBytes)
 	if block == nil {
-		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "crypto.rsa.public_key_decode_error",
-		})
+		errMsg := i18n.T("crypto.rsa.public_key_decode_error")
 		return nil, errors.New(errMsg)
 	}
 
 	// 解析公钥
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "crypto.rsa.public_key_parse_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
+		errMsg := i18n.T("crypto.rsa.public_key_parse_error", map[string]interface{}{
+			"err": err,
 		})
 		return nil, errors.New(errMsg)
 	}
 
 	publicKey, ok := pub.(*rsa.PublicKey)
 	if !ok {
-		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "crypto.rsa.public_key_type_error",
-		})
+		errMsg := i18n.T("crypto.rsa.public_key_type_error")
 		return nil, errors.New(errMsg)
 	}
 
@@ -118,20 +110,15 @@ func Decrypt(privateKeyBytes []byte, ciphertext []byte) ([]byte, error) {
 	// 解析PEM格式的私钥
 	block, _ := pem.Decode(privateKeyBytes)
 	if block == nil {
-		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "crypto.rsa.private_key_decode_error",
-		})
+		errMsg := i18n.T("crypto.rsa.private_key_decode_error")
 		return nil, errors.New(errMsg)
 	}
 
 	// 解析私钥
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "crypto.rsa.private_key_parse_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
+		errMsg := i18n.T("crypto.rsa.private_key_parse_error", map[string]interface{}{
+			"err": err,
 		})
 		return nil, errors.New(errMsg)
 	}

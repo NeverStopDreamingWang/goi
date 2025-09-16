@@ -5,8 +5,7 @@ import (
 	"errors"
 
 	"github.com/NeverStopDreamingWang/goi/crypto/pbkdf2_sha256"
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // MakePassword 使用 PBKDF2-SHA256 算法对密码进行加密
@@ -20,9 +19,7 @@ import (
 func MakePassword(password string) (string, error) {
 	// 验证密码不为空
 	if password == "" {
-		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "auth.empty_password",
-		})
+		errMsg := i18n.T("auth.empty_password")
 		return "", errors.New(errMsg)
 	}
 
@@ -30,12 +27,10 @@ func MakePassword(password string) (string, error) {
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
-		errMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "auth.salt_generation_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
-		})
+		errMsg := i18n.T("auth.salt_generation_error", map[string]interface{}{
+			"err": err,
+		},
+		)
 		return "", errors.New(errMsg)
 	}
 

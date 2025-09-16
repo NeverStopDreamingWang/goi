@@ -13,8 +13,7 @@ import (
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 // JWT 算法
@@ -41,13 +40,9 @@ const (
 
 var (
 	// 解码错误
-	ErrDecode = errors.New(language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "jwt.decode_error",
-	}))
+	ErrDecode = errors.New(i18n.T("jwt.decode_error"))
 	// 过期错误
-	ErrExpiredSignature = errors.New(language.I18n.MustLocalize(&i18n.LocalizeConfig{
-		MessageID: "jwt.expired_signature",
-	}))
+	ErrExpiredSignature = errors.New(i18n.T("jwt.expired_signature"))
 )
 
 // Header JWT头部结构
@@ -151,11 +146,8 @@ func CkeckToken(token string, key string, payloadsDest interface{}) error {
 	// 检查 signature
 	signatureStr, err := sha256Str(key, headerBase64+"."+payloadBase64)
 	if err != nil {
-		signatureErrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "jwt.signature_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
+		signatureErrMsg := i18n.T("jwt.signature_error", map[string]interface{}{
+			"err": err,
 		})
 		return errors.New(signatureErrMsg)
 	}
@@ -169,31 +161,22 @@ func CkeckToken(token string, key string, payloadsDest interface{}) error {
 	header := &Header{}
 	err = base64Decode(headerBase64, header)
 	if err != nil {
-		decodeErrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "jwt.header_decode_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
+		decodeErrMsg := i18n.T("jwt.header_decode_error", map[string]interface{}{
+			"err": err,
 		})
 		return errors.New(decodeErrMsg)
 	}
 	if header.Alg != AlgHS256 || header.Typ != TypJWT {
-		invalidHeaderMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "jwt.invalid_header",
-			TemplateData: map[string]interface{}{
-				"alg": header.Alg,
-				"typ": header.Typ,
-			},
+		invalidHeaderMsg := i18n.T("jwt.invalid_header", map[string]interface{}{
+			"alg": header.Alg,
+			"typ": header.Typ,
 		})
 		return errors.New(invalidHeaderMsg)
 	}
 	err = base64Decode(payloadBase64, payloadsDest)
 	if err != nil {
-		payloadDecodeErrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "jwt.payload_decode_error",
-			TemplateData: map[string]interface{}{
-				"err": err,
-			},
+		payloadDecodeErrMsg := i18n.T("jwt.payload_decode_error", map[string]interface{}{
+			"err": err,
 		})
 		return errors.New(payloadDecodeErrMsg)
 	}
@@ -275,11 +258,8 @@ func base64Encode(data interface{}) (string, error) {
 	default:
 		dataByte, err = json.Marshal(value)
 		if err != nil {
-			encodeErrMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-				MessageID: "jwt.encode_error",
-				TemplateData: map[string]interface{}{
-					"err": err,
-				},
+			encodeErrMsg := i18n.T("jwt.encode_error", map[string]interface{}{
+				"err": err,
 			})
 			return "", errors.New(encodeErrMsg)
 		}

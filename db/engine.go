@@ -6,8 +6,7 @@ import (
 	"sync"
 
 	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/internal/language"
-	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
 type TransactionFunc func(engine Engine, args ...interface{}) error
@@ -39,17 +38,12 @@ func Register(name string, connect ConnectFunc) {
 	metaEngineMu.Lock()
 	defer metaEngineMu.Unlock()
 	if connect == nil {
-		registerEngineConnectIsNotNilMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.register_engine_connect_is_not_nil",
-		})
+		registerEngineConnectIsNotNilMsg := i18n.T("db.register_engine_connect_is_not_nil")
 		panic(fmt.Errorf(registerEngineConnectIsNotNilMsg))
 	}
 	if _, dup := metaEngine[name]; dup {
-		registerEngineConnectTwiceMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.register_engine_connect_twice",
-			TemplateData: map[string]interface{}{
-				"name": name,
-			},
+		registerEngineConnectTwiceMsg := i18n.T("db.register_engine_connect_twice", map[string]interface{}{
+			"name": name,
 		})
 		panic(fmt.Errorf(registerEngineConnectTwiceMsg))
 	}
@@ -87,22 +81,16 @@ func GetConnectFunc(name string) (ConnectFunc, bool) {
 func Connect[T Engine](UseDataBases string) T {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {
-		databasesNotErrorMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.databases_not_error",
-			TemplateData: map[string]interface{}{
-				"name": UseDataBases,
-			},
+		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]interface{}{
+			"name": UseDataBases,
 		})
 		panic(fmt.Errorf(databasesNotErrorMsg))
 	}
 
 	connect, ok := GetConnectFunc(database.ENGINE)
 	if !ok {
-		engineNotRegisteredMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.engine_not_registered",
-			TemplateData: map[string]interface{}{
-				"engine": database.ENGINE,
-			},
+		engineNotRegisteredMsg := i18n.T("db.engine_not_registered", map[string]interface{}{
+			"engine": database.ENGINE,
 		})
 		panic(fmt.Errorf(engineNotRegisteredMsg))
 	}
@@ -114,12 +102,9 @@ func Connect[T Engine](UseDataBases string) T {
 	v, ok := any(engine).(T)
 	if !ok {
 		var zero T
-		engineTypeIsNotMatchMsg := language.I18n.MustLocalize(&i18n.LocalizeConfig{
-			MessageID: "db.engine_type_is_not_match",
-			TemplateData: map[string]interface{}{
-				"want_type": zero,
-				"got_type":  engine,
-			},
+		engineTypeIsNotMatchMsg := i18n.T("db.engine_type_is_not_match", map[string]interface{}{
+			"want_type": zero,
+			"got_type":  engine,
 		})
 		panic(fmt.Errorf(engineTypeIsNotMatchMsg))
 	}
