@@ -72,7 +72,7 @@ func ExampleSetValue_manual() {
 		}
 
 		fieldName = fieldType.Tag.Get("name")
-		if fieldName == "" {
+		if fieldName == "" || fieldName == "-" {
 			fieldName = strings.ToLower(fieldType.Name) // 字段名
 		}
 
