@@ -201,23 +201,23 @@ func (metaLog *metaLog) Log(level Level, logs ...interface{}) {
 			}
 			metaLog.console_logger.Logger.SetFlags(0)
 		}
+		metaLog.console_logger.lock.Lock()
 		metaLog.console_logger.LoggerPrint(metaLog.console_logger, level, logs...)
+		metaLog.console_logger.lock.Unlock()
 	} else if metaLog.console_logger != nil {
 		metaLog.console_logger = nil
 	}
 
 	// 输出到所有符合的日志中
 	for _, logger := range metaLog.loggers {
+		if !isLevel(logger, level) {
+			continue
+		}
 		logger.lock.Lock()
-		for _, loggerLever := range logger.Level {
-			if level == loggerLever || level == meta {
-				if logger.LoggerPrint != nil {
-					logger.LoggerPrint(logger, level, logs...) // 调用自定义输出
-				} else {
-					defaultLoggerPrint(logger, level, logs...) // 调用默认输出
-				}
-				break
-			}
+		if logger.LoggerPrint != nil {
+			logger.LoggerPrint(logger, level, logs...) // 调用自定义输出
+		} else {
+			defaultLoggerPrint(logger, level, logs...) // 调用默认输出
 		}
 		logger.lock.Unlock()
 	}
@@ -246,6 +246,16 @@ func (metaLog *metaLog) splitLogger(ctx context.Context, wg *sync.WaitGroup) {
 			time.Sleep(1 * time.Second)
 		}
 	}
+}
+
+// isLevel 是否为当前日志器的日志等级
+func isLevel(logger *MetaLogger, level Level) bool {
+	for _, loggerLever := range logger.Level {
+		if level == loggerLever || level == meta {
+			return true
+		}
+	}
+	return false
 }
 
 // defaultLoggerPrint 默认日志打印格式化函数
@@ -386,7 +396,7 @@ func defaultGetFileFunc(filePath string) (*os.File, error) {
 
 	_, err = os.Stat(filePath)
 	if os.IsNotExist(err) { // 不存在则创建
-		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
+		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			return nil, err
 		}
