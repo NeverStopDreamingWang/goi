@@ -23,7 +23,7 @@ func (engine *Engine) recovery(request *Request, responseWriter *ResponseWriter,
 	timeMs := float64(elapsed) / float64(time.Millisecond)
 
 	log := fmt.Sprintf("- %v - %v %v => generated %d bytes in %.2f msecs (%s %d) %d headers",
-		request.Object.Host,
+		request.Object.RemoteAddr,
 		request.Object.Method,
 		request.Object.URL.Path,
 		responseWriter.Bytes,
