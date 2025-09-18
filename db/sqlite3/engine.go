@@ -260,7 +260,7 @@ func (engine *Engine) Migrate(db_name string, model Model) {
 			}
 		}
 		migrationModelMsg := i18n.T("db.migration", map[string]interface{}{
-			"engine":  "MySQL",
+			"engine":  "SQLite3",
 			"name":    engine.name,
 			"db_name": db_name,
 			"tb_name": modelSettings.TABLE_NAME,
