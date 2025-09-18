@@ -1,0 +1,120 @@
+{
+  "server": {
+    "start": "服务已启动",
+    "start_time": "启动时间: {{ .start_time }}",
+    "goi_version": "goi 版本: {{ .version }}",
+    "current_time_zone": "当前时区: {{ .time_zone }}",
+    "log_info": "- [{{ .name }}] 切割大小: {{ .split_size }} 切割日期: {{ .split_time }}",
+    "cache": {
+      "max_size": "缓存大小: {{ .max_size }}",
+      "evict_policy": "- 淘汰策略: {{ .evict_policy }}",
+      "expiration_policy": "- 过期策略: {{ .expiration_policy }}",
+      "noeviction": "超出设置最大缓存: {{ .max_size }}"
+    },
+    "invalid_operation": "{{ .name }} 无效操作",
+    "listen_address": "监听地址: {{ .bind_address }}",
+    "shutdown_handler": "正在执行关闭服务处理程序 [{{ .name }}]...",
+    "shutdown_handler_error": "关闭服务处理程序错误: {{ .err }}",
+    "close_database": "正在关闭数据库连接...",
+    "close_database_error": "关闭 {{ .engine }} {{ .name }} 错误: {{ .err }}",
+    "stop_time": "停止时间: {{ .stop_time }}",
+    "run_time": "运行时间: {{ .run_time }}",
+    "stop": "服务已停止\n",
+    "response_error": "响应错误: {{ .err }}\n",
+    "url_not_allowed": "URL没有找到 \"{{ .path }}\" 。",
+    "method_not_allowed": "方法 \"{{ .method }}\" 不被允许。"
+  },
+  "second": "秒",
+  "minute": "分",
+  "hour": "时",
+  "day": "天",
+  "router": {
+    "path_already_exists": "路由已存在: \"{{ .path }}\"\n",
+    "path_regexp_collision": "路由 \"{{ .path }}\" 与 \"{{ .collision_path }}\" 正则匹配冲突: \"{{ .pattern }}\"\n",
+    "converter_is_not_exists": "路由转换器不存在: \"{{ .name }}\"\n"
+  },
+  "context": {
+    "read_body_error": "读取 Body 错误: {{ .err }}\n",
+    "parse_body_error": "解析 Body 错误: {{ .err }}\n",
+    "unmarshal_body_error": "解析 json 错误: {{ .err }}\n"
+  },
+  "validator": {
+    "validator_not_exists": "验证器 \"{{ .name }}\" 不存在",
+    "params_error": "参数错误: {{ .err }}"
+  },
+  "params": {
+    "required_params": "缺少 \"{{ .name }}\" 必填参数",
+    "params_is_not_null": "\"{{ .name }}\" 参数不能为 null",
+    "params_is_not_ptr": "\"{{ .name }}\" 参数必须是指针类型",
+    "params_is_not_struct_ptr": "\"{{ .name }}\" 参数必须是结构体指针类型",
+    "params_is_not_can_set": "\"{{ .name }}\" 是不可赋值的值",
+    "params_type_is_unsupported": "不支持的变量类型",
+    "value_invalid": "\"{{ .name }}\" 的类型无效"
+  },
+  "log": {
+    "invalid_path": "Path 为无效的: \"\"\n",
+    "invalid_level": "Level 为无效的 []\n",
+    "invalid_file": "File 为无效的 nil\n",
+    "invalid_object": "Logger 为无效的 nil\n",
+    "split_log_stat_error": "日志切割-[{{ .name }}] 获取日志文件信息错误: {{ .err }}\n",
+    "split_log_rename_error": "日志切割-[{{ .name }}] 日志重命名错误: {{ .err }}\n"
+  },
+  "db": {
+    "transaction_cannot_be_nested_error": "不可嵌套事务",
+    "databases_not_error": "DATABASES 中没有 \"{{ .name }}\"\n",
+    "register_engine_connect_is_not_nil": "注册的数据库 Engine 连接函数为 nil\n",
+    "register_engine_connect_twice": "注册的数据库 Engine 连接函数重复: \"{{ .name }}\"\n",
+    "engine_not_registered": "Engine 未注册: \"{{ .engine }}\"\n",
+    "engine_type_is_not_match": "Engine 类型不匹配，期望 {{ .want_type }}，实际 {{ .got_type }}\n",
+    "select_error": "{{ .engine }} 数据库 \"{{ .db_name }}\" 查询错误: {{ .err }}\n",
+    "before_migration": "迁移之前 BeforeHandler...",
+    "before_migration_error": "迁移之前 BeforeHandler 错误: {{ .err }}\n",
+    "migration": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}...",
+    "migration_error": "迁移错误: {{ .err }}\n",
+    "after_migration": "迁移之后 AfterHandler...",
+    "after_migration_error": "迁移之后 AfterHandler 错误： {{ .err }}\n",
+    "not_SetModel_error": "请先设置 SetModel\n",
+    "field_is_not_error": "{{ .name }} 字段不存在\n",
+    "where_args_placeholder_error": "参数个数与占位符不匹配\n",
+    "is_not_ptr": "{{ .name }} 不是指针类型",
+    "is_not_slice_or_array": "{{ .name }} 不是 slice 或 array",
+    "is_not_struct_ptr_or_map": "{{ .name }} 不是 struct 结构体指针 或 map[string]interface{} 字典",
+    "is_not_slice_struct_ptr_or_map": "{{ .name }} 不是 []struct 结构体指针切片 或 []map[string]interface{} 字典切片"
+  },
+  "serializer": {
+    "is_not_struct_ptr": "{{ .name }} 不是结构体指针",
+    "field_is_not_null_error": "字段不允许为空",
+    "field_type_string_error": "字段不是字符串类型",
+    "varchar_len_error": "长度超过 {{ .length }} 字符"
+  },
+  "auth": {
+    "empty_password": "密码不能为空",
+    "salt_generation_error": "生成密码盐值失败：{{ .err }}"
+  },
+  "jwt": {
+    "decode_error": "解码错误",
+    "expired_signature": "签名过期错误"
+  },
+  "crypto": {
+    "aes": {
+      "empty_data": "数据长度为0",
+      "invalid_padding_length": "填充长度无效",
+      "invalid_padding": "填充无效",
+      "base64_decode_error": "Base64解码失败: {{.err}}",
+      "new_cipher_error": "创建加密器失败: {{.err}}",
+      "invalid_ciphertext_length": "密文长度无效"
+    },
+    "pbkdf2": {
+      "invalid_format": "无效的编码字符串格式",
+      "invalid_iterations": "无效的迭代次数：{{ .err }}",
+      "invalid_salt": "无效的盐值：{{ .err }}"
+    },
+    "rsa": {
+      "public_key_decode_error": "公钥解码失败",
+      "public_key_parse_error": "公钥解析失败：{{ .err }}",
+      "public_key_type_error": "公钥类型转换失败",
+      "private_key_decode_error": "私钥解码失败",
+      "private_key_parse_error": "私钥解析失败：{{ .err }}"
+    }
+  }
+}
