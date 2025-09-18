@@ -254,7 +254,7 @@ func init() {
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
 	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
-	Server.Cache.MAX_SIZE = 100                   // 单位为字节，0 为不限制使用
+	Server.Cache.MAX_SIZE = 0                   // 单位为字节，0 为不限制使用
 	
 	// 日志 DEBUG 设置
 	Server.Log.DEBUG = true
@@ -272,7 +272,7 @@ func init() {
 	// Server.Log.Error() = goi.Log.Error()
 	
 	// 设置验证器错误，不指定则使用默认
-	Server.Validator.SetValidationError(&validationError{})
+	Server.Validator.SetValidationError(validationError{})
 	
 	// 设置自定义配置
 	// Server.Settings.Set(key string, value interface{})
@@ -305,18 +305,18 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 )
 
+func init() {
+	// 注册路由转换器
+	// 手机号
+	goi.RegisterConverter("phone", phoneConverter)
+}
+
 // 手机号
 var phoneConverter = goi.Converter{
 	Regex: %s,
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
 }
 
-func init() {
-	// 注册路由转换器
-
-	// 手机号
-	goi.RegisterConverter("phone", phoneConverter)
-}
 `
 		return fmt.Sprintf(content, projectName, "`(1[3456789]\\d{9})`")
 	},
@@ -353,7 +353,7 @@ type validationError struct {
 }
 
 // 创建参数验证错误方法
-func (validationErr *validationError) NewValidationError(status int, message string, args ...interface{}) goi.ValidationError {
+func (validationErr validationError) NewValidationError(status int, message string, args ...interface{}) goi.ValidationError {
 	return &validationError{
 		Status:  status,
 		Message: message,
@@ -361,12 +361,12 @@ func (validationErr *validationError) NewValidationError(status int, message str
 }
 
 // 实现 error 接口，返回错误消息
-func (validationErr *validationError) Error() string {
+func (validationErr validationError) Error() string {
 	return validationErr.Message
 }
 
 // 参数验证错误响应格式
-func (validationErr *validationError) Response() goi.Response {
+func (validationErr validationError) Response() goi.Response {
 	return goi.Response{
 		Status: http.StatusOK,
 		Data: goi.Data{
@@ -457,7 +457,7 @@ func getFileFunc(filePath string) (*os.File, error) {
 
 	_, err = os.Stat(filePath)
 	if os.IsNotExist(err) { // 不存在则创建
-		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0755)
+		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			return nil, err
 		}
@@ -465,7 +465,7 @@ func getFileFunc(filePath string) (*os.File, error) {
 		return nil, err
 	} else {
 		// 文件存在，打开文件
-		file, err = os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0755)
+		file, err = os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			return nil, err
 		}
@@ -500,14 +500,14 @@ func newDefaultLog() *goi.MetaLogger {
 		File:            nil,
 		LoggerPrint:     LogPrintln, // 日志输出格式
 		CreateTime:      goi.GetTime(),
-		SPLIT_SIZE:      1024 * 5,     // 切割大小
-		SPLIT_TIME:      "2006-01-02", // 切割日期，每天
-		GetFileFunc:     getFileFunc,  // 创建文件对象方法
-		SplitLoggerFunc: nil,          // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
+		SPLIT_SIZE:      1024 * 1024 * 20, // 切割大小
+		SPLIT_TIME:      "2006-01-02",     // 切割日期，每天
+		GetFileFunc:     getFileFunc,      // 创建文件对象方法
+		SplitLoggerFunc: nil,              // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
 	}
 	defaultLog.File, err = getFileFunc(defaultLog.Path)
 	if err != nil {
-		panic(fmt.Sprintf("初始化[%v]日志错误: %v", defaultLog.Name, err))
+		panic(fmt.Sprintf("初始化[%%v]日志错误: %%v", defaultLog.Name, err))
 	}
 	defaultLog.Logger = log.New(defaultLog.File, "", 0)
 	return defaultLog
