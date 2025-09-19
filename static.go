@@ -2,6 +2,7 @@ package goi
 
 import (
 	"embed"
+	"io/fs"
 	"net/http"
 	"os"
 )
@@ -60,13 +61,19 @@ func StaticDirView(dirPath http.Dir) HandlerFunc {
 	}
 }
 
+type FS struct {
+	FS   fs.FS
+	Name string
+}
+
 // embed.FS 单文件：直接返回 FS，由上层 FileServer 处理
 //
 // 参数:
 //   - fileFS embed.FS: 嵌入文件系统
-func StaticFileFSView(fileFS embed.FS) HandlerFunc {
+//   - defaultPath string: 默认文件路径
+func StaticFileFSView(fileFS embed.FS, defaultPath string) HandlerFunc {
 	return func(request *Request) interface{} {
-		return fileFS
+		return FS{FS: fileFS, Name: defaultPath}
 	}
 }
 
@@ -76,6 +83,12 @@ func StaticFileFSView(fileFS embed.FS) HandlerFunc {
 //   - dirFS embed.FS: 嵌入文件系统
 func StaticDirFSView(dirFS embed.FS) HandlerFunc {
 	return func(request *Request) interface{} {
-		return dirFS
+		var fileName string
+		var validationErr ValidationError
+		validationErr = request.PathParams.Get("fileName", &fileName)
+		if validationErr != nil {
+			return validationErr.Response()
+		}
+		return FS{FS: dirFS, Name: fileName}
 	}
 }

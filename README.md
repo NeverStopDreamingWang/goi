@@ -92,10 +92,11 @@ The commands are（命令如下）:
     * `desc` 描述
   * `dirPath` 静态映射路径，支持`相对路径`和`绝对路径`
 
-* `Router.StaticFileFS(path string, desc string, fileFS embed.FS)` 注册 `embed.FS` 静态文件路由
+* `Router.StaticFileFS(path string, desc string, fileFS embed.FS, defaultPath string)` 注册 `embed.FS` 静态文件路由
     * `path` 路由
     * `desc` 描述
   * `fileFS` 嵌入文件路径，支持`相对路径`和`绝对路径`
+  * `defaultPath` 默认文件路径
 
 
 * `Router.StaticDirFS(path string, desc string, dirFS embed.FS)` 注册 `embed.FS` 静态目录路由
@@ -107,23 +108,23 @@ The commands are（命令如下）:
 
 提供四个公共方法生成静态资源的 HandlerFunc，配合 `Router.Path` 使用：
 
-- `goi.NewStaticFile(filePath string) HandlerFunc`
-- `goi.NewStaticDir(dirPath http.Dir) HandlerFunc`
-- `goi.NewStaticFileFS(fs embed.FS) HandlerFunc`
-- `goi.NewStaticDirFS(fs embed.FS) HandlerFunc`
+- `goi.StaticFileView(filePath string) HandlerFunc`
+- `goi.StaticDirView(dirPath http.Dir) HandlerFunc`
+- `goi.StaticFileFSView(fs embed.FS) HandlerFunc`
+- `goi.StaticDirFSView(fs embed.FS) HandlerFunc`
 
 示例：
 
 ```go
 // 单文件
-router.Path("index.html", "首页", goi.ViewSet{GET: goi.NewStaticFile("template/html/index.html"),})
+router.Path("index.html", "首页", goi.ViewSet{GET: goi.StaticFileView("template/html/index.html"),})
 
 // 目录（带路由参数 <path:fileName>）
-router.Path("static/<path:fileName>", "静态目录", goi.ViewSet{GET: goi.NewStaticDir(http.Dir("public")), })
+router.Path("static/<path:fileName>", "静态目录", goi.ViewSet{GET: goi.StaticDirView(http.Dir("public")), })
 
 // 嵌入式单文件 / 目录
-router.Path("logo.svg", "静态FS文件", goi.ViewSet{GET: goi.NewStaticFileFS(assets.LogoFS), })
-router.Path("assets/", "静态FS目录", goi.ViewSet{GET: goi.NewStaticDirFS(assets.AssetsFS), })
+router.Path("logo.svg", "静态FS文件", goi.ViewSet{GET: goi.StaticFileFSView(assets.LogoFS, "logo.svg"), })
+router.Path("assets/", "静态FS目录", goi.ViewSet{GET: goi.StaticDirFSView(assets.AssetsFS), })
 ```
 
 ## 中间件
@@ -1078,4 +1079,4 @@ func ExampleCkeckToken() {
 
 ```
 
-##                       
+##                             

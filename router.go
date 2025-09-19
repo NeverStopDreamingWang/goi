@@ -150,12 +150,13 @@ func (router *MetaRouter) StaticDir(path string, desc string, dirPath http.Dir) 
 //   - path: string 路由
 //   - desc: string 描述
 //   - fileFS: embed.FS 嵌入式文件系统
-func (router *MetaRouter) StaticFileFS(path string, desc string, fileFS embed.FS) {
+//   - defaultPath: string 默认文件路径
+func (router *MetaRouter) StaticFileFS(path string, desc string, fileFS embed.FS, defaultPath string) {
 	includeRouter := &MetaRouter{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			GET: StaticFileFSView(fileFS),
+			GET: StaticFileFSView(fileFS, defaultPath),
 		},
 		includeRouter: nil,
 	}

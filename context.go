@@ -167,7 +167,18 @@ func (response *Response) write(request *Request, responseWriter http.ResponseWr
 	var err error
 	var dataByte []byte
 	var contentType string
+	for key, value := range response.Header() {
+		for _, v := range value {
+			if responseWriter.Header().Values(key) == nil {
+				responseWriter.Header().Set(key, v)
+			} else {
+				responseWriter.Header().Add(key, v)
+			}
+		}
+	}
 	switch value := response.Data.(type) {
+	case nil:
+		return 0, nil
 	case string:
 		dataByte = []byte(value)
 		contentType = "text/plain"
@@ -192,36 +203,33 @@ func (response *Response) write(request *Request, responseWriter http.ResponseWr
 		}
 		http.ServeContent(responseWriter, request.Object, fileInfo.Name(), fileInfo.ModTime(), value)
 		return 0, nil
+	case FS:
+		http.ServeFileFS(responseWriter, request.Object, value.FS, value.Name)
+		return 0, nil
 	case embed.FS:
-		staticServer := http.FileServer(http.FS(value))
+		http.ServeFileFS(responseWriter, request.Object, value, request.Object.URL.Path)
+		staticServer := http.FileServerFS(value)
 		staticServer.ServeHTTP(responseWriter, request.Object)
 		return 0, nil
 	default:
 		dataByte, err = json.Marshal(value)
 		contentType = "application/json"
 	}
-	// 返回响应
 	if err != nil {
 		responseJsonErrorMsg := i18n.T("server.response_error", map[string]interface{}{
 			"err": err,
 		})
 		return 0, errors.New(responseJsonErrorMsg)
 	}
-
 	// 若未显式设置 Content-Length，则为非流式响应补上
-	if response.Header().Get("Content-Length") == "" {
-		response.Header().Set("Content-Length", strconv.Itoa(len(dataByte)))
+	if responseWriter.Header().Get("Content-Length") == "" {
+		responseWriter.Header().Set("Content-Length", strconv.Itoa(len(dataByte)))
 	}
-	if response.Header().Get("Content-Type") == "" {
-		response.Header().Set("Content-Type", contentType)
+	if responseWriter.Header().Get(ContentType) == "" && contentType != "" {
+		responseWriter.Header().Set(ContentType, contentType)
 	}
-	for key, value := range response.Header() {
-		for _, v := range value {
-			responseWriter.Header().Add(key, v)
-		}
-	}
-
-	// 返回响应
+	// 写入响应状态码
 	responseWriter.WriteHeader(response.Status)
+	// 写入响应数据
 	return responseWriter.Write(dataByte)
 }
