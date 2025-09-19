@@ -37,13 +37,12 @@ func StaticFileView(filePath string) HandlerFunc {
 // 参数:
 //   - dirPath http.Dir: 目录路径
 func StaticDirView(dirPath http.Dir) HandlerFunc {
-	if dirPath == "" {
-		dirPath = "."
-	}
 	return func(request *Request) interface{} {
+		if dirPath == "" {
+			dirPath = "."
+		}
 		var fileName string
 		var validationErr ValidationError
-		var err error
 		validationErr = request.PathParams.Get("fileName", &fileName)
 		if validationErr != nil {
 			return validationErr.Response()
