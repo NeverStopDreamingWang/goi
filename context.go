@@ -208,8 +208,6 @@ func (response *Response) write(request *Request, responseWriter http.ResponseWr
 		return 0, nil
 	case embed.FS:
 		http.ServeFileFS(responseWriter, request.Object, value, request.Object.URL.Path)
-		staticServer := http.FileServerFS(value)
-		staticServer.ServeHTTP(responseWriter, request.Object)
 		return 0, nil
 	default:
 		dataByte, err = json.Marshal(value)
