@@ -99,15 +99,15 @@ func main() {
 	Server := goi.NewHttpServer()
 	// 网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
-	// 监听地址
+	// 监听地址 0.0.0.0
 	Server.Settings.BIND_ADDRESS = "0.0.0.0" // 默认 127.0.0.1
-	// 端口
+	// 监听端口 8080
 	Server.Settings.PORT = 8080
 
 	// 注册路由
 	Server.Router.Path("ping", "测试接口", goi.ViewSet{GET: Ping})
 
-	// 启动服务器，监听 0.0.0.0:8080
+	// 启动服务器
 	Server.RunServer()
 }
 ```
