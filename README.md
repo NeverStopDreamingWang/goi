@@ -2,7 +2,7 @@
 
 基于 `net/http` 开发的一个 Web 框架，语法与 `Django` 类似，简单易用，快速上手，详情请查看示例
 
-[详细示例：example](https://github.com/NeverStopDreamingWang/goi_example)
+[详细示例：./goi_example](https://github.com/NeverStopDreamingWang/goi_example)
 
 ## goi 创建命令
 
