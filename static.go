@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path"
 )
 
 // 生成静态路由的通用 View
@@ -70,7 +71,7 @@ type FS struct {
 //
 // 参数:
 //   - fileFS embed.FS: 嵌入文件系统
-//   - defaultPath string: 默认文件路径
+//   - defaultPath string: 嵌入文件默认路径
 func StaticFileFSView(fileFS embed.FS, defaultPath string) HandlerFunc {
 	return func(request *Request) interface{} {
 		return FS{FS: fileFS, Name: defaultPath}
@@ -81,7 +82,12 @@ func StaticFileFSView(fileFS embed.FS, defaultPath string) HandlerFunc {
 //
 // 参数:
 //   - dirFS embed.FS: 嵌入文件系统
-func StaticDirFSView(dirFS embed.FS) HandlerFunc {
+//   - basePath string: 嵌入文件基础路径
+//
+// 说明:
+//   - 需要在路由中包含 <path:fileName> 参数
+//   - 会自动拼接 basePath + fileName 为嵌入文件查找路径
+func StaticDirFSView(dirFS embed.FS, basePath string) HandlerFunc {
 	return func(request *Request) interface{} {
 		var fileName string
 		var validationErr ValidationError
@@ -89,6 +95,6 @@ func StaticDirFSView(dirFS embed.FS) HandlerFunc {
 		if validationErr != nil {
 			return validationErr.Response()
 		}
-		return FS{FS: dirFS, Name: fileName}
+		return FS{FS: dirFS, Name: path.Join(basePath, fileName)}
 	}
 }
