@@ -1,18 +1,22 @@
 package goi
 
 import (
-	"embed"
 	"io/fs"
 	"net/http"
 	"os"
 	"path"
 )
 
-// 生成静态路由的通用 View
-// 单文件：返回文件对象，由上层统一写回
+// StaticFileView 静态文件视图
 //
 // 参数:
 //   - filePath string: 文件路径
+//
+// 返回:
+//   - HandlerFunc: 处理函数
+//
+// 说明:
+//   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
 func StaticFileView(filePath string) HandlerFunc {
 	return func(request *Request) interface{} {
 		var err error
@@ -29,13 +33,18 @@ func StaticFileView(filePath string) HandlerFunc {
 		}
 		return file
 	}
-
 }
 
-// 目录：根据路由参数 fileName 返回目标文件
+// StaticDirView 静态目录视图
 //
 // 参数:
 //   - dirPath http.Dir: 目录路径
+//
+// 返回:
+//   - HandlerFunc: 处理函数
+//
+// 说明:
+//   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
 func StaticDirView(dirPath http.Dir) HandlerFunc {
 	return func(request *Request) interface{} {
 		if dirPath == "" {
@@ -66,27 +75,31 @@ type FS struct {
 	Name string
 }
 
-// embed.FS 单文件：直接返回 FS，由上层 FileServer 处理
+// StaticFileFSView fs.FS 静态文件嵌入式文件视图
 //
 // 参数:
-//   - fileFS embed.FS: 嵌入文件系统
-//   - defaultPath string: 嵌入文件默认路径
-func StaticFileFSView(fileFS embed.FS, defaultPath string) HandlerFunc {
+//   - fileFS fs.FS: 嵌入式文件系统
+//   - defaultPath string: 默认响应嵌入式文件的路径
+//
+// 说明:
+//   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
+func StaticFileFSView(fileFS fs.FS, defaultPath string) HandlerFunc {
 	return func(request *Request) interface{} {
 		return FS{FS: fileFS, Name: defaultPath}
 	}
 }
 
-// embed.FS 目录：直接返回 FS，由上层 FileServer 处理
+// StaticDirFSView fs.FS 静态目录嵌入式文件视图
 //
 // 参数:
-//   - dirFS embed.FS: 嵌入文件系统
-//   - basePath string: 嵌入文件基础路径
+//   - dirFS fs.FS: 嵌入式文件系统
+//   - basePath string: 嵌入式文件系统基础路径
 //
 // 说明:
 //   - 需要在路由中包含 <path:fileName> 参数
 //   - 会自动拼接 basePath + fileName 为嵌入文件查找路径
-func StaticDirFSView(dirFS embed.FS, basePath string) HandlerFunc {
+//   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
+func StaticDirFSView(dirFS fs.FS, basePath string) HandlerFunc {
 	return func(request *Request) interface{} {
 		var fileName string
 		var validationErr ValidationError
