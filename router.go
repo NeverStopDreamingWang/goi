@@ -20,6 +20,7 @@ type MetaRouter struct {
 	pattern    string         // 路由正则表达式
 	regex      *regexp.Regexp // 路由正则表达式匹配对象
 	paramInfos []ParamInfo    // 参数信息列表
+	noRoute    *ViewSet       // 无路由视图
 }
 
 // 创建路由
@@ -32,6 +33,7 @@ func newRouter() *MetaRouter {
 		pattern:       "/",
 		regex:         regexp.MustCompile("^/"),
 		paramInfos:    make([]ParamInfo, 0),
+		noRoute:       nil,
 	}
 }
 
@@ -199,6 +201,14 @@ func (router *MetaRouter) StaticDirFS(path string, desc string, dirFS embed.FS, 
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
 	router.includeRouter = append(router.includeRouter, includeRouter)
+}
+
+// NoRoute 注册未匹配路由时的处理视图，默认返回 404
+//
+// 参数:
+//   - viewSet: ViewSet 视图方法
+func (router *MetaRouter) NoRoute(viewSet ViewSet) {
+	router.noRoute = &viewSet
 }
 
 // Route 为 MetaRouter 路由的副本

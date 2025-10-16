@@ -116,6 +116,10 @@ func (router MetaRouter) resolve(Path string) (ViewSet, Params, bool) {
 			return viewSet, params, isPattern
 		}
 	}
+	// 无匹配
+	if router.noRoute != nil {
+		return *router.noRoute, params, true
+	}
 	return ViewSet{}, Params{}, false
 }
 
