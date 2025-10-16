@@ -63,6 +63,9 @@ func (router MetaRouter) hasChildRouter(child *MetaRouter) {
 // 参数:
 //   - path: string 路由
 //   - desc: string 描述
+//
+// 返回:
+//   - *MetaRouter: 子路由实例
 func (router *MetaRouter) Include(path string, desc string) *MetaRouter {
 	if strings.HasSuffix(path, "/") == false {
 		path = path + "/"
@@ -108,7 +111,8 @@ func (router *MetaRouter) StaticFile(path string, desc string, filePath string) 
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			GET: StaticFileView(filePath),
+			HEAD: StaticFileView(filePath),
+			GET:  StaticFileView(filePath),
 		},
 		includeRouter: nil,
 	}
@@ -135,7 +139,8 @@ func (router *MetaRouter) StaticDir(path string, desc string, dirPath http.Dir) 
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			GET: StaticDirView(dirPath),
+			HEAD: StaticDirView(dirPath),
+			GET:  StaticDirView(dirPath),
 		},
 		includeRouter: nil,
 	}
@@ -156,7 +161,8 @@ func (router *MetaRouter) StaticFileFS(path string, desc string, fileFS embed.FS
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			GET: StaticFileFSView(fileFS, defaultPath),
+			HEAD: StaticFileFSView(fileFS, defaultPath),
+			GET:  StaticFileFSView(fileFS, defaultPath),
 		},
 		includeRouter: nil,
 	}
@@ -185,7 +191,8 @@ func (router *MetaRouter) StaticDirFS(path string, desc string, dirFS embed.FS, 
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			GET: StaticDirFSView(dirFS, basePath),
+			HEAD: StaticDirFSView(dirFS, basePath),
+			GET:  StaticDirFSView(dirFS, basePath),
 		},
 		includeRouter: nil,
 	}
