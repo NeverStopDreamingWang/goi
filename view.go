@@ -13,19 +13,21 @@ type HandlerFunc func(request *Request) interface{}
 
 // 路由视图
 type ViewSet struct {
-	GET     HandlerFunc
-	HEAD    HandlerFunc
-	POST    HandlerFunc
-	PUT     HandlerFunc
-	PATCH   HandlerFunc
-	DELETE  HandlerFunc
-	CONNECT HandlerFunc
-	OPTIONS HandlerFunc
-	TRACE   HandlerFunc
+	GET      HandlerFunc
+	HEAD     HandlerFunc
+	POST     HandlerFunc
+	PUT      HandlerFunc
+	PATCH    HandlerFunc
+	DELETE   HandlerFunc
+	CONNECT  HandlerFunc
+	OPTIONS  HandlerFunc
+	TRACE    HandlerFunc
+	NoMethod HandlerFunc // 未注册或不支持的HTTP方法时的处理函数，默认返回 405
 }
 
 func (viewSet ViewSet) GetHandlerFunc(method string) (HandlerFunc, error) {
 	var handlerFunc HandlerFunc
+	var err error
 	switch method {
 	case "GET":
 		handlerFunc = viewSet.GET
@@ -45,17 +47,16 @@ func (viewSet ViewSet) GetHandlerFunc(method string) (HandlerFunc, error) {
 		handlerFunc = viewSet.OPTIONS
 	case "TRACE":
 		handlerFunc = viewSet.TRACE
-	default:
-		methodNotAllowedMsg := i18n.T("server.method_not_allowed", map[string]interface{}{
-			"method": method,
-		})
-		return nil, errors.New(methodNotAllowedMsg)
 	}
 	if handlerFunc == nil {
-		methodNotAllowedMsg := i18n.T("server.method_not_allowed", map[string]interface{}{
-			"method": method,
-		})
-		return nil, errors.New(methodNotAllowedMsg)
+		if viewSet.NoMethod != nil {
+			handlerFunc = viewSet.NoMethod
+		} else {
+			methodNotAllowedMsg := i18n.T("server.method_not_allowed", map[string]interface{}{
+				"method": method,
+			})
+			err = errors.New(methodNotAllowedMsg)
+		}
 	}
-	return handlerFunc, nil
+	return handlerFunc, err
 }
