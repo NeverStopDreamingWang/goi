@@ -121,7 +121,7 @@ func NewJWT(header interface{}, payload interface{}, key string) (string, error)
 	return token, nil
 }
 
-// CkeckToken 验证JWT令牌的有效性
+// CheckToken 验证JWT令牌的有效性
 //
 // 参数:
 //   - token string: 待验证的JWT令牌字符串
@@ -133,7 +133,7 @@ func NewJWT(header interface{}, payload interface{}, key string) (string, error)
 //   - 令牌格式错误
 //   - 签名验证失败
 //   - 令牌已过期
-func CkeckToken(token string, key string, payloadsDest interface{}) error {
+func CheckToken(token string, key string, payloadsDest interface{}) error {
 	var err error
 	tokenSlice := strings.Split(token, ".")
 	if len(tokenSlice) != 3 {
@@ -192,10 +192,13 @@ func CkeckToken(token string, key string, payloadsDest interface{}) error {
 // checkExpField 检查payload中的过期时间字段
 //
 // 参数:
-//   - payloadsDest interface{}: 包含 Payloads 结构体的接口值
+//   - payloadsDest interface{}: 包含 Exp ExpTime 字段的结构体指针
 //
 // 返回:
 //   - error: 检查过程中的错误，如令牌已过期返回 ErrExpiredSignature
+//
+// 注意:
+//   - 如果没有从 payloadsDest 中查找到 Exp ExpTime 字段，则返回 nil 默认验证通过
 func checkExpField(payloadsDest interface{}) error {
 	payloadsDestValue := reflect.ValueOf(payloadsDest)
 
@@ -205,35 +208,21 @@ func checkExpField(payloadsDest interface{}) error {
 	if payloadsDestValue.Kind() != reflect.Struct {
 		return ErrDecode
 	}
-	// 获取 Payloads 类型
-	PayloadsType := reflect.TypeOf(Payloads{})
 
-	// 查找 Payloads 类型字段
-	for i := 0; i < payloadsDestValue.NumField(); i++ {
-		field := payloadsDestValue.Field(i)
-
-		// 查找 Payloads 类型字段
-		if field.Type() != PayloadsType {
-			continue
-		}
-
-		// 直接获取嵌套的 Exp 字段
-		expField := field.FieldByName("Exp")
-		if expField.IsValid() == false {
-			return ErrDecode
-		}
-		expTime, ok := expField.Interface().(ExpTime)
-		if !ok {
-			return ErrDecode
-		}
-
-		// 判断过期时间
-		if expTime.Time.Before(goi.GetTime()) {
-			return ErrExpiredSignature
-		}
-		return nil // Exp 时间有效
+	// 先尝试直接访问
+	expField := payloadsDestValue.FieldByName("Exp")
+	if !expField.IsValid() { // 未找到 Exp 字段
+		return nil
 	}
-	return ErrDecode // 未找到有效的 Exp 字段
+	expTime, ok := expField.Interface().(ExpTime)
+	if !ok { // 类型不匹配
+		return nil
+	}
+	// 判断过期时间
+	if expTime.Time.Before(goi.GetTime()) {
+		return ErrExpiredSignature
+	}
+	return nil // 未找到有效的 Exp 字段
 }
 
 // base64Encode 将数据进行base64 URL编码
