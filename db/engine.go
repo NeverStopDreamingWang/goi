@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/NeverStopDreamingWang/goi"
@@ -103,8 +104,8 @@ func Connect[T Engine](UseDataBases string) T {
 	if !ok {
 		var zero T
 		engineTypeIsNotMatchMsg := i18n.T("db.engine_type_is_not_match", map[string]interface{}{
-			"want_type": zero,
-			"got_type":  engine,
+			"want_type": reflect.TypeOf(zero).String(),
+			"got_type":  reflect.TypeOf(engine).String(),
 		})
 		panic(fmt.Errorf(engineTypeIsNotMatchMsg))
 	}
