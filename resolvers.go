@@ -75,6 +75,13 @@ func (router *MetaRouter) compilePattern() {
 }
 
 // match 尝试匹配，返回 参数映射 与 是否匹配
+//
+// 参数:
+//   - path string: 待匹配的URL路径
+//
+// 返回:
+//   - Params: 匹配的参数映射
+//   - bool: 是否匹配成功
 func (router MetaRouter) match(path string) (Params, bool) {
 	// 保护：确保已编译正则，避免空指针
 	if router.regex == nil {
@@ -100,7 +107,15 @@ func (router MetaRouter) match(path string) (Params, bool) {
 	return params, true
 }
 
-// resolve
+// resolve 解析URL路径
+//
+// 参数:
+//   - Path string: 待解析的URL路径
+//
+// 返回:
+//   - ViewSet: 匹配的视图方法
+//   - Params: 匹配的参数映射
+//   - bool: 是否匹配成功
 func (router MetaRouter) resolve(Path string) (ViewSet, Params, bool) {
 	params, ok := router.match(Path)
 	if ok == false {
@@ -123,7 +138,14 @@ func (router MetaRouter) resolve(Path string) (ViewSet, Params, bool) {
 	return ViewSet{}, Params{}, false
 }
 
-// resolveRequest
+// resolveRequest 解析请求
+//
+// 参数:
+//   - request *Request: 待解析的请求对象
+//
+// 返回:
+//   - ViewSet: 匹配的视图方法
+//   - error: 解析过程中的错误信息
 func (router MetaRouter) resolveRequest(request *Request) (ViewSet, error) {
 	// 路由解析
 	viewSet, params, isPattern := router.resolve(request.Object.URL.Path)
