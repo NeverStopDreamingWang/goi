@@ -36,9 +36,3 @@ type Settings struct {
 type Model interface {
 	ModelSet() *Settings
 }
-
-// MySQL 创建迁移
-type MakeMigrations struct {
-	DATABASES []string
-	MODELS    []Model
-}
