@@ -1,4 +1,5 @@
 {
+  "language": "zh-CN",
   "server": {
     "start": "服务已启动",
     "start_time": "启动时间: {{ .start_time }}",
@@ -69,7 +70,10 @@
     "select_error": "{{ .engine }} 数据库 \"{{ .db_name }}\" 查询错误: {{ .err }}\n",
     "before_migration": "迁移之前 BeforeHandler...",
     "before_migration_error": "迁移之前 BeforeHandler 错误: {{ .err }}\n",
-    "migration": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}...",
+    "migration": {
+      "sqlite3": "正在迁移 {{ .engine }} {{ .name }} 表: {{ .tb_name }}...",
+      "mysql": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}..."
+    },
     "migration_error": "迁移错误: {{ .err }}\n",
     "after_migration": "迁移之后 AfterHandler...",
     "after_migration_error": "迁移之后 AfterHandler 错误： {{ .err }}\n",
