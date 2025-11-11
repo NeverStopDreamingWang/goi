@@ -11,6 +11,7 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
 	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/utils"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -216,7 +217,7 @@ func (engine *Engine) Migrate(model Model) {
 	err = row.Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) == false && err != nil {
 		selectErrorMsg := i18n.T("db.select_error", map[string]interface{}{
-			"engine":  "SQLite3",
+			"engine":  driverName,
 			"db_name": engine.name,
 			"err":     err,
 		})
@@ -259,7 +260,7 @@ func (engine *Engine) Migrate(model Model) {
 			}
 		}
 		migrationModelMsg := i18n.T("db.migration.sqlite3", map[string]interface{}{
-			"engine":  "SQLite3",
+			"engine":  driverName,
 			"name":    engine.name,
 			"tb_name": modelSettings.TABLE_NAME,
 		})
@@ -915,25 +916,24 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 	updateFields := make([]string, 0)
 	// 值
 	updateValues := make([]interface{}, 0)
-	for _, fieldName := range engine.fields {
+	utils.Zip(engine.fields, engine.field_sql, func(fieldName, field_name string) {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Kind() == reflect.Ptr {
 			field = field.Elem()
 		}
 		if field.IsValid() {
+			updateFields = append(updateFields, fmt.Sprintf("`%v`=?", field_name))
 			fieldValue := field.Interface()
-			updateFields = append(updateFields, fmt.Sprintf("`%v`=?", strings.ToLower(fieldName)))
 			updateValues = append(updateValues, fieldValue)
 		}
-	}
+	})
 	fieldsSQl := strings.Join(updateFields, ",")
 
 	engine.sql = fmt.Sprintf("UPDATE `%v` SET %v", TableName, fieldsSQl)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
+		updateValues = append(updateValues, engine.args...)
 	}
-
-	updateValues = append(updateValues, engine.args...)
 	return engine.Execute(engine.sql, updateValues...)
 }
 
