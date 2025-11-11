@@ -199,7 +199,7 @@ func (engine *Engine) Query(query string, args ...interface{}) (*sql.Rows, error
 // Migrate 根据模型创建数据库表
 //
 // 参数:
-//   - db_name: string 数据库名称
+//   - db_name: string 数据库名称，如果连接字符串中已指定数据库则可以传入空字符串
 //   - model: Model 数据模型
 //
 // 说明:
@@ -245,7 +245,7 @@ func (engine *Engine) Migrate(db_name string, model Model) {
 
 		fieldSqlSlice = append(fieldSqlSlice, fmt.Sprintf("  `%v` %v", fieldName, fieldType))
 	}
-	createSql := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", modelSettings.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
+	createSql := fmt.Sprintf("CREATE TABLE `%v`.`%v` (\n%v\n)", db_name, modelSettings.TABLE_NAME, strings.Join(fieldSqlSlice, ",\n"))
 	if modelSettings.ENGINE != "" { // 设置存储引擎
 		createSql += fmt.Sprintf(" Engine=%v", modelSettings.ENGINE)
 	}
@@ -299,7 +299,7 @@ func (engine *Engine) Migrate(db_name string, model Model) {
 				panic(beforeMigrationErrorMsg)
 			}
 		}
-		migrationModelMsg := i18n.T("db.migration", map[string]interface{}{
+		migrationModelMsg := i18n.T("db.migration.mysql", map[string]interface{}{
 			"engine":  "MySQL",
 			"name":    engine.name,
 			"db_name": db_name,
