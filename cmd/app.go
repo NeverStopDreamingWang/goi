@@ -204,12 +204,10 @@ import (
 )
 
 func init() {
-	// 子路由
 	%sRouter := %s.Server.Router.Include("%s/", "父路由")
 	{
-		// 注册一个路径
-		%sRouter.Path("", "获取列表/创建", goi.ViewSet{GET: listView, POST: createView})
-		%sRouter.Path("<int:pk>", "详情/更新/删除", goi.ViewSet{GET: retrieveView, PUT: updateView, DELETE: deleteView})
+		%sRouter.Path("", "查询列表/新增", goi.ViewSet{GET: listView, POST: createView})
+		%sRouter.Path("<int:pk>", "详情/修改/删除", goi.ViewSet{GET: retrieveView, PUT: updateView, DELETE: deleteView})
 
 	}
 }
