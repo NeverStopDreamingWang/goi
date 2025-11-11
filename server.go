@@ -189,6 +189,10 @@ func (engine *Engine) RunServer() {
 }
 
 // 注册停止回调函数
+//
+// 参数:
+//   - name string: 回调函数名称
+//   - shutdownHandler ShutdownHandler: 回调函数
 func (engine *Engine) RegisterShutdownHandler(name string, shutdownHandler ShutdownHandler) {
 	engine.ShutdownCallbackHandler = append(engine.ShutdownCallbackHandler, ShutdownCallback{
 		name:    name,
@@ -256,6 +260,9 @@ func (engine *Engine) StopServer() error {
 }
 
 // 获取当前运行时间 返回时间间隔
+//
+// 返回:
+//   - time.Duration: 运行时间间隔
 func (engine *Engine) RunTime() time.Duration {
 	// 获取当前时间并设置时区
 	currentTime := GetTime()
@@ -294,6 +301,10 @@ func (engine *Engine) runTimeStr() string {
 }
 
 // 实现 ServeHTTP 接口
+//
+// 参数:
+//   - w http.ResponseWriter: 响应写入器
+//   - r *http.Request: HTTP请求对象
 func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestID := GetTime()
 	ctx := context.WithValue(r.Context(), "requestID", requestID)
@@ -323,6 +334,12 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type getResponseFunc func(*Request) Response
 
 // getResponse 为最内层处理器：只负责路由解析、获取视图、执行视图并封装为 Response。
+//
+// 参数:
+//   - request *Request: HTTP请求对象
+//
+// 返回:
+//   - Response: HTTP响应对象
 func (engine *Engine) getResponse(request *Request) (response Response) {
 	defer func() {
 		// 异常捕获
@@ -355,6 +372,12 @@ func (engine *Engine) getResponse(request *Request) (response Response) {
 }
 
 // 统一把结果转换为 Response
+//
+// 参数:
+//   - content interface{}: 视图处理结果
+//
+// 返回:
+//   - Response: HTTP响应对象
 func toResponse(content interface{}) Response {
 	switch value := content.(type) {
 	case Response:

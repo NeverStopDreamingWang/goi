@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-// 通用的读取 JSON 文件到指定的结构体
+// LoadJSON 通用的读取 JSON 文件到指定的结构体
 //
 // 参数:
 //   - filePath string: JSON 文件路径
