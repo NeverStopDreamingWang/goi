@@ -540,6 +540,7 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 )
 
+// 检查生成自签证书
 func init() {
 	SSLPath := filepath.Join(Server.Settings.BASE_DIR, "ssl")
 	if Server.Settings.SSL.STATUS == false {
