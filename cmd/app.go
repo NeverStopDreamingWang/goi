@@ -73,7 +73,7 @@ import (
 func init() {
 	// sqlite 数据库
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
-	sqlite3DB.Migrate("%s", MyModel{})
+	sqlite3DB.Migrate(MyModel{})
 }
 
 
@@ -102,7 +102,7 @@ func (self MyModel) ModelSet() *sqlite3.Settings {
 	return modelSettings
 }
 `
-		return fmt.Sprintf(content, appName, appName)
+		return fmt.Sprintf(content, appName)
 	},
 	Path: func() string {
 		return filepath.Join(baseDir, appName)

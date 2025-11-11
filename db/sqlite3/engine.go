@@ -199,7 +199,6 @@ func (engine *Engine) Query(query string, args ...interface{}) (*sql.Rows, error
 // Migrate 根据模型创建数据库表
 //
 // 参数:
-//   - db_name: string 数据库名称
 //   - model: Model 数据模型
 //
 // 说明:
@@ -207,7 +206,7 @@ func (engine *Engine) Query(query string, args ...interface{}) (*sql.Rows, error
 //   - 解析模型结构体的字段标签
 //   - 支持自定义迁移前后处理函数
 //   - 创建失败时会panic
-func (engine *Engine) Migrate(db_name string, model Model) {
+func (engine *Engine) Migrate(model Model) {
 	var err error
 	modelSettings := model.ModelSet()
 
@@ -259,10 +258,9 @@ func (engine *Engine) Migrate(db_name string, model Model) {
 				panic(beforeMigrationErrorMsg)
 			}
 		}
-		migrationModelMsg := i18n.T("db.migration", map[string]interface{}{
+		migrationModelMsg := i18n.T("db.migration.sqlite3", map[string]interface{}{
 			"engine":  "SQLite3",
 			"name":    engine.name,
-			"db_name": db_name,
 			"tb_name": modelSettings.TABLE_NAME,
 		})
 		goi.Log.Info(migrationModelMsg)
