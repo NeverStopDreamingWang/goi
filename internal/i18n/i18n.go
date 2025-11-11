@@ -14,11 +14,11 @@ var bundle *i18n.Bundle
 var I18n *i18n.Localizer
 
 func init() {
-	bundle = i18n.NewBundle(language.Chinese)
+	bundle = i18n.NewBundle(language.SimplifiedChinese)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
-	_, _ = bundle.LoadMessageFileFS(langFS, "lang/zh_cn.json")
-	_, _ = bundle.LoadMessageFileFS(langFS, "lang/en_us.json")
-	I18n = i18n.NewLocalizer(bundle, "zh_cn")
+	_, _ = bundle.LoadMessageFileFS(langFS, "lang/zh-CN.json")
+	_, _ = bundle.LoadMessageFileFS(langFS, "lang/en-US.json")
+	I18n = i18n.NewLocalizer(bundle)
 }
 
 // 设置语言

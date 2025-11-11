@@ -11,8 +11,8 @@ type Language string
 
 // 框架语言
 const (
-	ZH_CN Language = "zh_cn" // 中文-简体
-	EN_US Language = "en_us" // 英文-美国
+	ZH_CN Language = "zh-CN" // 中文-简体
+	EN_US Language = "en-US" // 英文-美国
 )
 
 // SSL

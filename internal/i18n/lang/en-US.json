@@ -1,4 +1,5 @@
 {
+  "language": "en-US",
   "server": {
     "start": "Service Started",
     "start_time": "Starting Time: {{ .start_time }}",
@@ -69,7 +70,10 @@
     "select_error": "{{ .engine }} DataBase \"{{ .db_name }}\" Query error: {{ .err }}\n",
     "before_migration": "Before migration BeforeHandler ...",
     "before_migration_error": "Before migration BeforeHandler error: {{ .err }}\n",
-    "migration": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
+    "migration": {
+      "sqlite3": "Migrating {{ .engine }} {{ .name }} table: {{ .tb_name }}...",
+      "mysql": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}..."
+    },
     "migration_error": "Migration error: {{ .err }}\n",
     "after_migration": "After migration AfterHandler ...",
     "after_migration_error": "After migration AfterHandler error: {{ .err }}\n",
