@@ -3,6 +3,7 @@ package rsa
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -64,7 +65,7 @@ func GenerateKey(bits int) (privateKey []byte, publicKey []byte, err error) {
 // 加密过程:
 //  1. 解码PEM格式的公钥
 //  2. 解析PKIX格式的公钥
-//  3. 使用PKCS1v15填充方案加密
+//  3. 使用OAEP填充方案加密(SHA-256哈希)
 func Encrypt(publicKeyBytes []byte, plaintext []byte) ([]byte, error) {
 	// 解析PEM格式的公钥
 	block, _ := pem.Decode(publicKeyBytes)
@@ -88,8 +89,9 @@ func Encrypt(publicKeyBytes []byte, plaintext []byte) ([]byte, error) {
 		return nil, errors.New(errMsg)
 	}
 
-	// 加密
-	return rsa.EncryptPKCS1v15(rand.Reader, publicKey, plaintext)
+	// 使用OAEP加密(SHA-256哈希)
+	hash := sha256.New()
+	return rsa.EncryptOAEP(hash, rand.Reader, publicKey, plaintext, nil)
 }
 
 // Decrypt 使用RSA私钥解密数据
@@ -105,7 +107,7 @@ func Encrypt(publicKeyBytes []byte, plaintext []byte) ([]byte, error) {
 // 解密过程:
 //  1. 解码PEM格式的私钥
 //  2. 解析PKCS1格式的私钥
-//  3. 使用PKCS1v15填充方案解密
+//  3. 使用OAEP填充方案解密(SHA-256哈希)
 func Decrypt(privateKeyBytes []byte, ciphertext []byte) ([]byte, error) {
 	// 解析PEM格式的私钥
 	block, _ := pem.Decode(privateKeyBytes)
@@ -123,6 +125,7 @@ func Decrypt(privateKeyBytes []byte, ciphertext []byte) ([]byte, error) {
 		return nil, errors.New(errMsg)
 	}
 
-	// 解密
-	return rsa.DecryptPKCS1v15(rand.Reader, privateKey, ciphertext)
+	// 使用OAEP解密(SHA-256哈希)
+	hash := sha256.New()
+	return rsa.DecryptOAEP(hash, rand.Reader, privateKey, ciphertext, nil)
 }
