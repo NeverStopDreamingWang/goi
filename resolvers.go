@@ -1,7 +1,6 @@
 package goi
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 
@@ -91,6 +90,9 @@ func (router MetaRouter) match(path string) (Params, bool) {
 	if loc == nil || len(loc)-1 != len(router.paramInfos) {
 		return nil, false
 	}
+	if len(router.paramInfos) == 0 {
+		return nil, true
+	}
 	// 第0个是完整匹配，从1开始依次为各参数
 	params := make(Params, len(router.paramInfos))
 	for i, paramInfo := range router.paramInfos {
@@ -113,16 +115,16 @@ func (router MetaRouter) match(path string) (Params, bool) {
 //   - Path string: 待解析的URL路径
 //
 // 返回:
-//   - ViewSet: 匹配的视图方法
+//   - *ViewSet: 匹配的视图集
 //   - Params: 匹配的参数映射
 //   - bool: 是否匹配成功
-func (router MetaRouter) resolve(Path string) (ViewSet, Params, bool) {
+func (router MetaRouter) resolve(Path string) (*ViewSet, Params, bool) {
 	params, ok := router.match(Path)
 	if ok == false {
-		return ViewSet{}, Params{}, false
+		return nil, nil, false
 	}
 	if router.includeRouter == nil {
-		return router.viewSet, params, true
+		return &router.viewSet, params, true
 	}
 	// 子路由
 	for _, itemRouter := range router.includeRouter {
@@ -133,29 +135,7 @@ func (router MetaRouter) resolve(Path string) (ViewSet, Params, bool) {
 	}
 	// 无匹配
 	if router.noRoute != nil {
-		return *router.noRoute, params, true
+		return router.noRoute, params, true
 	}
-	return ViewSet{}, Params{}, false
-}
-
-// resolveRequest 解析请求
-//
-// 参数:
-//   - request *Request: 待解析的请求对象
-//
-// 返回:
-//   - ViewSet: 匹配的视图方法
-//   - error: 解析过程中的错误信息
-func (router MetaRouter) resolveRequest(request *Request) (ViewSet, error) {
-	// 路由解析
-	viewSet, params, isPattern := router.resolve(request.Object.URL.Path)
-	if isPattern == false {
-		urlNotAllowedMsg := i18n.T("server.url_not_allowed", map[string]interface{}{
-			"path": request.Object.URL.Path,
-		})
-		return ViewSet{}, errors.New(urlNotAllowedMsg)
-	}
-	// 路由参数
-	request.PathParams = params
-	return viewSet, nil
+	return nil, nil, false
 }

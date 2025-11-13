@@ -14,13 +14,13 @@ type MetaRouter struct {
 	path          string        // 路由
 	desc          string        // 描述
 	viewSet       ViewSet       // 视图方法
+	noRoute       *ViewSet      // 无路由视图
 	includeRouter []*MetaRouter // 子路由
 
 	// 预编译
 	pattern    string         // 路由正则表达式
 	regex      *regexp.Regexp // 路由正则表达式匹配对象
 	paramInfos []ParamInfo    // 参数信息列表
-	noRoute    *ViewSet       // 无路由视图
 }
 
 // 创建路由

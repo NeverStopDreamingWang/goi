@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -331,7 +332,7 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // getResponseFunc 定义“获取响应”的函数类型。
 // 我们用该类型来承载“被中间件层层包装后的最终处理器”。
-type getResponseFunc func(*Request) Response
+type getResponseFunc func(*Request) *Response
 
 // getResponse 为最内层处理器：只负责路由解析、获取视图、执行视图并封装为 Response。
 //
@@ -339,8 +340,8 @@ type getResponseFunc func(*Request) Response
 //   - request *Request: HTTP请求对象
 //
 // 返回:
-//   - Response: HTTP响应对象
-func (engine *Engine) getResponse(request *Request) (response Response) {
+//   - *Response: HTTP响应对象指针
+func (engine *Engine) getResponse(request *Request) (response *Response) {
 	defer func() {
 		// 异常捕获
 		err := recover()
@@ -355,15 +356,28 @@ func (engine *Engine) getResponse(request *Request) (response Response) {
 	}()
 
 	// 路由解析
-	viewSet, err := engine.Router.resolveRequest(request)
-	if err != nil {
-		return Response{Status: http.StatusNotFound, Data: err.Error()}
+	viewSet, params, isPattern := engine.Router.resolve(request.Object.URL.Path)
+	if isPattern == false || viewSet == nil {
+		urlNotAllowedMsg := i18n.T("server.url_not_allowed", map[string]interface{}{
+			"path": request.Object.URL.Path,
+		})
+		return &Response{Status: http.StatusNotFound, Data: urlNotAllowedMsg}
 	}
+	// 设置路由参数
+	if params != nil {
+		request.PathParams = params
+	}
+
+	// 设置 Allow 响应头
+	defer func() {
+		allowHeader := strings.Join(viewSet.GetMethods(), ", ")
+		response.Header().Set("Allow", allowHeader)
+	}()
 
 	// 获取视图处理函数
 	handlerFunc, err := viewSet.GetHandlerFunc(request.Object.Method)
 	if handlerFunc == nil || err != nil {
-		return Response{Status: http.StatusMethodNotAllowed, Data: err.Error()}
+		return &Response{Status: http.StatusMethodNotAllowed, Data: err.Error()}
 	}
 
 	// 视图处理
@@ -377,17 +391,17 @@ func (engine *Engine) getResponse(request *Request) (response Response) {
 //   - content interface{}: 视图处理结果
 //
 // 返回:
-//   - Response: HTTP响应对象
-func toResponse(content interface{}) Response {
+//   - *Response: HTTP响应对象指针
+func toResponse(content interface{}) *Response {
 	switch value := content.(type) {
 	case Response:
-		return value
+		return &value
 	case *Response:
 		if value == nil {
-			return Response{Status: http.StatusOK, Data: nil}
+			return &Response{Status: http.StatusOK, Data: nil}
 		}
-		return *value
+		return value
 	default:
-		return Response{Status: http.StatusOK, Data: value}
+		return &Response{Status: http.StatusOK, Data: value}
 	}
 }

@@ -36,8 +36,8 @@ func (engine *Engine) processExceptionByMiddleware(request *Request, err interfa
 // - 调用内层 next 获取 Response
 // - 退出每层时先进行异常捕获（若 panic，按逆序调用 ProcessException，首个非 nil 即接住）
 // - 最后无论正/异常都调用该层的 ProcessResponse（逆序、全链，不短路）
-func (engine *Engine) loadMiddleware(get_response getResponseFunc) getResponseFunc {
-	handler := get_response
+func (engine *Engine) loadMiddleware(getResponse getResponseFunc) getResponseFunc {
+	handler := getResponse
 
 	// 由内向外包裹
 	for i := len(engine.MiddleWare) - 1; i >= 0; i-- {
@@ -45,8 +45,8 @@ func (engine *Engine) loadMiddleware(get_response getResponseFunc) getResponseFu
 	}
 	return handler
 }
-func (engine *Engine) wrapMiddleware(middleware MiddleWare, get_response getResponseFunc) getResponseFunc {
-	return func(request *Request) (response Response) {
+func (engine *Engine) wrapMiddleware(middleware MiddleWare, getResponse getResponseFunc) getResponseFunc {
+	return func(request *Request) (response *Response) {
 		defer func() {
 			err := recover()
 			if err != nil {
@@ -62,11 +62,11 @@ func (engine *Engine) wrapMiddleware(middleware MiddleWare, get_response getResp
 			response = toResponse(result)
 		} else {
 			// 执行视图获取响应
-			response = get_response(request)
+			response = getResponse(request)
 		}
 
 		// 响应阶段中间件
-		middleware.ProcessResponse(request, &response)
+		middleware.ProcessResponse(request, response)
 		return response
 	}
 
@@ -75,16 +75,16 @@ func (engine *Engine) wrapMiddleware(middleware MiddleWare, get_response getResp
 // convertExceptionToResponse 将 panic 的错误转换为 Response（最常用映射）。
 // - 已知 HttpError：按 Status 返回
 // - 其它：统一 500 Internal Server Error（生产可扩展为 DEBUG 模式返回详细页）
-func (engine *Engine) convertExceptionToResponse(request *Request, exc interface{}) Response {
+func (engine *Engine) convertExceptionToResponse(request *Request, exc interface{}) *Response {
 	switch err := exc.(type) {
 	case error:
 		engine.Log.Error(fmt.Sprintf("%v", err))
 		engine.Log.Error(string(debug.Stack()))
 		// 可补充对常见错误文本的分类映射；当前默认 500
-		return Response{Status: http.StatusInternalServerError, Data: err.Error()}
+		return &Response{Status: http.StatusInternalServerError, Data: err.Error()}
 	default:
 		engine.Log.Error(fmt.Sprintf("%v", err))
 		engine.Log.Error(string(debug.Stack()))
-		return Response{Status: http.StatusInternalServerError, Data: "Internal Server Error"}
+		return &Response{Status: http.StatusInternalServerError, Data: "Internal Server Error"}
 	}
 }
