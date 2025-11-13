@@ -1,6 +1,6 @@
 package goi
 
-const version = "v1.7.3"
+const version = "v1.8.0"
 
 // Version 获取 goi 版本
 //
