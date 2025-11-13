@@ -159,7 +159,9 @@ import (
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/middleware"
+	"github.com/NeverStopDreamingWang/goi/middleware/clickjacking"
+	"github.com/NeverStopDreamingWang/goi/middleware/common"
+	"github.com/NeverStopDreamingWang/goi/middleware/security"
 )
 
 // Http 服务
@@ -167,26 +169,19 @@ var Server *goi.Engine
 
 func init() {
 	var err error
-	
+
 	// 创建 http 服务
 	Server = goi.NewHttpServer()
 
 	// version := goi.Version() // 获取版本信息
 	// fmt.Println("goi 版本", version)
 
-	// 注册中间件
-	Server.MiddleWare = []goi.MiddleWare{
-		&middleware.SecurityMiddleWare{},
-		&middleware.CommonMiddleWare{},
-		&middleware.XFrameMiddleWare{},
-	}
-
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
 	// 网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 监听地址
-	Server.Settings.BIND_ADDRESS = "0.0.0.0" // 默认 127.0.0.1
+	Server.Settings.BIND_ADDRESS = "0.0.0.0" // 默认 0.0.0.0
 	// 端口
 	Server.Settings.PORT = 8080
 	// 域名
@@ -208,7 +203,15 @@ func init() {
 		CERT_PATH: filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.crt"),
 		KEY_PATH:  filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.key"),
 	}
-	
+
+	// 注册中间件
+	Server.MiddleWare = []goi.MiddleWare{
+		security.Default(), // 安全中间件
+		common.Default(), // 通用中间件
+		// corsheaders.Default(), // CORS 跨域中间件
+		clickjacking.Default(), // 点击劫持中间件
+	}
+
 	// 数据库配置
 	Server.Settings.DATABASES["default"] = &goi.DataBase{
 		ENGINE:         "mysql",
@@ -238,7 +241,7 @@ func init() {
 			return sqliteDB
 		},
 	}
-	
+
 	Server.Settings.USE_TZ = true
 	// 设置时区
 	err = Server.Settings.SetTimeZone("Asia/Shanghai") // 默认为空字符串 ''，本地时间
@@ -250,12 +253,12 @@ func init() {
 
 	// 设置框架语言
 	Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
-	
+
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
 	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
 	Server.Cache.MAX_SIZE = 0                   // 单位为字节，0 为不限制使用
-	
+
 	// 日志 DEBUG 设置
 	Server.Log.DEBUG = true
 	// 注册日志
@@ -264,20 +267,14 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	
-	// 日志打印
-	// Server.Log.Log() = goi.Log.Log()
-	// Server.Log.Info() = goi.Log.Info()
-	// Server.Log.Warning() = goi.Log.Warning()
-	// Server.Log.Error() = goi.Log.Error()
-	
+
 	// 设置验证器错误，不指定则使用默认
 	Server.Validator.SetValidationError(validationError{})
-	
+
 	// 设置自定义配置
 	// Server.Settings.Set(key string, value interface{})
 	// Server.Settings.Get(key string, dest interface{})
-	
+
 	// 注册关闭回调处理程序
 	Server.RegisterShutdownHandler("关闭操作", Shutdown)
 }
