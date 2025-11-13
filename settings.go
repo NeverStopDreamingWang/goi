@@ -42,24 +42,6 @@ type metaSettings struct {
 	location  *time.Location // 地区时区
 	language  Language       // 项目语言
 
-	// COMMON MIDDLEWARE
-	PREPEND_WWW            bool
-	DISALLOWED_USER_AGENTS []string // 正则字符串
-
-	// SECURITY MIDDLEWARE
-	SECURE_CONTENT_TYPE_NOSNIFF       bool
-	SECURE_CROSS_ORIGIN_OPENER_POLICY string
-	SECURE_HSTS_INCLUDE_SUBDOMAINS    bool
-	SECURE_HSTS_PRELOAD               bool
-	SECURE_HSTS_SECONDS               int
-	SECURE_REDIRECT_EXEMPT            []string
-	SECURE_REFERRER_POLICY            []string
-	SECURE_SSL_HOST                   string
-	SECURE_SSL_REDIRECT               bool
-
-	// XFRAME MIDDLEWARE
-	X_FRAME_OPTIONS string // "DENY" or "SAMEORIGIN"
-
 	// 自定义设置
 	Params Params
 }
@@ -83,24 +65,6 @@ func newSettings() *metaSettings {
 		time_zone: "",
 		location:  time.Local,
 		language:  ZH_CN,
-
-		// COMMON MIDDLEWARE
-		PREPEND_WWW:            false,
-		DISALLOWED_USER_AGENTS: []string{},
-
-		// SECURITY MIDDLEWARE
-		SECURE_CONTENT_TYPE_NOSNIFF:       true,
-		SECURE_CROSS_ORIGIN_OPENER_POLICY: "same-origin",
-		SECURE_HSTS_INCLUDE_SUBDOMAINS:    false,
-		SECURE_HSTS_PRELOAD:               false,
-		SECURE_HSTS_SECONDS:               0,
-		SECURE_REDIRECT_EXEMPT:            []string{},
-		SECURE_REFERRER_POLICY:            []string{"same-origin"},
-		SECURE_SSL_HOST:                   "",
-		SECURE_SSL_REDIRECT:               false,
-
-		// XFRAME MIDDLEWARE
-		X_FRAME_OPTIONS: "DENY",
 
 		Params: make(Params),
 	}
