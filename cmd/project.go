@@ -276,12 +276,50 @@ func init() {
 	// Server.Settings.Get(key string, dest interface{})
 
 	// 注册关闭回调处理程序
-	Server.RegisterShutdownHandler("关闭操作", Shutdown)
+	shutdown := &Shutdown{}
+	goi.RegisterOnShutdown(shutdown)
 }
 
-func Shutdown(engine *goi.Engine) error {
+type Shutdown struct{}
+
+func (self Shutdown) Name() string {
+	return "关闭自定义数据库连接"
+}
+
+func (self *Shutdown) OnShutdown() error {
 	goi.Log.Info("关闭操作")
 	return nil
+}
+
+// 后台任务
+func init() {
+	// 注册后台任务，在 RunServer 之前注册，之后注册的任务不会执行
+	// RunServer 内部会启动注册 goroutine 执行任务
+	goi.RegisterOnStartup(&Task{})
+}
+
+type Task struct{}
+
+func (self *Task) Name() string {
+	return "任务名称"
+}
+
+// OnStartup 启动任务
+func (self *Task) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			goi.Log.Info("任务结束")
+			return
+		default:
+			// TODO
+
+			time.Sleep(1 * time.Second)
+		}
+	}
 }
 
 `
