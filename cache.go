@@ -128,6 +128,9 @@ func (self *cacheManager) initCache() {
 		"expiration_policy": expirationPolicyNames[self.EXPIRATION_POLICY],
 	})
 	Log.Log(meta, ExpirationPolicyMsg)
+	if self.EXPIRATION_POLICY == PERIODIC {
+		RegisterOnStartup(self)
+	}
 }
 
 // get 获取缓存项
@@ -579,49 +582,60 @@ func (self *cacheManager) cacheEvict() {
 	}
 }
 
-// cachePeriodicDeleteExpires 定期删除过期缓存项
+// Name 获取任务名称
+func (self *cacheManager) Name() string {
+	nameMsg := i18n.T("server.cache.periodic_delete_expires")
+	return nameMsg
+}
+
+// OnStartup 定期删除过期缓存项
 //
 // 参数:
-//   - ctx context.Context: 上下文对象，用于控制goroutine退出
-//   - wg *sync.WaitGroup: 等待组，用于同步goroutine
-func (cache *metaCache) cachePeriodicDeleteExpires(ctx context.Context, wg *sync.WaitGroup) {
+//   - ctx context.Context: 上下文对象，用于控制协程退出
+//   - wg *sync.WaitGroup: 等待组，用于同步协程
+func (self *cacheManager) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	defer wg.Done()
+	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			if cache.EXPIRATION_POLICY != PERIODIC {
-				return
-			}
-			cache.lock.RLock()
-			cacheCount := len(cache.dict)
-			if cacheCount <= 0 {
-				cache.lock.RUnlock()
-				time.Sleep(3 * time.Second)
-				continue
-			}
-			count := rand.Intn(cacheCount)
-			var elementRemove []*list.Element
-			for _, element := range cache.dict {
-				if count <= 0 {
-					break
-				}
-				cacheItem := element.Value.(*cacheItems)
-
-				nowTime := GetTime() // 获取当前时间
-				if !cacheItem.expires.IsZero() && cacheItem.expires.Before(nowTime) {
-					elementRemove = append(elementRemove, element)
-				}
-				count--
-			}
-			cache.lock.RUnlock()
-			for _, element := range elementRemove {
-				cache.del(element)
-			}
+			self.cachePeriodicDeleteExpires()
 			time.Sleep(3 * time.Second)
 		}
+	}
+}
+
+// cachePeriodicDeleteExpires 定期删除过期缓存项
+func (self *cacheManager) cachePeriodicDeleteExpires() {
+	if self.EXPIRATION_POLICY != PERIODIC {
+		return
+	}
+	self.lock.RLock()
+	cacheCount := len(self.dict)
+	if cacheCount <= 0 {
+		self.lock.RUnlock()
+		time.Sleep(3 * time.Second)
+		return
+	}
+	count := rand.Intn(cacheCount)
+	var elementRemove []*list.Element
+	for _, element := range self.dict {
+		if count <= 0 {
+			break
+		}
+		cacheItem := element.Value.(*cacheItems)
+
+		nowTime := GetTime() // 获取当前时间
+		if !cacheItem.expires.IsZero() && cacheItem.expires.Before(nowTime) {
+			elementRemove = append(elementRemove, element)
+		}
+		count--
+	}
+	self.lock.RUnlock()
+	for _, element := range elementRemove {
+		self.del(element)
 	}
 }
 

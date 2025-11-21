@@ -89,8 +89,14 @@ func (engine *Engine) RunServer() {
 
 	// 初始化缓存
 	engine.Cache.initCache()
-	if engine.Cache.EXPIRATION_POLICY == PERIODIC {
-		go engine.Cache.cachePeriodicDeleteExpires(engine.ctx, engine.waitGroup)
+
+	// 启动后台任务
+	for _, task := range startup.startups {
+		taskNameMsg := i18n.T("server.startup_task", map[string]interface{}{
+			"name": task.Name(),
+		})
+		engine.Log.Log(meta, taskNameMsg)
+		go task.OnStartup(startup.ctx, startup.waitGroup)
 	}
 
 	// 注册关闭信号
@@ -207,9 +213,9 @@ func (engine *Engine) StopServer() error {
 	}
 
 	// 取消所有 goroutine 任务
-	engine.cancel()
+	startup.cancel()
 	// 等待所有 goroutine 任务结束
-	engine.waitGroup.Wait()
+	startup.waitGroup.Wait()
 
 	stopTimeMsg := i18n.T("server.stop_time", map[string]interface{}{
 		"stop_time": GetTime().Format(time.DateTime),

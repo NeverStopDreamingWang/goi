@@ -62,6 +62,9 @@ func newLogManager() *logManager {
 		DEBUG:   true,            // 开发模式，开启后自动输出到控制台
 		loggers: []*MetaLogger{}, // 日志
 	}
+	// 注册日志切割任务
+	RegisterOnStartup(lm)
+	return lm
 }
 
 // RegisterLogger 注册日志器
@@ -223,12 +226,18 @@ func (self *logManager) Log(level Level, logs ...interface{}) {
 	}
 }
 
-// splitLogger 日志切割管理协程
+// Name 获取任务名称
+func (self *logManager) Name() string {
+	nameMsg := i18n.T("log.split_logger")
+	return nameMsg
+}
+
+// OnStartup 日志切割管理协程
 //
 // 参数:
 //   - ctx context.Context: 上下文对象，用于控制协程退出
 //   - wg *sync.WaitGroup: 等待组，用于同步协程
-func (metaLog *metaLog) splitLogger(ctx context.Context, wg *sync.WaitGroup) {
+func (self *logManager) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
 	for {
@@ -236,14 +245,19 @@ func (metaLog *metaLog) splitLogger(ctx context.Context, wg *sync.WaitGroup) {
 		case <-ctx.Done():
 			return
 		default:
-			var err error
-			for _, logger := range metaLog.loggers {
-				err = checkSplitLoggerFunc(logger)
-				if err != nil {
-					panic(err)
-				}
-			}
+			self.splitLogger()
 			time.Sleep(1 * time.Second)
+		}
+	}
+}
+
+// splitLogger 日志切割管理协程
+func (self *logManager) splitLogger() {
+	var err error
+	for _, logger := range self.loggers {
+		err = checkSplitLoggerFunc(logger)
+		if err != nil {
+			panic(err)
 		}
 	}
 }
