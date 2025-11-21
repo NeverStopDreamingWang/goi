@@ -23,15 +23,6 @@ var Validator = newValidator()
 
 var serverChan = make(chan os.Signal, 1)
 
-// 关闭服务处理程序
-type ShutdownHandler func(engine *Engine) error
-
-// 关闭服务回调
-type ShutdownCallback struct {
-	name    string
-	handler ShutdownHandler
-}
-
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
 	startTime  *time.Time     // 启动时间
@@ -178,30 +169,19 @@ func (engine *Engine) RunServer() {
 	}
 }
 
-// 注册停止回调函数
-//
-// 参数:
-//   - name string: 回调函数名称
-//   - shutdownHandler ShutdownHandler: 回调函数
-func (engine *Engine) RegisterShutdownHandler(name string, shutdownHandler ShutdownHandler) {
-	engine.ShutdownCallbackHandler = append(engine.ShutdownCallbackHandler, ShutdownCallback{
-		name:    name,
-		handler: shutdownHandler,
-	})
-}
-
 // 停止 http 服务
 func (engine *Engine) StopServer() error {
 	var err error
 
-	// 执行用户定义的回调函数
-	for _, shutdownCallback := range engine.ShutdownCallbackHandler {
+	// 执行用户定义的回调函数（逆序执行：先进后出）
+	for i := len(shutdownCallbacks) - 1; i >= 0; i-- {
+		shutdownCallback := shutdownCallbacks[i]
 		shutdownHandlerMsg := i18n.T("server.shutdown_handler", map[string]interface{}{
-			"name": shutdownCallback.name,
+			"name": shutdownCallback.Name(),
 		})
 		engine.Log.Log(meta, shutdownHandlerMsg)
 
-		err = shutdownCallback.handler(engine)
+		err = shutdownCallback.OnShutdown()
 		if err != nil {
 			shutdownHandlerErrorMsg := i18n.T("server.shutdown_handler_error", map[string]interface{}{
 				"err": err,
