@@ -58,13 +58,13 @@ var uuidConverter = Converter{
 	ToGo:  func(value string) (interface{}, error) { return value, nil },
 }
 
-// metaConverterMu 保护 metaConverter
-var metaConverterMu sync.RWMutex
+// converterMu 保护 converters
+var converterMu sync.RWMutex
 
-// metaConverter 存储URL路径参数的转换器映射
+// converters 存储URL路径参数的转换器映射
 // key: 转换器名称
 // value: 转换器
-var metaConverter = map[string]Converter{
+var converters = map[string]Converter{
 	"int":    intConverter,    // 匹配整数，如: 123
 	"string": stringConverter, // 匹配除了'/'外的任意字符，如: hello
 	"slug":   slugConverter,   // 匹配URL友好的字符串，如: my-post-title
@@ -75,11 +75,12 @@ var metaConverter = map[string]Converter{
 // RegisterConverter 注册自定义URL参数转换器
 //
 // 参数:
+//   - name string: 转换器名称
 //   - converter Converter: 转换器
-func RegisterConverter(type_name string, converter Converter) {
-	metaConverterMu.Lock()
-	defer metaConverterMu.Unlock()
-	metaConverter[type_name] = converter
+func RegisterConverter(name string, converter Converter) {
+	converterMu.Lock()
+	defer converterMu.Unlock()
+	converters[name] = converter
 }
 
 // GetConverter 获取转换器
@@ -91,8 +92,8 @@ func RegisterConverter(type_name string, converter Converter) {
 //   - Converter: 转换器
 //   - bool: 是否存在
 func GetConverter(name string) (Converter, bool) {
-	metaConverterMu.RLock()
-	defer metaConverterMu.RUnlock()
-	converter, ok := metaConverter[name]
+	converterMu.RLock()
+	defer converterMu.RUnlock()
+	converter, ok := converters[name]
 	return converter, ok
 }

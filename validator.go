@@ -124,13 +124,13 @@ type Validate interface {
 	ToGo(value interface{}) (interface{}, ValidationError)
 }
 
-// metaValidateMu 保护 metaValidate
-var metaValidateMu sync.RWMutex
+// validateMu 保护 validates
+var validateMu sync.RWMutex
 
-// metaValidate 存储验证器映射
+// validates 存储验证器映射
 // key: 验证器名称
 // value: 验证器实例
-var metaValidate = map[string]Validate{
+var validates = map[string]Validate{
 	"bool":   &boolValidator{},
 	"int":    &intValidator{},
 	"string": &stringValidator{},
@@ -146,9 +146,9 @@ var metaValidate = map[string]Validate{
 //   - name string: 验证器名称
 //   - validate Validate: 验证器实例
 func RegisterValidate(name string, validate Validate) {
-	metaValidateMu.Lock()
-	defer metaValidateMu.Unlock()
-	metaValidate[name] = validate
+	validateMu.Lock()
+	defer validateMu.Unlock()
+	validates[name] = validate
 }
 
 // GetValidate 获取验证器
@@ -160,9 +160,9 @@ func RegisterValidate(name string, validate Validate) {
 //   - Validate: 验证器实例
 //   - bool: 是否存在
 func GetValidate(name string) (Validate, bool) {
-	metaValidateMu.RLock()
-	defer metaValidateMu.RUnlock()
-	validate, ok := metaValidate[name]
+	validateMu.RLock()
+	defer validateMu.RUnlock()
+	validate, ok := validates[name]
 	return validate, ok
 }
 

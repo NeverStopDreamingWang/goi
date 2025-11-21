@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -18,8 +17,8 @@ import (
 
 // Http 服务
 var Settings = newSettings()
-var Cache = newCache()
-var Log = newLog()
+var Cache = newCacheManager()
+var Log = newLogManager()
 var Validator = newValidator()
 
 var serverChan = make(chan os.Signal, 1)
@@ -35,23 +34,18 @@ type ShutdownCallback struct {
 
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
-	startTime               *time.Time         // 启动时间
-	server                  http.Server        // net/http 服务
-	Router                  *MetaRouter        // 路由
-	MiddleWare              []MiddleWare       // 中间件
-	Settings                *metaSettings      // 设置
-	Cache                   *metaCache         // 缓存
-	Log                     *metaLog           // 日志
-	Validator               *metaValidator     // 验证器
-	ShutdownCallbackHandler []ShutdownCallback // 用户定义的关闭服务回调处理程序
-	ctx                     context.Context
-	cancel                  context.CancelFunc
-	waitGroup               *sync.WaitGroup
+	startTime  *time.Time     // 启动时间
+	server     http.Server    // net/http 服务
+	Router     *MetaRouter    // 路由
+	MiddleWare []MiddleWare   // 中间件
+	Settings   *metaSettings  // 设置
+	Cache      *cacheManager  // 缓存
+	Log        *logManager    // 日志
+	Validator  *metaValidator // 验证器
 }
 
 // 创建一个 Http 服务
 func NewHttpServer() *Engine {
-	ctx, cancel := context.WithCancel(context.Background())
 	return &Engine{
 		startTime:  nil,
 		server:     http.Server{},
@@ -61,28 +55,14 @@ func NewHttpServer() *Engine {
 		Cache:      Cache,
 		Log:        Log,
 		Validator:  Validator,
-		ctx:        ctx,
-		cancel:     cancel,
-		waitGroup:  &sync.WaitGroup{},
 	}
 }
 
 // 启动 http 服务
 func (engine *Engine) RunServer() {
 	var err error
-	startTime := GetTime()
-	engine.startTime = &startTime
-
-	// 日志切割
-	go engine.Log.splitLogger(engine.ctx, engine.waitGroup)
-
-	startMsg := i18n.T("server.start")
-	engine.Log.Log(meta, startMsg, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
-
-	startTimeMsg := i18n.T("server.start_time", map[string]interface{}{
-		"start_time": engine.startTime.Format(time.DateTime),
-	})
-	engine.Log.Log(meta, startTimeMsg)
+	startedMsg := i18n.T("server.started")
+	engine.Log.Log(meta, startedMsg)
 
 	if engine.Log.DEBUG == true {
 		goiVersionMsg := i18n.T("server.goi_version", map[string]interface{}{
@@ -90,6 +70,15 @@ func (engine *Engine) RunServer() {
 		})
 		engine.Log.Log(meta, goiVersionMsg)
 	}
+
+	startTime := GetTime()
+	engine.startTime = &startTime
+	startTimeMsg := i18n.T("server.start_time", map[string]interface{}{
+		"start_time": engine.startTime.Format(time.DateTime),
+	})
+	engine.Log.Log(meta, startTimeMsg)
+
+	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
 
 	if engine.Settings.GetTimeZone() != "" {
 		currentTimeZoneMsg := i18n.T("server.current_time_zone", map[string]interface{}{
@@ -250,7 +239,7 @@ func (engine *Engine) StopServer() error {
 		"run_time": engine.runTimeStr(),
 	})
 	engine.Log.Log(meta, runTimeMsg)
-	stopMsg := i18n.T("server.stop")
+	stopMsg := i18n.T("server.stopped")
 	engine.Log.Log(meta, stopMsg)
 	// 关闭服务器
 	err = engine.server.Shutdown(context.Background())

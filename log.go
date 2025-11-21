@@ -41,24 +41,24 @@ type MetaLogger struct {
 	lock            sync.Mutex                                                // 互斥锁
 }
 
-// metaLog 日志系统管理器
+// logManager 日志系统管理器
 //
 // 字段:
 //   - DEBUG bool: 是否开启调试模式
 //   - console_logger *MetaLogger: 控制台日志器
 //   - loggers []*MetaLogger: 日志器列表
-type metaLog struct {
+type logManager struct {
 	DEBUG          bool          // 开发模式，开启后自动输出到控制台
 	console_logger *MetaLogger   // DEBUG 日志
 	loggers        []*MetaLogger // 日志列表
 }
 
-// newLog 创建新的日志系统管理器
+// newLogManager 创建新的日志系统管理器
 //
 // 返回:
-//   - *metaLog: 日志系统管理器实例
-func newLog() *metaLog {
-	return &metaLog{
+//   - *logManager: 日志系统管理器实例
+func newLogManager() *logManager {
+	lm := &logManager{
 		DEBUG:   true,            // 开发模式，开启后自动输出到控制台
 		loggers: []*MetaLogger{}, // 日志
 	}
@@ -71,7 +71,7 @@ func newLog() *metaLog {
 //
 // 返回:
 //   - error: 注册过程中的错误信息
-func (metaLog *metaLog) RegisterLogger(logger *MetaLogger) error {
+func (self *logManager) RegisterLogger(logger *MetaLogger) error {
 	if logger.Path == "" {
 		invalidPathMsg := i18n.T("log.invalid_path")
 		return errors.New(invalidPathMsg)
@@ -94,7 +94,7 @@ func (metaLog *metaLog) RegisterLogger(logger *MetaLogger) error {
 		return err
 	}
 
-	metaLog.loggers = append(metaLog.loggers, logger)
+	self.loggers = append(self.loggers, logger)
 	return nil
 }
 
@@ -103,16 +103,16 @@ func (metaLog *metaLog) RegisterLogger(logger *MetaLogger) error {
 // 参数:
 //   - format string: 日志格式
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) DebugF(format string, log ...interface{}) {
-	metaLog.Debug(fmt.Sprintf(format, log...))
+func (self *logManager) DebugF(format string, log ...interface{}) {
+	self.Debug(fmt.Sprintf(format, log...))
 }
 
 // Debug 记录调试级别日志
 //
 // 参数:
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) Debug(log ...interface{}) {
-	metaLog.Log(DEBUG, log...)
+func (self *logManager) Debug(log ...interface{}) {
+	self.Log(DEBUG, log...)
 }
 
 // InfoF 记录信息级别日志
@@ -120,16 +120,16 @@ func (metaLog *metaLog) Debug(log ...interface{}) {
 // 参数:
 //   - format string: 日志格式
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) InfoF(format string, log ...interface{}) {
-	metaLog.Info(fmt.Sprintf(format, log...))
+func (self *logManager) InfoF(format string, log ...interface{}) {
+	self.Info(fmt.Sprintf(format, log...))
 }
 
 // Info 记录信息级别日志
 //
 // 参数:
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) Info(log ...interface{}) {
-	metaLog.Log(INFO, log...)
+func (self *logManager) Info(log ...interface{}) {
+	self.Log(INFO, log...)
 }
 
 // WarningF 记录警告级别日志
@@ -137,16 +137,16 @@ func (metaLog *metaLog) Info(log ...interface{}) {
 // 参数:
 //   - format string: 日志格式
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) WarningF(format string, log ...interface{}) {
-	metaLog.Warning(fmt.Sprintf(format, log...))
+func (self *logManager) WarningF(format string, log ...interface{}) {
+	self.Warning(fmt.Sprintf(format, log...))
 }
 
 // Warning 记录警告级别日志
 //
 // 参数:
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) Warning(log ...interface{}) {
-	metaLog.Log(WARNING, log...)
+func (self *logManager) Warning(log ...interface{}) {
+	self.Log(WARNING, log...)
 }
 
 // ErrorF 记录错误级别日志
@@ -154,16 +154,16 @@ func (metaLog *metaLog) Warning(log ...interface{}) {
 // 参数:
 //   - format string: 日志格式
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) ErrorF(format string, log ...interface{}) {
-	metaLog.Error(fmt.Sprintf(format, log...))
+func (self *logManager) ErrorF(format string, log ...interface{}) {
+	self.Error(fmt.Sprintf(format, log...))
 }
 
 // Error 记录错误级别日志
 //
 // 参数:
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) Error(log ...interface{}) {
-	metaLog.Log(ERROR, log...)
+func (self *logManager) Error(log ...interface{}) {
+	self.Log(ERROR, log...)
 }
 
 // LogF 记录指定级别的日志
@@ -172,8 +172,8 @@ func (metaLog *metaLog) Error(log ...interface{}) {
 //   - level Level: 日志级别
 //   - format string: 日志格式
 //   - log ...interface{}: 日志内容
-func (metaLog *metaLog) LogF(level Level, format string, log ...interface{}) {
-	metaLog.Log(level, fmt.Sprintf(format, log...))
+func (self *logManager) LogF(level Level, format string, log ...interface{}) {
+	self.Log(level, fmt.Sprintf(format, log...))
 }
 
 // Log 记录指定级别的日志
@@ -181,12 +181,12 @@ func (metaLog *metaLog) LogF(level Level, format string, log ...interface{}) {
 // 参数:
 //   - level Level: 日志级别
 //   - logs ...interface{}: 日志内容
-func (metaLog *metaLog) Log(level Level, logs ...interface{}) {
+func (self *logManager) Log(level Level, logs ...interface{}) {
 	// DEBUG
-	if metaLog.DEBUG == true {
-		if metaLog.console_logger == nil {
+	if self.DEBUG == true {
+		if self.console_logger == nil {
 			// 初始化控制台日志
-			metaLog.console_logger = &MetaLogger{
+			self.console_logger = &MetaLogger{
 				Name:            "Debug-console",
 				Path:            "",
 				Level:           []Level{DEBUG, INFO, WARNING, ERROR},
@@ -199,17 +199,17 @@ func (metaLog *metaLog) Log(level Level, logs ...interface{}) {
 				SplitLoggerFunc: nil,
 				LoggerPrint:     defaultLoggerPrint,
 			}
-			metaLog.console_logger.Logger.SetFlags(0)
+			self.console_logger.Logger.SetFlags(0)
 		}
-		metaLog.console_logger.lock.Lock()
-		metaLog.console_logger.LoggerPrint(metaLog.console_logger, level, logs...)
-		metaLog.console_logger.lock.Unlock()
-	} else if metaLog.console_logger != nil {
-		metaLog.console_logger = nil
+		self.console_logger.lock.Lock()
+		self.console_logger.LoggerPrint(self.console_logger, level, logs...)
+		self.console_logger.lock.Unlock()
+	} else if self.console_logger != nil {
+		self.console_logger = nil
 	}
 
 	// 输出到所有符合的日志中
-	for _, logger := range metaLog.loggers {
+	for _, logger := range self.loggers {
 		if !isLevel(logger, level) {
 			continue
 		}

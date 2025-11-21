@@ -1,17 +1,19 @@
 {
   "language": "zh-CN",
   "server": {
-    "start": "服务已启动",
+    "started": "服务已启动",
     "start_time": "启动时间: {{ .start_time }}",
     "goi_version": "goi 版本: {{ .version }}",
     "current_time_zone": "当前时区: {{ .time_zone }}",
-    "log_info": "- [{{ .name }}] 切割大小: {{ .split_size }} 切割日期: {{ .split_time }}",
+    "log_info": "- [{{ .name }}] 切割大小: {{ .split_size }} 切割格式: {{ .split_time }}",
     "cache": {
+      "periodic_delete_expires": "定期删除过期缓存",
       "max_size": "缓存大小: {{ .max_size }}",
       "evict_policy": "- 淘汰策略: {{ .evict_policy }}",
       "expiration_policy": "- 过期策略: {{ .expiration_policy }}",
       "noeviction": "超出设置最大缓存: {{ .max_size }}"
     },
+    "startup_task": "正在启动 [{{ .name }}]...",
     "invalid_operation": "{{ .name }} 无效操作",
     "listen_address": "监听地址: {{ .bind_address }}",
     "shutdown_handler": "正在执行关闭服务处理程序 [{{ .name }}]...",
@@ -20,7 +22,7 @@
     "close_database_error": "关闭 {{ .engine }} {{ .name }} 错误: {{ .err }}",
     "stop_time": "停止时间: {{ .stop_time }}",
     "run_time": "运行时间: {{ .run_time }}",
-    "stop": "服务已停止\n",
+    "stopped": "服务已停止",
     "response_error": "响应错误: {{ .err }}\n",
     "url_not_allowed": "URL没有找到 \"{{ .path }}\" 。",
     "method_not_allowed": "方法 \"{{ .method }}\" 不被允许。"
@@ -53,6 +55,7 @@
     "value_invalid": "\"{{ .name }}\" 的类型无效"
   },
   "log": {
+    "split_logger": "日志切割",
     "invalid_path": "Path 为无效的: \"\"\n",
     "invalid_level": "Level 为无效的 []\n",
     "invalid_file": "File 为无效的 nil\n",
