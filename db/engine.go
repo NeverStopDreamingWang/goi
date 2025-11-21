@@ -22,13 +22,13 @@ type Engine interface {
 
 type ConnectFunc func(UseDataBases string) Engine
 
-// metaEngineMu 保护 metaEngine
-var metaEngineMu sync.RWMutex
+// engineMu 保护 engines
+var engineMu sync.RWMutex
 
 // engines 存储所有可用的数据库引擎
 // key: 数据库引擎名称
 // value: 数据库引擎连接函数
-var metaEngine = map[string]ConnectFunc{}
+var engines = map[string]ConnectFunc{}
 
 // Register 注册 ORM 数据库引擎
 //
@@ -36,19 +36,19 @@ var metaEngine = map[string]ConnectFunc{}
 //   - name string: 数据库引擎名称
 //   - connect ConnectFunc: 数据库引擎连接函数
 func Register(name string, connect ConnectFunc) {
-	metaEngineMu.Lock()
-	defer metaEngineMu.Unlock()
+	engineMu.Lock()
+	defer engineMu.Unlock()
 	if connect == nil {
 		registerEngineConnectIsNotNilMsg := i18n.T("db.register_engine_connect_is_not_nil")
 		panic(fmt.Errorf(registerEngineConnectIsNotNilMsg))
 	}
-	if _, dup := metaEngine[name]; dup {
+	if _, dup := engines[name]; dup {
 		registerEngineConnectTwiceMsg := i18n.T("db.register_engine_connect_twice", map[string]interface{}{
 			"name": name,
 		})
 		panic(fmt.Errorf(registerEngineConnectTwiceMsg))
 	}
-	metaEngine[name] = connect
+	engines[name] = connect
 }
 
 // GetConnectFunc 获取 ORM 数据库引擎连接函数
@@ -60,9 +60,9 @@ func Register(name string, connect ConnectFunc) {
 //   - ConnectFunc: 数据库引擎连接函数
 //   - bool: 是否存在
 func GetConnectFunc(name string) (ConnectFunc, bool) {
-	metaEngineMu.RLock()
-	defer metaEngineMu.RUnlock()
-	connect, ok := metaEngine[name]
+	engineMu.RLock()
+	defer engineMu.RUnlock()
+	connect, ok := engines[name]
 	return connect, ok
 }
 
