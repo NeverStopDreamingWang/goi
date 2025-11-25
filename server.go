@@ -17,35 +17,33 @@ import (
 
 // Http 服务
 var Settings = newSettings()
-var Cache = newCacheManager()
-var Log = newLogManager()
+var Cache = newCache()
+var Log = newLoggerManager()
 var Validator = newValidator()
 
 var serverChan = make(chan os.Signal, 1)
 
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
-	startTime  *time.Time     // 启动时间
-	server     http.Server    // net/http 服务
-	Router     *MetaRouter    // 路由
-	MiddleWare []MiddleWare   // 中间件
-	Settings   *metaSettings  // 设置
-	Cache      *cacheManager  // 缓存
-	Log        *logManager    // 日志
-	Validator  *metaValidator // 验证器
+	startTime *time.Time     // 启动时间
+	server    http.Server    // net/http 服务
+	Router    *Router        // 路由
+	Settings  *settings      // 设置
+	Cache     *cache         // 缓存
+	Log       *loggerManager // 日志
+	Validator *validator     // 验证器
 }
 
 // 创建一个 Http 服务
 func NewHttpServer() *Engine {
 	return &Engine{
-		startTime:  nil,
-		server:     http.Server{},
-		Router:     newRouter(),
-		MiddleWare: make([]MiddleWare, 0),
-		Settings:   Settings,
-		Cache:      Cache,
-		Log:        Log,
-		Validator:  Validator,
+		startTime: nil,
+		server:    http.Server{},
+		Router:    newRouter(),
+		Settings:  Settings,
+		Cache:     Cache,
+		Log:       Log,
+		Validator: Validator,
 	}
 }
 
@@ -296,42 +294,23 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	defer engine.recovery(request, responseWriter, GetTime().Sub(requestID))
 
-	// 处理请求：构建洋葱链后获取响应
-	middlewareChain := engine.loadMiddleware(engine.getResponse)
-	response := middlewareChain(request)
+	response := engine.handler(request)
 	_, err := response.write(request, responseWriter)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// getResponseFunc 定义“获取响应”的函数类型。
-// 我们用该类型来承载“被中间件层层包装后的最终处理器”。
-type getResponseFunc func(*Request) *Response
-
-// getResponse 为最内层处理器：只负责路由解析、获取视图、执行视图并封装为 Response。
+// handler 为 Engine 的核心请求处理函数
 //
 // 参数:
 //   - request *Request: HTTP请求对象
 //
 // 返回:
 //   - *Response: HTTP响应对象指针
-func (engine *Engine) getResponse(request *Request) (response *Response) {
-	defer func() {
-		// 异常捕获
-		err := recover()
-		if err != nil {
-			result := engine.processExceptionByMiddleware(request, err)
-			if result == nil {
-				panic(err)
-			}
-			response = toResponse(result)
-			return
-		}
-	}()
-
+func (engine *Engine) handler(request *Request) (response *Response) {
 	// 路由解析
-	viewSet, params, isPattern := engine.Router.resolve(request.Object.URL.Path)
+	viewSet, params, middlewares, isPattern := engine.Router.resolve(request.Object.URL.Path)
 	if isPattern == false || viewSet == nil {
 		urlNotAllowedMsg := i18n.T("server.url_not_allowed", map[string]any{
 			"path": request.Object.URL.Path,
@@ -355,9 +334,9 @@ func (engine *Engine) getResponse(request *Request) (response *Response) {
 		return &Response{Status: http.StatusMethodNotAllowed, Data: err.Error()}
 	}
 
-	// 视图处理
-	content := handlerFunc(request)
-	return toResponse(content)
+	// 中间件，处理请求之前：构建洋葱链后获取响应
+	middlewareChain := middlewares.loadMiddleware(handlerFunc)
+	return middlewareChain(request)
 }
 
 // 统一把结果转换为 Response
