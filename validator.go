@@ -60,18 +60,18 @@ func NewValidationError(status int, message string, args ...any) ValidationError
 // newValidator 创建新的验证器管理器
 //
 // 返回:
-//   - *metaValidator: 验证器管理器实例
-func newValidator() *metaValidator {
-	return &metaValidator{
+//   - *validator: 验证器管理器实例
+func newValidator() *validator {
+	return &validator{
 		validation_error: defaultValidationError{}, // 使用默认参数验证错误
 	}
 }
 
-// metaValidator 验证器管理结构
+// validator 验证器管理结构
 //
 // 字段:
 //   - validation_error ValidationError: 验证错误处理器
-type metaValidator struct {
+type validator struct {
 	validation_error ValidationError
 }
 
@@ -79,7 +79,7 @@ type metaValidator struct {
 //
 // 参数:
 //   - validationError ValidationError: 自定义的验证错误处理器
-func (metaValidator *metaValidator) SetValidationError(validationError ValidationError) {
+func (metaValidator *validator) SetValidationError(validationError ValidationError) {
 	metaValidator.validation_error = validationError
 }
 

@@ -57,7 +57,7 @@ var expirationPolicyNames = map[ExpirationPolicy]string{
 	SCHEDULED: "SCHEDULED",
 }
 
-// cacheManager 缓存管理器
+// cache 缓存管理器
 //
 // 字段:
 //   - EVICT_POLICY EvictPolicy: 缓存淘汰策略
@@ -67,7 +67,7 @@ var expirationPolicyNames = map[ExpirationPolicy]string{
 //   - list *list.List: 缓存项双向链表
 //   - dict map[string]*list.Element: 缓存键值映射
 //   - lock sync.RWMutex: 读写锁
-type cacheManager struct {
+type cache struct {
 	EVICT_POLICY      EvictPolicy
 	EXPIRATION_POLICY ExpirationPolicy
 	MAX_SIZE          int64
@@ -97,12 +97,12 @@ type cacheItems struct {
 	lfu       uint8
 }
 
-// newCacheManager 创建新的缓存管理器
+// newCache 创建新的缓存管理器
 //
 // 返回:
-//   - *cacheManager: 新创建的缓存管理器实例
-func newCacheManager() *cacheManager {
-	cache := &cacheManager{
+//   - *cache: 新创建的缓存管理器实例
+func newCache() *cache {
+	cache := &cache{
 		EVICT_POLICY:      NOEVICTION,
 		EXPIRATION_POLICY: PERIODIC,
 		MAX_SIZE:          0,
@@ -115,16 +115,16 @@ func newCacheManager() *cacheManager {
 }
 
 // initCache 初始化缓存配置
-func (self *cacheManager) initCache() {
-	MaxSizeMsg := i18n.T("server.cache.max_size", map[string]any{
+func (self *cache) initCache() {
+	MaxSizeMsg := i18n.T("server.self.max_size", map[string]any{
 		"max_size": FormatBytes(self.MAX_SIZE),
 	})
 	Log.Log(meta, MaxSizeMsg)
-	EvictPolicyMsg := i18n.T("server.cache.evict_policy", map[string]any{
+	EvictPolicyMsg := i18n.T("server.self.evict_policy", map[string]any{
 		"evict_policy": evictPolicyNames[self.EVICT_POLICY],
 	})
 	Log.Log(meta, EvictPolicyMsg)
-	ExpirationPolicyMsg := i18n.T("server.cache.expiration_policy", map[string]any{
+	ExpirationPolicyMsg := i18n.T("server.self.expiration_policy", map[string]any{
 		"expiration_policy": expirationPolicyNames[self.EXPIRATION_POLICY],
 	})
 	Log.Log(meta, ExpirationPolicyMsg)
@@ -141,7 +141,7 @@ func (self *cacheManager) initCache() {
 // 返回:
 //   - *list.Element: 缓存项元素
 //   - bool: 是否存在该键
-func (self *cacheManager) get(key string) (*list.Element, bool) {
+func (self *cache) get(key string) (*list.Element, bool) {
 	self.lock.RLock()
 	element, ok := self.dict[key]
 	self.lock.RUnlock()
@@ -152,7 +152,7 @@ func (self *cacheManager) get(key string) (*list.Element, bool) {
 //
 // 参数:
 //   - cacheItem *cacheItems: 要设置的缓存项
-func (self *cacheManager) set(cacheItem *cacheItems) {
+func (self *cache) set(cacheItem *cacheItems) {
 	self.lock.Lock()
 	element := self.list.PushFront(cacheItem)
 	self.dict[cacheItem.key] = element
@@ -164,7 +164,7 @@ func (self *cacheManager) set(cacheItem *cacheItems) {
 //
 // 参数:
 //   - element *list.Element: 要删除的缓存项元素
-func (self *cacheManager) del(element *list.Element) {
+func (self *cache) del(element *list.Element) {
 	cacheItem := element.Value.(*cacheItems)
 	self.lock.Lock()
 	self.list.Remove(element)
@@ -180,7 +180,7 @@ func (self *cacheManager) del(element *list.Element) {
 //
 // 返回:
 //   - bool: 是否存在该键
-func (self *cacheManager) Has(key string) bool {
+func (self *cache) Has(key string) bool {
 	self.lock.RLock()
 	_, ok := self.dict[key]
 	self.lock.RUnlock()
@@ -195,7 +195,7 @@ func (self *cacheManager) Has(key string) bool {
 //
 // 返回:
 //   - error: 获取过程中的错误信息
-func (self *cacheManager) Get(key string, value any) error {
+func (self *cache) Get(key string, value any) error {
 	if element, ok := self.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
 
@@ -231,7 +231,7 @@ func (self *cacheManager) Get(key string, value any) error {
 //
 // 返回:
 //   - error: 设置过程中的错误信息
-func (self *cacheManager) Set(key string, value any, expires int) error {
+func (self *cache) Set(key string, value any, expires int) error {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	err := encoder.Encode(value)
@@ -276,7 +276,7 @@ func (self *cacheManager) Set(key string, value any, expires int) error {
 //
 // 参数:
 //   - key string: 要删除的缓存键
-func (self *cacheManager) Del(key string) {
+func (self *cache) Del(key string) {
 	if element, ok := self.get(key); ok {
 		self.del(element)
 	}
@@ -289,7 +289,7 @@ func (self *cacheManager) Del(key string) {
 //
 // 返回:
 //   - bool: 如果键已过期并被删除返回true，否则返回false
-func (self *cacheManager) DelExp(key string) bool {
+func (self *cache) DelExp(key string) bool {
 	if element, ok := self.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
 
@@ -303,14 +303,14 @@ func (self *cacheManager) DelExp(key string) bool {
 }
 
 // cacheEvict 执行缓存淘汰
-func (self *cacheManager) cacheEvict() {
+func (self *cache) cacheEvict() {
 	if len(self.dict) == 0 {
 		return
 	}
 
 	switch self.EVICT_POLICY {
 	case NOEVICTION: // 直接返回错误，不淘汰任何已经存在的键
-		NoEvictionMsg := i18n.T("server.cache.noeviction", map[string]any{
+		NoEvictionMsg := i18n.T("server.self.noeviction", map[string]any{
 			"max_size": FormatBytes(self.MAX_SIZE),
 		})
 		Log.Error(NoEvictionMsg)
@@ -583,8 +583,8 @@ func (self *cacheManager) cacheEvict() {
 }
 
 // Name 获取任务名称
-func (self *cacheManager) Name() string {
-	nameMsg := i18n.T("server.cache.periodic_delete_expires")
+func (self *cache) Name() string {
+	nameMsg := i18n.T("server.self.periodic_delete_expires")
 	return nameMsg
 }
 
@@ -593,7 +593,7 @@ func (self *cacheManager) Name() string {
 // 参数:
 //   - ctx context.Context: 上下文对象，用于控制协程退出
 //   - wg *sync.WaitGroup: 等待组，用于同步协程
-func (self *cacheManager) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
+func (self *cache) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
 	for {
@@ -608,7 +608,7 @@ func (self *cacheManager) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // cachePeriodicDeleteExpires 定期删除过期缓存项
-func (self *cacheManager) cachePeriodicDeleteExpires() {
+func (self *cache) cachePeriodicDeleteExpires() {
 	if self.EXPIRATION_POLICY != PERIODIC {
 		return
 	}
