@@ -58,7 +58,7 @@ func isSecure(r *http.Request) bool {
 }
 
 // ProcessRequest 请求预处理,执行 User-Agent 过滤和 WWW 前缀重定向
-func (self CommonMiddleWare) ProcessRequest(request *goi.Request) interface{} {
+func (self CommonMiddleWare) ProcessRequest(request *goi.Request) any {
 	// 1) 禁止 User-Agent
 	if ua := request.Object.Header.Get("User-Agent"); ua != "" {
 		for _, pat := range self.DISALLOWED_USER_AGENTS {
@@ -91,11 +91,8 @@ func (self CommonMiddleWare) ProcessRequest(request *goi.Request) interface{} {
 	return nil
 }
 
-// ProcessView 视图处理前(本中间件不处理)
-func (self CommonMiddleWare) ProcessView(request *goi.Request) interface{} { return nil }
-
 // ProcessException 异常处理(本中间件不处理)
-func (self CommonMiddleWare) ProcessException(request *goi.Request, exception any) interface{} {
+func (self CommonMiddleWare) ProcessException(request *goi.Request, exception any) any {
 	return nil
 }
 

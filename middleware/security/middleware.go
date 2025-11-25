@@ -137,7 +137,7 @@ func setDefaultHeader(h http.Header, key, value string) {
 }
 
 // ProcessRequest 请求预处理,执行 HTTPS 强制重定向
-func (self SecurityMiddleWare) ProcessRequest(request *goi.Request) interface{} {
+func (self SecurityMiddleWare) ProcessRequest(request *goi.Request) any {
 	// HTTPS 重定向
 	if self.SECURE_SSL_REDIRECT && !isSecure(request.Object) && !shouldExempt(request.Object.URL.Path, self.SECURE_REDIRECT_EXEMPT) {
 		host := request.Object.Host
@@ -153,11 +153,8 @@ func (self SecurityMiddleWare) ProcessRequest(request *goi.Request) interface{} 
 	return nil
 }
 
-// ProcessView 视图处理前(本中间件不处理)
-func (self SecurityMiddleWare) ProcessView(request *goi.Request) interface{} { return nil }
-
 // ProcessException 异常处理(本中间件不处理)
-func (self SecurityMiddleWare) ProcessException(request *goi.Request, exception any) interface{} {
+func (self SecurityMiddleWare) ProcessException(request *goi.Request, exception any) any {
 	return nil
 }
 

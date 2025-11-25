@@ -7,16 +7,14 @@ import (
 )
 
 // 中间件
-// MiddleWare 定义四个阶段钩子：
-// - ProcessRequest：请求阶段（顺序执行）；返回非 nil 则短路，内层不再进入
-// - ProcessView：路由解析后、视图执行前（顺序执行）；返回非 nil 则短路，但响应阶段仍会全链执行
+// MiddleWare 定义中间件接口：
+// - ProcessRequest：请求阶段（顺序执行）；返回非 nil 则直接写入响应，内层不再进入
 // - ProcessException：异常阶段（逆序执行）；
-// - ProcessResponse：响应阶段（逆序执行、全链）；常用于追加/修改响应头
+// - ProcessResponse：响应阶段（逆序执行）；常用于追加/修改响应头
 type MiddleWare interface {
-	ProcessRequest(*Request) interface{}                // 请求中间件
-	ProcessView(*Request) interface{}                   // 视图中间件
-	ProcessException(*Request, interface{}) interface{} // 异常中间件
-	ProcessResponse(*Request, *Response)                // 响应中间件
+	ProcessRequest(request *Request) any                  // 请求中间件
+	ProcessException(request *Request, exception any) any // 异常中间件
+	ProcessResponse(request *Request, response *Response) // 响应中间件
 }
 
 // processExceptionByMiddleware 逆序调用异常中间件，返回首个非 nil 的结果；若均不处理则返回 nil。
