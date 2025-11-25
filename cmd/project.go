@@ -153,9 +153,11 @@ var settings = InitFile{
 		content := `package %s
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi"
@@ -198,7 +200,7 @@ func init() {
 
 	// 设置 SSL
 	Server.Settings.SSL = goi.SSL{
-		STATUS:    false, // SSL 开关
+		STATUS:    false,  // SSL 开关
 		TYPE:      "自签证书", // 证书类型
 		CERT_PATH: filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.crt"),
 		KEY_PATH:  filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.key"),
@@ -207,14 +209,14 @@ func init() {
 	// 注册中间件（根路由）
 	Server.Router.Use(
 		security.Default(), // 安全中间件
-		common.Default(), // 通用中间件
+		common.Default(),   // 通用中间件
 		// corsheaders.Default(), // CORS 跨域中间件
 		clickjacking.Default(), // 点击劫持中间件
 	)
 
 	// 数据库配置
 	Server.Settings.DATABASES["default"] = &goi.DataBase{
-		ENGINE:         "mysql",
+		ENGINE: "mysql",
 		Connect: func(ENGINE string) *sql.DB {
 			DataSourceName := "root:123@tcp(127.0.0.1:3306)/%s"
 			mysqlDB, err := sql.Open(ENGINE, DataSourceName)
@@ -230,7 +232,7 @@ func init() {
 		},
 	}
 	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
-		ENGINE:         "sqlite3",
+		ENGINE: "sqlite3",
 		Connect: func(ENGINE string) *sql.DB {
 			DataSourceName := filepath.Join(Server.Settings.BASE_DIR, "data", "%s.db")
 			sqliteDB, err := sql.Open(ENGINE, DataSourceName)
@@ -257,7 +259,7 @@ func init() {
 	// 设置最大缓存大小
 	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
 	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
-	Server.Cache.MAX_SIZE = 0                   // 单位为字节，0 为不限制使用
+	Server.Cache.MAX_SIZE = 0                     // 单位为字节，0 为不限制使用
 
 	// 日志 DEBUG 设置
 	Server.Log.DEBUG = true
