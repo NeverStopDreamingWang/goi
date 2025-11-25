@@ -77,73 +77,67 @@ func (router *Router) compilePattern() {
 //
 // 参数:
 //   - path string: 待匹配的URL路径
+//   - params Params: 匹配的参数映射
 //
 // 返回:
-//   - Params: 匹配的参数映射
 //   - MiddleWares: 匹配的路由中间件
 //   - bool: 是否匹配成功
-func (router Router) match(path string) (Params, MiddleWares, bool) {
+func (router Router) match(path string, params Params) (MiddleWares, bool) {
 	// 保护：确保已编译正则，避免空指针
 	if router.regex == nil {
 		(&router).compilePattern()
 	}
 	loc := router.regex.FindStringSubmatch(path)
 	if loc == nil || len(loc)-1 != len(router.paramInfos) {
-		return nil, nil, false
+		return nil, false
 	}
-	var params Params
 	if len(router.paramInfos) > 0 {
 		// 第0个是完整匹配，从1开始依次为各参数
-		params = make(Params, len(router.paramInfos))
 		for i, paramInfo := range router.paramInfos {
 			// i 对应第 i+1 个分组
 			if i+1 < len(loc) {
 				rawValue := loc[i+1]
 				convertedValue, err := paramInfo.Converter.ToGo(rawValue)
 				if err != nil {
-					return nil, nil, false
+					return nil, false
 				}
 				params[paramInfo.Name] = convertedValue
 			}
 		}
 	}
-	return params, router.middlewares, true
+	return router.middlewares, true
 }
 
 // resolve 解析URL路径
 //
 // 参数:
 //   - Path string: 待解析的URL路径
+//   - params Params: 匹配的参数映射
 //
 // 返回:
 //   - *ViewSet: 匹配的视图集
-//   - Params: 匹配的参数映射
 //   - MiddleWares: 匹配的路由中间件
 //   - bool: 是否匹配成功
-func (router Router) resolve(Path string) (*ViewSet, Params, MiddleWares, bool) {
-	params, middlewares, ok := router.match(Path)
+func (router Router) resolve(Path string, params Params) (*ViewSet, MiddleWares, bool) {
+	middlewares, ok := router.match(Path, params)
 	if ok == false {
-		return nil, nil, nil, false
+		return nil, nil, false
 	}
 	if router.include == nil {
-		return &router.viewSet, params, middlewares, true
+		return &router.viewSet, middlewares, true
 	}
 	// 子路由
 	for _, itemRouter := range router.include {
-		viewSet, paramsChild, middlewaresChild, isPattern := itemRouter.resolve(Path[len(router.path):])
+		viewSet, middlewaresChild, isPattern := itemRouter.resolve(Path[len(router.path):], params)
 		if isPattern == true {
-			// 合并参数
-			for key, value := range paramsChild {
-				params[key] = value
-			}
 			// 合并中间件
 			middlewares = append(middlewares, middlewaresChild...)
-			return viewSet, params, middlewares, isPattern
+			return viewSet, middlewares, isPattern
 		}
 	}
 	// 无匹配
 	if router.noRoute != nil {
-		return router.noRoute, params, middlewares, true
+		return router.noRoute, middlewares, true
 	}
-	return nil, nil, nil, false
+	return nil, nil, false
 }
