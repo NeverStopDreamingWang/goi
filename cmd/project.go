@@ -476,7 +476,7 @@ import (
 )
 
 // 日志输出
-func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...any) {
+func LogPrintln(logger *goi.Logger, level goi.Level, logs ...any) {
 	timeStr := fmt.Sprintf("[%%v]", goi.GetTime().Format(time.DateTime))
 	if level != "" {
 		timeStr += fmt.Sprintf(" %%v", level)
@@ -509,7 +509,7 @@ func getFileFunc(filePath string) (*os.File, error) {
 }
 
 // 默认日志
-func newDefaultLog() *goi.MetaLogger {
+func newDefaultLog() *goi.Logger {
 	var err error
 
 	OutPath := filepath.Join(Server.Settings.BASE_DIR, "logs", "server.log")
@@ -522,7 +522,7 @@ func newDefaultLog() *goi.MetaLogger {
 		}
 	}
 
-	defaultLog := &goi.MetaLogger{
+	defaultLog := &goi.Logger{
 		Name: "默认日志",
 		Path: OutPath,
 		Level: []goi.Level{ // 所有等级的日志
