@@ -10,14 +10,14 @@ import (
 	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
-type TransactionFunc func(engine Engine, args ...interface{}) error
+type TransactionFunc func(engine Engine, args ...any) error
 
 // Engine 结构体用于管理MySQL数据库连接和操作
 type Engine interface {
 	Name() string
-	Execute(query string, args ...interface{}) (sql.Result, error)
-	QueryRow(query string, args ...interface{}) *sql.Row
-	Query(query string, args ...interface{}) (*sql.Rows, error)
+	Execute(query string, args ...any) (sql.Result, error)
+	QueryRow(query string, args ...any) *sql.Row
+	Query(query string, args ...any) (*sql.Rows, error)
 }
 
 type ConnectFunc func(UseDataBases string) Engine
@@ -43,7 +43,7 @@ func Register(name string, connect ConnectFunc) {
 		panic(fmt.Errorf(registerEngineConnectIsNotNilMsg))
 	}
 	if _, dup := engines[name]; dup {
-		registerEngineConnectTwiceMsg := i18n.T("db.register_engine_connect_twice", map[string]interface{}{
+		registerEngineConnectTwiceMsg := i18n.T("db.register_engine_connect_twice", map[string]any{
 			"name": name,
 		})
 		panic(fmt.Errorf(registerEngineConnectTwiceMsg))
@@ -82,7 +82,7 @@ func GetConnectFunc(name string) (ConnectFunc, bool) {
 func Connect[T Engine](UseDataBases string) T {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {
-		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]interface{}{
+		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]any{
 			"name": UseDataBases,
 		})
 		panic(fmt.Errorf(databasesNotErrorMsg))
@@ -90,7 +90,7 @@ func Connect[T Engine](UseDataBases string) T {
 
 	connect, ok := GetConnectFunc(database.ENGINE)
 	if !ok {
-		engineNotRegisteredMsg := i18n.T("db.engine_not_registered", map[string]interface{}{
+		engineNotRegisteredMsg := i18n.T("db.engine_not_registered", map[string]any{
 			"engine": database.ENGINE,
 		})
 		panic(fmt.Errorf(engineNotRegisteredMsg))
@@ -103,7 +103,7 @@ func Connect[T Engine](UseDataBases string) T {
 	v, ok := any(engine).(T)
 	if !ok {
 		var zero T
-		engineTypeIsNotMatchMsg := i18n.T("db.engine_type_is_not_match", map[string]interface{}{
+		engineTypeIsNotMatchMsg := i18n.T("db.engine_type_is_not_match", map[string]any{
 			"want_type": reflect.TypeOf(zero).String(),
 			"got_type":  reflect.TypeOf(engine).String(),
 		})

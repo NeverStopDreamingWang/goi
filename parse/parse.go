@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-type Params map[string]interface{}
+type Params map[string]any
 
 type Parsing interface {
 	Name() string

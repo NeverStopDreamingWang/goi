@@ -77,7 +77,7 @@ func Encrypt(publicKeyBytes []byte, plaintext []byte) ([]byte, error) {
 	// 解析公钥
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		errMsg := i18n.T("crypto.rsa.public_key_parse_error", map[string]interface{}{
+		errMsg := i18n.T("crypto.rsa.public_key_parse_error", map[string]any{
 			"err": err,
 		})
 		return nil, errors.New(errMsg)
@@ -119,7 +119,7 @@ func Decrypt(privateKeyBytes []byte, ciphertext []byte) ([]byte, error) {
 	// 解析私钥
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		errMsg := i18n.T("crypto.rsa.private_key_parse_error", map[string]interface{}{
+		errMsg := i18n.T("crypto.rsa.private_key_parse_error", map[string]any{
 			"err": err,
 		})
 		return nil, errors.New(errMsg)

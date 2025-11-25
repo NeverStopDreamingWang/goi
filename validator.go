@@ -25,11 +25,11 @@ type ValidationError interface {
 	// 参数:
 	//   - status int: HTTP状态码
 	//   - message string: 错误消息
-	//   - args ...interface{}: 可选参数
+	//   - args ...any: 可选参数
 	//
 	// 返回:
 	//   - ValidationError: 验证错误实例
-	NewValidationError(status int, message string, args ...interface{}) ValidationError
+	NewValidationError(status int, message string, args ...any) ValidationError
 
 	// Error 返回错误消息
 	Error() string
@@ -46,11 +46,11 @@ type ValidationError interface {
 // 参数:
 //   - status int: HTTP状态码
 //   - message string: 错误消息
-//   - args ...interface{}: 可选参数
+//   - args ...any: 可选参数
 //
 // 返回:
 //   - ValidationError: 验证错误实例
-func NewValidationError(status int, message string, args ...interface{}) ValidationError {
+func NewValidationError(status int, message string, args ...any) ValidationError {
 	if Validator == nil {
 		return defaultValidationError{}.NewValidationError(status, message, args...)
 	}
@@ -94,7 +94,7 @@ type defaultValidationError struct {
 }
 
 // 默认创建参数验证错误方法
-func (validationErr defaultValidationError) NewValidationError(status int, message string, args ...interface{}) ValidationError {
+func (validationErr defaultValidationError) NewValidationError(status int, message string, args ...any) ValidationError {
 	return &defaultValidationError{
 		Status:  status,
 		Message: message,
@@ -120,8 +120,8 @@ func (validationErr defaultValidationError) Response() Response {
 //   - Validate: 验证方法
 //   - ToGo: 将字符串转换为Go值，ToGo 的返回值要与读取字段类型一致
 type Validate interface {
-	Validate(value interface{}) ValidationError
-	ToGo(value interface{}) (interface{}, ValidationError)
+	Validate(value any) ValidationError
+	ToGo(value any) (any, ValidationError)
 }
 
 // validateMu 保护 validates
@@ -169,7 +169,7 @@ func GetValidate(name string) (Validate, bool) {
 // boolValidator 布尔类型验证器
 type boolValidator struct{}
 
-func (validator boolValidator) Validate(value interface{}) ValidationError {
+func (validator boolValidator) Validate(value any) ValidationError {
 	switch typeValue := value.(type) {
 	case bool:
 		return nil
@@ -177,21 +177,21 @@ func (validator boolValidator) Validate(value interface{}) ValidationError {
 		var reStr = `^(true|false)$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
-		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 }
 
-func (validator boolValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+func (validator boolValidator) ToGo(value any) (any, ValidationError) {
 	switch typeValue := value.(type) {
 	case bool:
 		return typeValue, nil
@@ -208,7 +208,7 @@ func (validator boolValidator) ToGo(value interface{}) (interface{}, ValidationE
 // intValidator 整数类型验证器
 type intValidator struct{}
 
-func (validator intValidator) Validate(value interface{}) ValidationError {
+func (validator intValidator) Validate(value any) ValidationError {
 	switch typeValue := value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
 		return nil
@@ -216,21 +216,21 @@ func (validator intValidator) Validate(value interface{}) ValidationError {
 		var reStr = `^([0-9]+)$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
-		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 }
 
-func (validator intValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+func (validator intValidator) ToGo(value any) (any, ValidationError) {
 	switch typeValue := value.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
 		return typeValue, nil
@@ -246,19 +246,19 @@ func (validator intValidator) ToGo(value interface{}) (interface{}, ValidationEr
 // stringValidator 字符串类型验证器
 type stringValidator struct{}
 
-func (validator stringValidator) Validate(value interface{}) ValidationError {
+func (validator stringValidator) Validate(value any) ValidationError {
 	switch value.(type) {
 	case string:
 		return nil
 	default:
-		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 }
 
-func (validator stringValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+func (validator stringValidator) ToGo(value any) (any, ValidationError) {
 	switch typeValue := value.(type) {
 	case string:
 		return typeValue, nil
@@ -271,13 +271,13 @@ func (validator stringValidator) ToGo(value interface{}) (interface{}, Validatio
 // sliceValidator 切片类型验证器
 type sliceValidator struct{}
 
-func (validator sliceValidator) Validate(value interface{}) ValidationError {
+func (validator sliceValidator) Validate(value any) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
 		var reStr = `^(\[.\])$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
@@ -292,17 +292,17 @@ func (validator sliceValidator) Validate(value interface{}) ValidationError {
 		if kind == reflect.Slice || kind == reflect.Array {
 			return nil
 		}
-		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 }
 
-func (validator sliceValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+func (validator sliceValidator) ToGo(value any) (any, ValidationError) {
 	switch typeValue := value.(type) {
 	case string:
-		var sliceValue []interface{}
+		var sliceValue []any
 		// 对于字符串形式的切片，这里可以根据需要进行JSON解析等
 		err := json.Unmarshal([]byte(typeValue), &sliceValue)
 		if err != nil {
@@ -325,13 +325,13 @@ func (validator sliceValidator) ToGo(value interface{}) (interface{}, Validation
 // mapValidator 映射类型验证器
 type mapValidator struct{}
 
-func (validator mapValidator) Validate(value interface{}) ValidationError {
+func (validator mapValidator) Validate(value any) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
 		var reStr = `^(\{.\})$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
@@ -346,18 +346,18 @@ func (validator mapValidator) Validate(value interface{}) ValidationError {
 		if valueType.Kind() == reflect.Map {
 			return nil
 		}
-		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 }
 
-func (validator mapValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+func (validator mapValidator) ToGo(value any) (any, ValidationError) {
 	switch typeValue := value.(type) {
 	case string:
 		// 对于字符串形式的映射，这里可以根据需要进行JSON解析等
-		var mapValue map[string]interface{}
+		var mapValue map[string]any
 		// 对于字符串形式的切片，这里可以根据需要进行JSON解析等
 		err := json.Unmarshal([]byte(typeValue), &mapValue)
 		if err != nil {
@@ -380,27 +380,27 @@ func (validator mapValidator) ToGo(value interface{}) (interface{}, ValidationEr
 // slugValidator slug格式验证器
 type slugValidator struct{}
 
-func (validator slugValidator) Validate(value interface{}) ValidationError {
+func (validator slugValidator) Validate(value any) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
 		var reStr = `^([-a-zA-Z0-9_]+)`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
-		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 }
 
-func (validator slugValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+func (validator slugValidator) ToGo(value any) (any, ValidationError) {
 	switch typeValue := value.(type) {
 	case string:
 		return typeValue, nil
@@ -412,27 +412,27 @@ func (validator slugValidator) ToGo(value interface{}) (interface{}, ValidationE
 // uuidValidator UUID格式验证器
 type uuidValidator struct{}
 
-func (validator uuidValidator) Validate(value interface{}) ValidationError {
+func (validator uuidValidator) Validate(value any) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
 		var reStr = `^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 				"err": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
-		paramsErrorMsg := i18n.T("validator.params_error", map[string]interface{}{
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
 			"err": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
 }
 
-func (validator uuidValidator) ToGo(value interface{}) (interface{}, ValidationError) {
+func (validator uuidValidator) ToGo(value any) (any, ValidationError) {
 	switch typeValue := value.(type) {
 	case string:
 		return typeValue, nil

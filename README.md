@@ -28,6 +28,7 @@ go build -o goi
 ```
 
 ### goi 命令使用
+
 ```shel
 > goi
 
@@ -84,7 +85,7 @@ import (
 	"github.com/NeverStopDreamingWang/goi"
 )
 
-func Ping(request *goi.Request) interface{} {
+func Ping(request *goi.Request) any {
 	goi.Log.DebugF("Test1")
 
 	return goi.Data{

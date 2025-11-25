@@ -26,7 +26,7 @@ func SetLocalize(langs ...string) {
 	I18n = i18n.NewLocalizer(bundle, langs...)
 }
 
-func T(messageID string, data ...map[string]interface{}) string {
+func T(messageID string, data ...map[string]any) string {
 	localizeConfig := &i18n.LocalizeConfig{
 		MessageID: messageID,
 	}

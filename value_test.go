@@ -16,11 +16,11 @@ type testStruct struct {
 }
 
 func ExampleSetValue() {
-	source := map[string]interface{}{
+	source := map[string]any{
 		"username": "test_user",
 		"password": "test123456",
 		"age":      18,
-		"custom":   []interface{}{111, "test1", "test2"},
+		"custom":   []any{111, "test1", "test2"},
 	}
 	dest := &testStruct{}
 
@@ -42,11 +42,11 @@ func ExampleSetValue() {
 }
 
 func ExampleSetValue_manual() {
-	source := map[string]interface{}{
+	source := map[string]any{
 		"username": "test_user",
 		"password": "test123456",
 		"age":      18,
-		"custom":   []interface{}{111, "test1", "test2"},
+		"custom":   []any{111, "test1", "test2"},
 	}
 	dest := &testStruct{}
 

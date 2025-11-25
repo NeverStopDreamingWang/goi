@@ -272,8 +272,8 @@ func init() {
 	Server.Validator.SetValidationError(validationError{})
 
 	// 设置自定义配置
-	// Server.Settings.Set(key string, value interface{})
-	// Server.Settings.Get(key string, dest interface{})
+	// Server.Settings.Set(key string, value any)
+	// Server.Settings.Get(key string, dest any)
 
 	// 注册关闭回调处理程序
 	shutdown := &Shutdown{}
@@ -349,7 +349,7 @@ func init() {
 // 手机号
 var phoneConverter = goi.Converter{
 	Regex: %s,
-	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToGo:  func(value string) (any, error) { return value, nil },
 }
 
 `
@@ -388,7 +388,7 @@ type validationError struct {
 }
 
 // 创建参数验证错误方法
-func (validationErr validationError) NewValidationError(status int, message string, args ...interface{}) goi.ValidationError {
+func (validationErr validationError) NewValidationError(status int, message string, args ...any) goi.ValidationError {
 	return &validationError{
 		Status:  status,
 		Message: message,
@@ -414,7 +414,7 @@ func (validationErr validationError) Response() goi.Response {
 
 type phoneValidator struct{}
 
-func (validator phoneValidator) Validate(value interface{}) goi.ValidationError {
+func (validator phoneValidator) Validate(value any) goi.ValidationError {
 	switch typeValue := value.(type) {
 	case int:
 		valueStr := strconv.Itoa(typeValue)
@@ -435,7 +435,7 @@ func (validator phoneValidator) Validate(value interface{}) goi.ValidationError 
 	return nil
 }
 
-func (validator phoneValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+func (validator phoneValidator) ToGo(value any) (any, goi.ValidationError) {
 	switch typeValue := value.(type) {
 	case int:
 		return typeValue, nil
@@ -476,12 +476,12 @@ import (
 )
 
 // 日志输出
-func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...interface{}) {
+func LogPrintln(logger *goi.MetaLogger, level goi.Level, logs ...any) {
 	timeStr := fmt.Sprintf("[%%v]", goi.GetTime().Format(time.DateTime))
 	if level != "" {
 		timeStr += fmt.Sprintf(" %%v", level)
 	}
-	logs = append([]interface{}{timeStr}, logs...)
+	logs = append([]any{timeStr}, logs...)
 	logger.Logger.Println(logs...)
 }
 

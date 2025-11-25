@@ -45,12 +45,12 @@ func (router MetaRouter) hasChildRouter(child *MetaRouter) {
 	}
 	for _, itemRouter := range router.includeRouter {
 		if itemRouter.path == child.path { // 指针引用相等
-			pathAlreadyExistsMsg := i18n.T("router.path_already_exists", map[string]interface{}{
+			pathAlreadyExistsMsg := i18n.T("router.path_already_exists", map[string]any{
 				"path": child.path,
 			})
 			panic(pathAlreadyExistsMsg)
 		} else if itemRouter.pattern == child.pattern { // 指针引用相等
-			pathCollisionMsg := i18n.T("router.path_regexp_collision", map[string]interface{}{
+			pathCollisionMsg := i18n.T("router.path_regexp_collision", map[string]any{
 				"path":           itemRouter.path,
 				"collision_path": child.path,
 				"pattern":        child.pattern,

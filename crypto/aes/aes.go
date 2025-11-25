@@ -196,7 +196,7 @@ func Decrypt(cipherTextBase64 string, keyBytes []byte) (string, error) {
 	// 解码 base64 密文
 	cipherText, err := base64.StdEncoding.DecodeString(cipherTextBase64)
 	if err != nil {
-		errMsg := i18n.T("crypto.aes.base64_decode_error", map[string]interface{}{
+		errMsg := i18n.T("crypto.aes.base64_decode_error", map[string]any{
 			"err": err,
 		})
 		return "", errors.New(errMsg)
@@ -205,7 +205,7 @@ func Decrypt(cipherTextBase64 string, keyBytes []byte) (string, error) {
 	// 创建 AES 加密块
 	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
-		errMsg := i18n.T("crypto.aes.new_cipher_error", map[string]interface{}{
+		errMsg := i18n.T("crypto.aes.new_cipher_error", map[string]any{
 			"err": err,
 		})
 		return "", errors.New(errMsg)

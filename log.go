@@ -27,18 +27,18 @@ const (
 
 // MetaLogger 日志管理器
 type MetaLogger struct {
-	Name            string                                                    // 日志名称
-	Path            string                                                    // 日志输出路径
-	Level           []Level                                                   // 日志等级
-	File            *os.File                                                  // 日志文件对象
-	CreateTime      time.Time                                                 // 日志文件创建时间，每次日志切割时需要重置
-	Logger          *log.Logger                                               // 日志对象
-	LoggerPrint     func(logger *MetaLogger, level Level, log ...interface{}) // 自定义日志输出
-	SPLIT_SIZE      int64                                                     // 日志切割大小，默认为 1G 1024 * 1024 * 1024
-	SPLIT_TIME      string                                                    // 日志切割大小，默认按天切割
-	GetFileFunc     func(filePath string) (*os.File, error)                   // 创建文件对象方法
-	SplitLoggerFunc func(metaLogger *MetaLogger) (*os.File, error)            // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
-	lock            sync.Mutex                                                // 互斥锁
+	Name            string                                            // 日志名称
+	Path            string                                            // 日志输出路径
+	Level           []Level                                           // 日志等级
+	File            *os.File                                          // 日志文件对象
+	CreateTime      time.Time                                         // 日志文件创建时间，每次日志切割时需要重置
+	Logger          *log.Logger                                       // 日志对象
+	LoggerPrint     func(logger *MetaLogger, level Level, log ...any) // 自定义日志输出
+	SPLIT_SIZE      int64                                             // 日志切割大小，默认为 1G 1024 * 1024 * 1024
+	SPLIT_TIME      string                                            // 日志切割大小，默认按天切割
+	GetFileFunc     func(filePath string) (*os.File, error)           // 创建文件对象方法
+	SplitLoggerFunc func(metaLogger *MetaLogger) (*os.File, error)    // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
+	lock            sync.Mutex                                        // 互斥锁
 }
 
 // logManager 日志系统管理器
@@ -105,16 +105,16 @@ func (self *logManager) RegisterLogger(logger *MetaLogger) error {
 //
 // 参数:
 //   - format string: 日志格式
-//   - log ...interface{}: 日志内容
-func (self *logManager) DebugF(format string, log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) DebugF(format string, log ...any) {
 	self.Debug(fmt.Sprintf(format, log...))
 }
 
 // Debug 记录调试级别日志
 //
 // 参数:
-//   - log ...interface{}: 日志内容
-func (self *logManager) Debug(log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) Debug(log ...any) {
 	self.Log(DEBUG, log...)
 }
 
@@ -122,16 +122,16 @@ func (self *logManager) Debug(log ...interface{}) {
 //
 // 参数:
 //   - format string: 日志格式
-//   - log ...interface{}: 日志内容
-func (self *logManager) InfoF(format string, log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) InfoF(format string, log ...any) {
 	self.Info(fmt.Sprintf(format, log...))
 }
 
 // Info 记录信息级别日志
 //
 // 参数:
-//   - log ...interface{}: 日志内容
-func (self *logManager) Info(log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) Info(log ...any) {
 	self.Log(INFO, log...)
 }
 
@@ -139,16 +139,16 @@ func (self *logManager) Info(log ...interface{}) {
 //
 // 参数:
 //   - format string: 日志格式
-//   - log ...interface{}: 日志内容
-func (self *logManager) WarningF(format string, log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) WarningF(format string, log ...any) {
 	self.Warning(fmt.Sprintf(format, log...))
 }
 
 // Warning 记录警告级别日志
 //
 // 参数:
-//   - log ...interface{}: 日志内容
-func (self *logManager) Warning(log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) Warning(log ...any) {
 	self.Log(WARNING, log...)
 }
 
@@ -156,16 +156,16 @@ func (self *logManager) Warning(log ...interface{}) {
 //
 // 参数:
 //   - format string: 日志格式
-//   - log ...interface{}: 日志内容
-func (self *logManager) ErrorF(format string, log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) ErrorF(format string, log ...any) {
 	self.Error(fmt.Sprintf(format, log...))
 }
 
 // Error 记录错误级别日志
 //
 // 参数:
-//   - log ...interface{}: 日志内容
-func (self *logManager) Error(log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) Error(log ...any) {
 	self.Log(ERROR, log...)
 }
 
@@ -174,8 +174,8 @@ func (self *logManager) Error(log ...interface{}) {
 // 参数:
 //   - level Level: 日志级别
 //   - format string: 日志格式
-//   - log ...interface{}: 日志内容
-func (self *logManager) LogF(level Level, format string, log ...interface{}) {
+//   - log ...any: 日志内容
+func (self *logManager) LogF(level Level, format string, log ...any) {
 	self.Log(level, fmt.Sprintf(format, log...))
 }
 
@@ -183,8 +183,8 @@ func (self *logManager) LogF(level Level, format string, log ...interface{}) {
 //
 // 参数:
 //   - level Level: 日志级别
-//   - logs ...interface{}: 日志内容
-func (self *logManager) Log(level Level, logs ...interface{}) {
+//   - logs ...any: 日志内容
+func (self *logManager) Log(level Level, logs ...any) {
 	// DEBUG
 	if self.DEBUG == true {
 		if self.console_logger == nil {
@@ -277,13 +277,13 @@ func isLevel(logger *MetaLogger, level Level) bool {
 // 参数:
 //   - logger *MetaLogger: 日志器
 //   - level Level: 日志级别
-//   - logs ...interface{}: 日志内容
-func defaultLoggerPrint(logger *MetaLogger, level Level, logs ...interface{}) {
+//   - logs ...any: 日志内容
+func defaultLoggerPrint(logger *MetaLogger, level Level, logs ...any) {
 	timeStr := fmt.Sprintf("[%v]", GetTime().Format(time.DateTime))
 	if level != "" {
 		timeStr += fmt.Sprintf(" %v", level)
 	}
-	logs = append([]interface{}{timeStr}, logs...)
+	logs = append([]any{timeStr}, logs...)
 	logger.Logger.Println(logs...)
 }
 
@@ -309,7 +309,7 @@ func checkSplitLoggerFunc(metaLogger *MetaLogger) error {
 		}
 		fileInfo, err := metaLogger.File.Stat()
 		if err != nil {
-			splitLogStatErrorMsg := i18n.T("log.split_log_stat_error", map[string]interface{}{
+			splitLogStatErrorMsg := i18n.T("log.split_log_stat_error", map[string]any{
 				"name": metaLogger.Name,
 				"err":  err,
 			})
@@ -382,7 +382,7 @@ func defaultSplitLoggerFunc(metaLogger *MetaLogger) (*os.File, error) {
 	}
 	err = os.Rename(metaLogger.Path, oldFilePath)
 	if err != nil {
-		splitLogReNameErrorMsg := i18n.T("log.split_log_rename_error", map[string]interface{}{
+		splitLogReNameErrorMsg := i18n.T("log.split_log_rename_error", map[string]any{
 			"name": metaLogger.Name,
 			"err":  err,
 		})
