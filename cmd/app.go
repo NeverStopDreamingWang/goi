@@ -81,8 +81,8 @@ func init() {
 type MyModel struct {
 	Id          *int64  ` + "`" + `field_name:"id" field_type:"BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'ID'" json:"id"` + "`" + `
 	Name        *string ` + "`" + `field_name:"name" field_type:"VARCHAR(255) NOT NULL UNIQUE COMMENT '名称'" json:"name"` + "`" + `
-	Create_time *string ` + "`" + `field_name:"create_time" field_type:"DATETIME NOT NULL COMMENT '创建时间'" json:"create_time"` + "`" + `
-	Update_time *string ` + "`" + `field_name:"update_time" field_type:"DATETIME DEFAULT NULL COMMENT '更新时间'" json:"update_time"` + "`" + `
+	CreateTime *string ` + "`" + `field_name:"create_time" field_type:"DATETIME NOT NULL COMMENT '创建时间'" json:"create_time"` + "`" + `
+	UpdateTime *string ` + "`" + `field_name:"update_time" field_type:"DATETIME DEFAULT NULL COMMENT '更新时间'" json:"update_time"` + "`" + `
 }
 
 
@@ -146,9 +146,9 @@ func (self MyModel) Validate() error {
 }
 
 func (self *MyModel) Create() error {
-	if self.Create_time == nil {
-		Create_time := goi.GetTime().Format(time.DateTime)
-		self.Create_time = &Create_time
+	if self.CreateTime == nil {
+		CreateTime := goi.GetTime().Format(time.DateTime)
+		self.CreateTime = &CreateTime
 	}
 
 	err := sqlite3.Validate(self, true)
@@ -170,8 +170,8 @@ func (self *MyModel) Create() error {
 }
 
 func (self *MyModel) Update(validated_data *MyModel) error {
-	Update_time := goi.GetTime().Format(time.DateTime)
-	validated_data.Update_time = &Update_time
+	UpdateTime := goi.GetTime().Format(time.DateTime)
+	validated_data.UpdateTime = &UpdateTime
 
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
