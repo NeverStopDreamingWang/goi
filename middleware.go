@@ -12,7 +12,7 @@ type getResponseFunc func(request *Request) (response *Response)
 
 // 中间件
 // MiddleWare 定义中间件接口：
-// - ProcessRequest：请求阶段（顺序执行）；返回非 nil 则直接写入响应，内层不再进入
+// - ProcessRequest：请求阶段（顺序执行）；返回 nil 则继续执行，否则直接写入响应返回，内层不再进入
 // - ProcessException：异常阶段（逆序执行）；
 // - ProcessResponse：响应阶段（逆序执行）；常用于追加/修改响应头
 type MiddleWare interface {
