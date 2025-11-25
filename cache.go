@@ -116,15 +116,15 @@ func newCache() *cache {
 
 // initCache 初始化缓存配置
 func (self *cache) initCache() {
-	MaxSizeMsg := i18n.T("server.self.max_size", map[string]any{
+	MaxSizeMsg := i18n.T("server.cache.max_size", map[string]any{
 		"max_size": FormatBytes(self.MAX_SIZE),
 	})
 	Log.Log(meta, MaxSizeMsg)
-	EvictPolicyMsg := i18n.T("server.self.evict_policy", map[string]any{
+	EvictPolicyMsg := i18n.T("server.cache.evict_policy", map[string]any{
 		"evict_policy": evictPolicyNames[self.EVICT_POLICY],
 	})
 	Log.Log(meta, EvictPolicyMsg)
-	ExpirationPolicyMsg := i18n.T("server.self.expiration_policy", map[string]any{
+	ExpirationPolicyMsg := i18n.T("server.cache.expiration_policy", map[string]any{
 		"expiration_policy": expirationPolicyNames[self.EXPIRATION_POLICY],
 	})
 	Log.Log(meta, ExpirationPolicyMsg)
@@ -310,7 +310,7 @@ func (self *cache) cacheEvict() {
 
 	switch self.EVICT_POLICY {
 	case NOEVICTION: // 直接返回错误，不淘汰任何已经存在的键
-		NoEvictionMsg := i18n.T("server.self.noeviction", map[string]any{
+		NoEvictionMsg := i18n.T("server.cache.noeviction", map[string]any{
 			"max_size": FormatBytes(self.MAX_SIZE),
 		})
 		Log.Error(NoEvictionMsg)
@@ -584,7 +584,7 @@ func (self *cache) cacheEvict() {
 
 // Name 获取任务名称
 func (self *cache) Name() string {
-	nameMsg := i18n.T("server.self.periodic_delete_expires")
+	nameMsg := i18n.T("server.cache.periodic_delete_expires")
 	return nameMsg
 }
 
