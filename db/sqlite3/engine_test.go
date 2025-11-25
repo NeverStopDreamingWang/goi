@@ -37,7 +37,7 @@ func init() {
 	_, _ = sqliteDB.Execute("DROP TABLE IF EXISTS user_tb")
 
 	// 迁移模型
-	sqliteDB.Migrate("test_db", UserModel{})
+	sqliteDB.Migrate(UserModel{})
 
 	// 插入初始测试数据
 	username := "test_user"
