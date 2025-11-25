@@ -16,7 +16,7 @@ const (
 )
 
 // SSL
-type MetaSSL struct {
+type SSL struct {
 	STATUS    bool
 	TYPE      string
 	CERT_PATH string
@@ -24,7 +24,7 @@ type MetaSSL struct {
 }
 
 // 项目设置
-type metaSettings struct {
+type settings struct {
 	NET_WORK     string               // 网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	BIND_ADDRESS string               // 监听地址
 	PORT         uint16               // 服务端口
@@ -33,7 +33,7 @@ type metaSettings struct {
 	SECRET_KEY   string               // 项目 AES 密钥
 	PRIVATE_KEY  string               // 项目 RSA 私钥
 	PUBLIC_KEY   string               // 项目 RSA 公钥
-	SSL          MetaSSL              // SSL
+	SSL          SSL                  // SSL
 	DATABASES    map[string]*DataBase // 数据库配置
 
 	// TIMEZONE
@@ -46,9 +46,9 @@ type metaSettings struct {
 	Params Params
 }
 
-func newSettings() *metaSettings {
+func newSettings() *settings {
 	i18n.SetLocalize(string(ZH_CN))
-	return &metaSettings{
+	return &settings{
 		NET_WORK:     "tcp",
 		BIND_ADDRESS: "127.0.0.1",
 		PORT:         8080,
@@ -57,7 +57,7 @@ func newSettings() *metaSettings {
 		SECRET_KEY:   "",
 		PRIVATE_KEY:  "",
 		PUBLIC_KEY:   "",
-		SSL:          MetaSSL{},
+		SSL:          SSL{},
 		DATABASES:    make(map[string]*DataBase),
 
 		// TIMEZONE
@@ -74,17 +74,17 @@ func newSettings() *metaSettings {
 //
 // 参数:
 //   - time_zone string: 时区
-func (settings *metaSettings) SetTimeZone(time_zone string) error {
+func (self *settings) SetTimeZone(time_zone string) error {
 	location, err := time.LoadLocation(time_zone)
 	if err != nil {
 		return err
 	}
-	settings.time_zone = time_zone
-	settings.location = location
+	self.time_zone = time_zone
+	self.location = location
 
-	if settings.USE_TZ == true {
+	if self.USE_TZ == true {
 		// 同时设置系统环境变量，确保子进程和其他组件使用相同时区
-		err = os.Setenv("TZ", settings.time_zone)
+		err = os.Setenv("TZ", self.time_zone)
 		if err != nil {
 			return err
 		}
@@ -101,31 +101,31 @@ func (settings *metaSettings) SetTimeZone(time_zone string) error {
 //
 // 返回:
 //   - string: 时区
-func (settings metaSettings) GetTimeZone() string {
-	return settings.time_zone
+func (self settings) GetTimeZone() string {
+	return self.time_zone
 }
 
 // 获取时区
 //
 // 返回:
 //   - *time.Location: 时区 Location
-func (settings metaSettings) GetLocation() *time.Location {
-	return settings.location
+func (self settings) GetLocation() *time.Location {
+	return self.location
 }
 
 // 设置代码语言
 //
 // 参数:
 //   - lang Language: 语言 ZH_CN、EN_US
-func (settings metaSettings) SetLanguage(lang Language) {
-	settings.language = lang
-	i18n.SetLocalize(string(settings.language))
+func (self settings) SetLanguage(lang Language) {
+	self.language = lang
+	i18n.SetLocalize(string(self.language))
 }
 
 // 获取代码语言
 //
 // 返回:
 //   - Language: 语言 ZH_CN、EN_US
-func (settings metaSettings) GetLanguage() Language {
-	return settings.language
+func (self settings) GetLanguage() Language {
+	return self.language
 }
