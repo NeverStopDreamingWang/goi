@@ -310,16 +310,12 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //   - *Response: HTTP响应对象指针
 func (engine *Engine) handler(request *Request) (response *Response) {
 	// 路由解析
-	viewSet, params, middlewares, isPattern := engine.Router.resolve(request.Object.URL.Path)
+	viewSet, middlewares, isPattern := engine.Router.resolve(request.Object.URL.Path, request.PathParams)
 	if isPattern == false || viewSet == nil {
 		urlNotAllowedMsg := i18n.T("server.url_not_allowed", map[string]any{
 			"path": request.Object.URL.Path,
 		})
 		return &Response{Status: http.StatusNotFound, Data: urlNotAllowedMsg}
-	}
-	// 设置路由参数
-	if params != nil {
-		request.PathParams = params
 	}
 
 	// 设置 Allow 响应头
