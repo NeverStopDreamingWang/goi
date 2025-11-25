@@ -197,7 +197,7 @@ func init() {
 	Server.Settings.PUBLIC_KEY = ` + "`%s`" + `
 
 	// 设置 SSL
-	Server.Settings.SSL = goi.MetaSSL{
+	Server.Settings.SSL = goi.SSL{
 		STATUS:    false, // SSL 开关
 		TYPE:      "自签证书", // 证书类型
 		CERT_PATH: filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.crt"),
