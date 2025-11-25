@@ -162,7 +162,7 @@ type CorsMiddleWare struct {
 }
 
 // ProcessRequest 请求预处理,处理 CORS 预检请求
-func (self CorsMiddleWare) ProcessRequest(request *goi.Request) interface{} {
+func (self CorsMiddleWare) ProcessRequest(request *goi.Request) any {
 	if !self.isCorsPathEnabled(request) {
 		return nil
 	}
@@ -179,11 +179,8 @@ func (self CorsMiddleWare) ProcessRequest(request *goi.Request) interface{} {
 	return nil
 }
 
-// ProcessView 视图处理前(本中间件不处理)
-func (self CorsMiddleWare) ProcessView(request *goi.Request) interface{} { return nil }
-
 // ProcessException 异常处理(本中间件不处理)
-func (self CorsMiddleWare) ProcessException(request *goi.Request, exception any) interface{} {
+func (self CorsMiddleWare) ProcessException(request *goi.Request, exception any) any {
 	return nil
 }
 

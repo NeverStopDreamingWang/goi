@@ -34,13 +34,10 @@ type XFrameMiddleWare struct {
 }
 
 // ProcessRequest 请求预处理(本中间件不处理)
-func (self XFrameMiddleWare) ProcessRequest(request *goi.Request) interface{} { return nil }
-
-// ProcessView 视图处理前(本中间件不处理)
-func (self XFrameMiddleWare) ProcessView(request *goi.Request) interface{} { return nil }
+func (self XFrameMiddleWare) ProcessRequest(request *goi.Request) any { return nil }
 
 // ProcessException 异常处理(本中间件不处理)
-func (self XFrameMiddleWare) ProcessException(request *goi.Request, exception any) interface{} {
+func (self XFrameMiddleWare) ProcessException(request *goi.Request, exception any) any {
 	return nil
 }
 
