@@ -237,7 +237,7 @@ type listValidParams struct {
 	Page_Size int ` + "`" + `name:"page_size" type:"int" required:"true"` + "`" + `
 }
 
-func listView(request *goi.Request) interface{} {
+func listView(request *goi.Request) any {
 	var params listValidParams
 	var queryParams goi.Params
 	var validationErr goi.ValidationError
@@ -260,7 +260,7 @@ type createValidParams struct {
 	Name string ` + "`" + `name:"name" type:"string" required:"true"` + "`" + `
 }
 
-func createView(request *goi.Request) interface{} {
+func createView(request *goi.Request) any {
 	var params createValidParams
 	var bodyParams goi.Params
 	var validationErr goi.ValidationError
@@ -278,7 +278,7 @@ func createView(request *goi.Request) interface{} {
 	}
 }
 
-func retrieveView(request *goi.Request) interface{} {
+func retrieveView(request *goi.Request) any {
 	var pk int64
 	var validationErr goi.ValidationError
 	validationErr = request.PathParams.Get("pk", &pk) // 路由传参
@@ -298,7 +298,7 @@ type updateValidParams struct {
 	Name *string ` + "`" + `name:"name" type:"string"` + "`" + `
 }
 
-func updateView(request *goi.Request) interface{} {
+func updateView(request *goi.Request) any {
 	var pk int64
 	var params updateValidParams
 	var bodyParams goi.Params
@@ -322,7 +322,7 @@ func updateView(request *goi.Request) interface{} {
 	}
 }
 
-func deleteView(request *goi.Request) interface{} {
+func deleteView(request *goi.Request) any {
 	var pk int64
 	var validationErr goi.ValidationError
 

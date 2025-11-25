@@ -56,7 +56,7 @@ func (engine *Engine) RunServer() {
 	engine.Log.Log(meta, startedMsg)
 
 	if engine.Log.DEBUG == true {
-		goiVersionMsg := i18n.T("server.goi_version", map[string]interface{}{
+		goiVersionMsg := i18n.T("server.goi_version", map[string]any{
 			"version": version,
 		})
 		engine.Log.Log(meta, goiVersionMsg)
@@ -64,7 +64,7 @@ func (engine *Engine) RunServer() {
 
 	startTime := GetTime()
 	engine.startTime = &startTime
-	startTimeMsg := i18n.T("server.start_time", map[string]interface{}{
+	startTimeMsg := i18n.T("server.start_time", map[string]any{
 		"start_time": engine.startTime.Format(time.DateTime),
 	})
 	engine.Log.Log(meta, startTimeMsg)
@@ -72,14 +72,14 @@ func (engine *Engine) RunServer() {
 	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
 
 	if engine.Settings.GetTimeZone() != "" {
-		currentTimeZoneMsg := i18n.T("server.current_time_zone", map[string]interface{}{
+		currentTimeZoneMsg := i18n.T("server.current_time_zone", map[string]any{
 			"time_zone": engine.Settings.GetTimeZone(),
 		})
 		engine.Log.Log(meta, currentTimeZoneMsg)
 	}
 
 	for _, logger := range engine.Log.loggers {
-		logInfoMsg := i18n.T("server.log_info", map[string]interface{}{
+		logInfoMsg := i18n.T("server.log_info", map[string]any{
 			"name":       logger.Name,
 			"split_size": FormatBytes(logger.SPLIT_SIZE),
 			"split_time": logger.SPLIT_TIME,
@@ -92,7 +92,7 @@ func (engine *Engine) RunServer() {
 
 	// 启动后台任务
 	for _, task := range startup.startups {
-		taskNameMsg := i18n.T("server.startup_task", map[string]interface{}{
+		taskNameMsg := i18n.T("server.startup_task", map[string]any{
 			"name": task.Name(),
 		})
 		engine.Log.Log(meta, taskNameMsg)
@@ -113,7 +113,7 @@ func (engine *Engine) RunServer() {
 			}
 			return
 		default:
-			invalidOperationMsg := i18n.T("server.invalid_operation", map[string]interface{}{
+			invalidOperationMsg := i18n.T("server.invalid_operation", map[string]any{
 				"name": sig,
 			})
 			engine.Log.Log(meta, invalidOperationMsg)
@@ -146,24 +146,24 @@ func (engine *Engine) RunServer() {
 			Certificates: []tls.Certificate{cert},
 		}
 
-		listenAddressMsg := i18n.T("server.listen_address", map[string]interface{}{
+		listenAddressMsg := i18n.T("server.listen_address", map[string]any{
 			"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
 		})
 		engine.Log.Log(meta, listenAddressMsg)
 		if engine.Settings.BIND_DOMAIN != "" {
-			listenDomainMsg := i18n.T("server.listen_address", map[string]interface{}{
+			listenDomainMsg := i18n.T("server.listen_address", map[string]any{
 				"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
 			})
 			engine.Log.Log(meta, listenDomainMsg)
 		}
 		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
 	} else {
-		listenAddressMsg := i18n.T("server.listen_address", map[string]interface{}{
+		listenAddressMsg := i18n.T("server.listen_address", map[string]any{
 			"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
 		})
 		engine.Log.Log(meta, listenAddressMsg)
 		if engine.Settings.BIND_DOMAIN != "" {
-			listenDomainMsg := i18n.T("server.listen_address", map[string]interface{}{
+			listenDomainMsg := i18n.T("server.listen_address", map[string]any{
 				"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
 			})
 			engine.Log.Log(meta, listenDomainMsg)
@@ -182,14 +182,14 @@ func (engine *Engine) StopServer() error {
 	// 执行用户定义的回调函数（逆序执行：先进后出）
 	for i := len(shutdownCallbacks) - 1; i >= 0; i-- {
 		shutdownCallback := shutdownCallbacks[i]
-		shutdownHandlerMsg := i18n.T("server.shutdown_handler", map[string]interface{}{
+		shutdownHandlerMsg := i18n.T("server.shutdown_handler", map[string]any{
 			"name": shutdownCallback.Name(),
 		})
 		engine.Log.Log(meta, shutdownHandlerMsg)
 
 		err = shutdownCallback.OnShutdown()
 		if err != nil {
-			shutdownHandlerErrorMsg := i18n.T("server.shutdown_handler_error", map[string]interface{}{
+			shutdownHandlerErrorMsg := i18n.T("server.shutdown_handler_error", map[string]any{
 				"err": err,
 			})
 			engine.Log.Log(meta, shutdownHandlerErrorMsg)
@@ -203,7 +203,7 @@ func (engine *Engine) StopServer() error {
 	for name, database := range engine.Settings.DATABASES {
 		err = database.Close()
 		if err != nil {
-			closeDatabaseErrorMsg := i18n.T("server.close_database_error", map[string]interface{}{
+			closeDatabaseErrorMsg := i18n.T("server.close_database_error", map[string]any{
 				"engine": database.ENGINE,
 				"name":   name,
 				"err":    err,
@@ -217,11 +217,11 @@ func (engine *Engine) StopServer() error {
 	// 等待所有 goroutine 任务结束
 	startup.waitGroup.Wait()
 
-	stopTimeMsg := i18n.T("server.stop_time", map[string]interface{}{
+	stopTimeMsg := i18n.T("server.stop_time", map[string]any{
 		"stop_time": GetTime().Format(time.DateTime),
 	})
 	engine.Log.Log(meta, stopTimeMsg)
-	runTimeMsg := i18n.T("server.run_time", map[string]interface{}{
+	runTimeMsg := i18n.T("server.run_time", map[string]any{
 		"run_time": engine.runTimeStr(),
 	})
 	engine.Log.Log(meta, runTimeMsg)
@@ -333,7 +333,7 @@ func (engine *Engine) getResponse(request *Request) (response *Response) {
 	// 路由解析
 	viewSet, params, isPattern := engine.Router.resolve(request.Object.URL.Path)
 	if isPattern == false || viewSet == nil {
-		urlNotAllowedMsg := i18n.T("server.url_not_allowed", map[string]interface{}{
+		urlNotAllowedMsg := i18n.T("server.url_not_allowed", map[string]any{
 			"path": request.Object.URL.Path,
 		})
 		return &Response{Status: http.StatusNotFound, Data: urlNotAllowedMsg}
@@ -363,11 +363,11 @@ func (engine *Engine) getResponse(request *Request) (response *Response) {
 // 统一把结果转换为 Response
 //
 // 参数:
-//   - content interface{}: 视图处理结果
+//   - content any: 视图处理结果
 //
 // 返回:
 //   - *Response: HTTP响应对象指针
-func toResponse(content interface{}) *Response {
+func toResponse(content any) *Response {
 	switch value := content.(type) {
 	case Response:
 		return &value

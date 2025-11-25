@@ -27,7 +27,7 @@ func MakePassword(password string) (string, error) {
 	salt := make([]byte, 16)
 	_, err := rand.Read(salt)
 	if err != nil {
-		errMsg := i18n.T("auth.salt_generation_error", map[string]interface{}{
+		errMsg := i18n.T("auth.salt_generation_error", map[string]any{
 			"err": err,
 		},
 		)

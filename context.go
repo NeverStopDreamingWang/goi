@@ -74,7 +74,7 @@ func (request *Request) QueryParams() Params {
 //   - Params: 请求体参数的键值对映射
 //
 // 注意:
-//   - JSON数据会被解析为interface{}类型
+//   - JSON数据会被解析为any类型
 //   - 如果解析失败会触发panic
 func (request *Request) BodyParams() Params {
 	parsing := parse.GetParsing(request.Object.Header.Get(ContentType))
@@ -147,12 +147,12 @@ func (responseWriter *ResponseWriter) Write(b []byte) (int, error) {
 //
 // 字段:
 //   - Status int: HTTP状态码
-//   - Data interface{}: 响应数据
+//   - Data any: 响应数据
 //
 // 示例: {Status: 200, Data: {"message": "success"}}
 type Response struct {
-	Status  int         // HTTP状态码
-	Data    interface{} // 响应数据
+	Status  int // HTTP状态码
+	Data    any // 响应数据
 	headers http.Header
 }
 
@@ -214,7 +214,7 @@ func (response *Response) write(request *Request, responseWriter http.ResponseWr
 		contentType = "application/json"
 	}
 	if err != nil {
-		responseJsonErrorMsg := i18n.T("server.response_error", map[string]interface{}{
+		responseJsonErrorMsg := i18n.T("server.response_error", map[string]any{
 			"err": err,
 		})
 		return 0, errors.New(responseJsonErrorMsg)

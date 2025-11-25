@@ -25,7 +25,7 @@ func Validate(attrs Model, partial bool) error {
 		modelType = modelType.Elem()
 	}
 	if modelType.Kind() != reflect.Struct {
-		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]interface{}{
+		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]any{
 			"name": "ModelSerializer.model",
 		})
 		return errors.New(isNotStructPtrErrorMsg)
@@ -132,7 +132,7 @@ func isNotNullValidate(fieldType string) bool {
 }
 
 // varchar 类型
-func varcharValidate(fieldType string, value interface{}) error {
+func varcharValidate(fieldType string, value any) error {
 	var VarcharRe = `(?i)VARCHAR\((\d+)\)`
 	re := regexp.MustCompile(VarcharRe)
 	matches := re.FindStringSubmatch(fieldType)
@@ -153,7 +153,7 @@ func varcharValidate(fieldType string, value interface{}) error {
 	}
 
 	if len(strValue) > length {
-		varcharLenErrorMsg := i18n.T("serializer.varchar_len_error", map[string]interface{}{
+		varcharLenErrorMsg := i18n.T("serializer.varchar_len_error", map[string]any{
 			"length": length,
 		})
 		return errors.New(varcharLenErrorMsg)

@@ -8,7 +8,7 @@ import (
 )
 
 // HandlerFunc 定义 goi 使用的请求处理程序
-type HandlerFunc func(request *Request) interface{}
+type HandlerFunc func(request *Request) any
 
 // type HandlerFunc func(*http.Request)
 
@@ -69,7 +69,7 @@ func (viewSet ViewSet) GetHandlerFunc(method string) (HandlerFunc, error) {
 		if viewSet.NoMethod != nil {
 			handlerFunc = viewSet.NoMethod
 		} else {
-			methodNotAllowedMsg := i18n.T("server.method_not_allowed", map[string]interface{}{
+			methodNotAllowedMsg := i18n.T("server.method_not_allowed", map[string]any{
 				"method": method,
 			})
 			err = errors.New(methodNotAllowedMsg)
@@ -125,7 +125,7 @@ func (viewSet ViewSet) GetMethods() []string {
 //
 // 返回:
 //   - Response: HTTP响应对象，包含允许的方法列表
-func defaultOptionsHandler(request *Request) interface{} {
+func defaultOptionsHandler(request *Request) any {
 	response := Response{
 		Status: 200, // http.StatusOK
 		Data:   nil,

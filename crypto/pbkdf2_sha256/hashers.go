@@ -40,7 +40,7 @@ func Decode(encoded string, Info *Crypto) error {
 	Info.Algorithm = parts[0]
 	iterations64, err := strconv.ParseInt(parts[1], 10, 64) // 10 表示十进制，64 表示结果为 int64
 	if err != nil {
-		errMsg := i18n.T("crypto.pbkdf2.invalid_iterations", map[string]interface{}{
+		errMsg := i18n.T("crypto.pbkdf2.invalid_iterations", map[string]any{
 			"err": err,
 		})
 		return errors.New(errMsg)
@@ -51,7 +51,7 @@ func Decode(encoded string, Info *Crypto) error {
 
 	Info.Salt, err = base64.StdEncoding.DecodeString(parts[2])
 	if err != nil {
-		errMsg := i18n.T("crypto.pbkdf2.invalid_salt", map[string]interface{}{
+		errMsg := i18n.T("crypto.pbkdf2.invalid_salt", map[string]any{
 			"err": err,
 		})
 		return errors.New(errMsg)

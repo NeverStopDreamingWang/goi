@@ -18,7 +18,7 @@ import (
 // 说明:
 //   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
 func StaticFileView(filePath string) HandlerFunc {
-	return func(request *Request) interface{} {
+	return func(request *Request) any {
 		var err error
 
 		file, err := os.Open(filePath)
@@ -46,7 +46,7 @@ func StaticFileView(filePath string) HandlerFunc {
 // 说明:
 //   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
 func StaticDirView(dirPath http.Dir) HandlerFunc {
-	return func(request *Request) interface{} {
+	return func(request *Request) any {
 		if dirPath == "" {
 			dirPath = "."
 		}
@@ -84,7 +84,7 @@ type FS struct {
 // 说明:
 //   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
 func StaticFileFSView(fileFS fs.FS, defaultPath string) HandlerFunc {
-	return func(request *Request) interface{} {
+	return func(request *Request) any {
 		return FS{FS: fileFS, Name: defaultPath}
 	}
 }
@@ -100,7 +100,7 @@ func StaticFileFSView(fileFS fs.FS, defaultPath string) HandlerFunc {
 //   - 会自动拼接 basePath + fileName 为嵌入文件查找路径
 //   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
 func StaticDirFSView(dirFS fs.FS, basePath string) HandlerFunc {
-	return func(request *Request) interface{} {
+	return func(request *Request) any {
 		var fileName string
 		var validationErr ValidationError
 		validationErr = request.PathParams.Get("fileName", &fileName)

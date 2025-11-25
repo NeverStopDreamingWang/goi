@@ -24,7 +24,7 @@ func Validate(attrs Model, partial bool) error {
 		modelType = modelType.Elem()
 	}
 	if modelType.Kind() != reflect.Struct {
-		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]interface{}{
+		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]any{
 			"name": "ModelSerializer.model",
 		})
 		return errors.New(isNotStructPtrErrorMsg)

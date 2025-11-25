@@ -43,7 +43,7 @@ func (router *MetaRouter) compilePattern() {
 
 		converter, ok := GetConverter(typeName)
 		if !ok {
-			converterIsNotExistsMsg := i18n.T("router.converter_is_not_exists", map[string]interface{}{
+			converterIsNotExistsMsg := i18n.T("router.converter_is_not_exists", map[string]any{
 				"name": typeName,
 			})
 			panic(converterIsNotExistsMsg)

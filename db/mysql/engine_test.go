@@ -95,7 +95,7 @@ func (userModel UserModel) ModelSet() *mysql.Settings {
 		DATA_DIRECTORY:  "",                   // 设置数据存储目录
 		INDEX_DIRECTORY: "",                   // 设置数据存储目录
 		PARTITION_BY:    "",                   // 定义分区方式，如 RANGE、HASH、LIST
-		COMMENT: "用户表",                     // 设置表注释
+		COMMENT:         "用户表",                // 设置表注释
 
 		// 自定义配置
 		Settings: goi.Params{
@@ -214,7 +214,7 @@ func ExampleEngine_Select() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 查询多条记录 Select 支持 map 以及 结构体
-	// var users []map[string]interface{}
+	// var users []map[string]any
 	var users []*UserModel
 
 	mysqlDB.SetModel(UserModel{})
@@ -265,7 +265,7 @@ func ExampleEngine_First() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 查询单条记录 First 支持 map 以及 结构体
-	// var user map[string]interface{}
+	// var user map[string]any
 	var user *UserModel
 
 	mysqlDB.SetModel(UserModel{})
@@ -286,7 +286,7 @@ func ExampleEngine_Fields() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 指定查询字段
-	var user map[string]interface{}
+	var user map[string]any
 
 	mysqlDB.SetModel(UserModel{})
 
@@ -437,7 +437,7 @@ func ExampleEngine_WithTransaction() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 事务
-	err := mysqlDB.WithTransaction(func(engine *mysql.Engine, args ...interface{}) error {
+	err := mysqlDB.WithTransaction(func(engine *mysql.Engine, args ...any) error {
 		// 准备测试数据
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"

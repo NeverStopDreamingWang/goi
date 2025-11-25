@@ -15,8 +15,8 @@ import (
 //
 // 参数:
 //   - destValue reflect.Value: 目标值
-//   - source interface{}: 源值
-func SetValue(destValue reflect.Value, source interface{}) error {
+//   - source any: 源值
+func SetValue(destValue reflect.Value, source any) error {
 	// 处理指针类型
 	if destValue.Kind() == reflect.Ptr {
 		// 检查字段值是否是零值
@@ -28,7 +28,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 	}
 
 	if !destValue.CanSet() {
-		paramsIsNotCanSetMsg := i18n.T("params.params_is_not_can_set", map[string]interface{}{
+		paramsIsNotCanSetMsg := i18n.T("params.params_is_not_can_set", map[string]any{
 			"name": destValue.Type().Name(),
 		})
 		return errors.New(paramsIsNotCanSetMsg)
@@ -71,7 +71,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 			}
 			destValue.SetBool(boolValue)
 		default:
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 				"name": source,
 			})
 			return errors.New(valueInvalidMsg)
@@ -92,7 +92,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 		case float32, float64:
 			floatVal := reflect.ValueOf(v).Float()
 			if floatVal > float64(math.MaxInt64) || floatVal < float64(math.MinInt64) {
-				valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+				valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 					"name": source,
 				})
 				return errors.New(valueInvalidMsg)
@@ -105,7 +105,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 			}
 			destValue.SetInt(intValue)
 		default:
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 				"name": source,
 			})
 			return errors.New(valueInvalidMsg)
@@ -125,7 +125,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 			}
 			destValue.SetUint(uintValue)
 		default:
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 				"name": source,
 			})
 			return errors.New(valueInvalidMsg)
@@ -145,14 +145,14 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 			}
 			destValue.SetFloat(floatValue)
 		default:
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 				"name": source,
 			})
 			return errors.New(valueInvalidMsg)
 		}
 	case reflect.Map:
 		if sourceValue.Kind() != reflect.Map {
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 				"name": source,
 			})
 			return errors.New(valueInvalidMsg)
@@ -166,7 +166,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 		for _, key := range sourceValue.MapKeys() {
 			// 确保键和值的类型兼容
 			if key.Type().AssignableTo(keyType) == false {
-				valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+				valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 					"name": source,
 				})
 				return errors.New(valueInvalidMsg)
@@ -188,7 +188,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 		return nil
 	case reflect.Slice, reflect.Array:
 		if sourceValue.Kind() != reflect.Slice && sourceValue.Kind() != reflect.Array {
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 				"name": source,
 			})
 			return errors.New(valueInvalidMsg)
@@ -210,13 +210,13 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 	case reflect.Struct:
 		// 处理结构体类型
 		if sourceValue.Kind() != reflect.Map {
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 				"name": source,
 			})
 			return errors.New(valueInvalidMsg)
 		}
 
-		// 处理 map[string]interface{} 类型
+		// 处理 map[string]any 类型
 		for i := 0; i < fieldType.NumField(); i++ {
 			structField := destValue.Field(i)
 			fieldName := fieldType.Field(i).Name
@@ -240,7 +240,7 @@ func SetValue(destValue reflect.Value, source interface{}) error {
 		}
 		return nil
 	default:
-		valueInvalidMsg := i18n.T("params.value_invalid", map[string]interface{}{
+		valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
 			"name": source,
 		})
 		return errors.New(valueInvalidMsg)

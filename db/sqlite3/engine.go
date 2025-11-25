@@ -40,13 +40,13 @@ func factory(UseDataBases string) db.Engine {
 func Connect(UseDataBases string) *Engine {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {
-		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]interface{}{
+		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]any{
 			"name": UseDataBases,
 		})
 		panic(databasesNotErrorMsg)
 	}
 	if database.ENGINE != driverName {
-		engineNotMatchErrorMsg := i18n.T("db.engine_not_match_error", map[string]interface{}{
+		engineNotMatchErrorMsg := i18n.T("db.engine_not_match_error", map[string]any{
 			"want": driverName,
 			"got":  database.ENGINE,
 		})
@@ -69,18 +69,18 @@ func Connect(UseDataBases string) *Engine {
 
 // Engine 结构体用于管理SQLite3数据库连接和操作
 type Engine struct {
-	name        string        // 数据库连接名称
-	DB          *sql.DB       // 数据库连接对象
-	transaction *sql.Tx       // 当前事务对象
-	model       Model         // 当前操作的数据模型
-	fields      []string      // 模型结构体字段名
-	field_sql   []string      // 数据库表字段名
-	where_sql   []string      // WHERE条件语句
-	limit_sql   string        // LIMIT分页语句
-	group_sql   string        // GROUP BY分组语句
-	order_sql   string        // ORDER BY排序语句
-	sql         string        // 最终执行的SQL语句
-	args        []interface{} // SQL语句的参数值
+	name        string   // 数据库连接名称
+	DB          *sql.DB  // 数据库连接对象
+	transaction *sql.Tx  // 当前事务对象
+	model       Model    // 当前操作的数据模型
+	fields      []string // 模型结构体字段名
+	field_sql   []string // 数据库表字段名
+	where_sql   []string // WHERE条件语句
+	limit_sql   string   // LIMIT分页语句
+	group_sql   string   // GROUP BY分组语句
+	order_sql   string   // ORDER BY排序语句
+	sql         string   // 最终执行的SQL语句
+	args        []any    // SQL语句的参数值
 }
 
 // Name 获取数据库连接名称
@@ -100,13 +100,13 @@ func (engine Engine) GetSQL() string {
 }
 
 // 事务执行函数
-type TransactionFunc func(engine *Engine, args ...interface{}) error
+type TransactionFunc func(engine *Engine, args ...any) error
 
 // WithTransaction 在事务中执行指定的函数
 //
 // 参数:
-//   - transactionFunc: TransactionFunc func(engine *Engine, args ...interface{}) error 事务执行函数
-//   - args: ...interface{} 传递给事务函数的参数列表
+//   - transactionFunc: TransactionFunc func(engine *Engine, args ...any) error 事务执行函数
+//   - args: ...any 传递给事务函数的参数列表
 //
 // 返回:
 //   - error: 事务执行的错误，发生错误时会自动回滚
@@ -114,7 +114,7 @@ type TransactionFunc func(engine *Engine, args ...interface{}) error
 // 说明:
 //   - 不支持嵌套事务，如果当前已在事务中则返回错误
 //   - 事务函数执行失败时自动回滚
-func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...interface{}) error {
+func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...any) error {
 	var err error
 	if engine.transaction != nil {
 		transactionCannotBeNestedErrorMsg := i18n.T("db.transaction_cannot_be_nested_error")
@@ -139,7 +139,7 @@ func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...in
 //
 // 参数:
 //   - query: string SQL语句
-//   - args: ...interface{} SQL参数值列表
+//   - args: ...any SQL参数值列表
 //
 // 返回:
 //   - sql.Result: 执行操作的结果
@@ -147,7 +147,7 @@ func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...in
 //
 // 说明:
 //   - 支持在事务中使用
-func (engine *Engine) Execute(query string, args ...interface{}) (sql.Result, error) {
+func (engine *Engine) Execute(query string, args ...any) (sql.Result, error) {
 	if engine.transaction != nil {
 		return engine.transaction.Exec(query, args...)
 	} else {
@@ -159,7 +159,7 @@ func (engine *Engine) Execute(query string, args ...interface{}) (sql.Result, er
 //
 // 参数:
 //   - query: string SQL查询语句
-//   - args: ...interface{} SQL参数值列表
+//   - args: ...any SQL参数值列表
 //
 // 返回:
 //   - *sql.Row: 查询结果行
@@ -167,7 +167,7 @@ func (engine *Engine) Execute(query string, args ...interface{}) (sql.Result, er
 // 说明:
 //   - 查询失败时返回nil
 //   - 支持在事务中使用
-func (engine *Engine) QueryRow(query string, args ...interface{}) *sql.Row {
+func (engine *Engine) QueryRow(query string, args ...any) *sql.Row {
 	if engine.transaction != nil {
 		return engine.transaction.QueryRow(query, args...)
 	} else {
@@ -179,7 +179,7 @@ func (engine *Engine) QueryRow(query string, args ...interface{}) *sql.Row {
 //
 // 参数:
 //   - query: string SQL查询语句
-//   - args: ...interface{} SQL参数值列表
+//   - args: ...any SQL参数值列表
 //
 // 返回:
 //   - *sql.Rows: 查询结果集
@@ -189,7 +189,7 @@ func (engine *Engine) QueryRow(query string, args ...interface{}) *sql.Row {
 //   - 返回的结果集需要调用方手动关闭
 //   - 查询失败时返回nil和错误信息
 //   - 支持在事务中使用
-func (engine *Engine) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (engine *Engine) Query(query string, args ...any) (*sql.Rows, error) {
 	if engine.transaction != nil {
 		return engine.transaction.Query(query, args...)
 	} else {
@@ -216,7 +216,7 @@ func (engine *Engine) Migrate(model Model) {
 	var exists int
 	err = row.Scan(&exists)
 	if errors.Is(err, sql.ErrNoRows) == false && err != nil {
-		selectErrorMsg := i18n.T("db.select_error", map[string]interface{}{
+		selectErrorMsg := i18n.T("db.select_error", map[string]any{
 			"engine":  driverName,
 			"db_name": engine.name,
 			"err":     err,
@@ -252,14 +252,14 @@ func (engine *Engine) Migrate(model Model) {
 			goi.Log.Info(beforeMigrationMsg)
 			err = modelSettings.MigrationsHandler.BeforeHandler()
 			if err != nil {
-				beforeMigrationErrorMsg := i18n.T("db.before_migration_error", map[string]interface{}{
+				beforeMigrationErrorMsg := i18n.T("db.before_migration_error", map[string]any{
 					"err": err,
 				})
 				goi.Log.Error(beforeMigrationErrorMsg)
 				panic(beforeMigrationErrorMsg)
 			}
 		}
-		migrationModelMsg := i18n.T("db.migration.sqlite3", map[string]interface{}{
+		migrationModelMsg := i18n.T("db.migration.sqlite3", map[string]any{
 			"engine":  driverName,
 			"name":    engine.name,
 			"tb_name": modelSettings.TABLE_NAME,
@@ -267,7 +267,7 @@ func (engine *Engine) Migrate(model Model) {
 		goi.Log.Info(migrationModelMsg)
 		_, err = engine.Execute(createSql)
 		if err != nil {
-			migrationErrorMsg := i18n.T("db.migration_error", map[string]interface{}{
+			migrationErrorMsg := i18n.T("db.migration_error", map[string]any{
 				"err": err,
 			})
 			goi.Log.Error(migrationErrorMsg)
@@ -279,7 +279,7 @@ func (engine *Engine) Migrate(model Model) {
 			goi.Log.Info(afterMigrationMsg)
 			err = modelSettings.MigrationsHandler.AfterHandler()
 			if err != nil {
-				afterMigrationErrorMsg := i18n.T("db.after_migration_error", map[string]interface{}{
+				afterMigrationErrorMsg := i18n.T("db.after_migration_error", map[string]any{
 					"err": err,
 				})
 				goi.Log.Error(afterMigrationErrorMsg)
@@ -373,7 +373,7 @@ func (engine Engine) Fields(fields ...string) *Engine {
 	for _, fieldName := range fields {
 		field, ok := ModelType.FieldByName(fieldName)
 		if !ok {
-			fieldIsNotErrorMsg := i18n.T("db.field_is_not_error", map[string]interface{}{
+			fieldIsNotErrorMsg := i18n.T("db.field_is_not_error", map[string]any{
 				"name": fieldName,
 			})
 			goi.Log.Error(fieldIsNotErrorMsg)
@@ -421,7 +421,7 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 		ModelValue = ModelValue.Elem()
 	}
 
-	insertValues := make([]interface{}, len(engine.fields))
+	insertValues := make([]any, len(engine.fields))
 	for i, fieldName := range engine.fields {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Elem().IsValid() {
@@ -447,7 +447,7 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 //
 // 参数:
 //   - query: string WHERE条件语句
-//   - args: ...interface{} 条件参数值列表
+//   - args: ...any 条件参数值列表
 //
 // 返回:
 //   - *Engine: 当前实例的副本指针，支持链式调用
@@ -456,7 +456,7 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 //   - 支持多次调用，条件之间使用AND连接
 //   - 支持参数占位符?自动替换
 //   - 支持 in 切片类型的参数
-func (engine Engine) Where(query string, args ...interface{}) *Engine {
+func (engine Engine) Where(query string, args ...any) *Engine {
 	queryParts := strings.Split(query, "?")
 	if len(queryParts)-1 != len(args) {
 		whereArgsPlaceholderErrorMsg := i18n.T("db.where_args_placeholder_error")
@@ -598,7 +598,7 @@ func (engine *Engine) Page(page int, pageSize int) (int, int, error) {
 // Select 执行查询并将结果扫描到切片中
 //
 // 参数:
-//   - queryResult: []*struct{} 或 []map[string]interface{} 用于接收结果的切片指针
+//   - queryResult: []*struct{} 或 []map[string]any 用于接收结果的切片指针
 //
 // 返回:
 //   - error: 查询过程中的错误
@@ -608,7 +608,7 @@ func (engine *Engine) Page(page int, pageSize int) (int, int, error) {
 //   - 支持指针和非指针类型的字段
 //   - 自动映射数据库字段到结构体字段
 //   - 查询失败时返回错误信息
-func (engine *Engine) Select(queryResult interface{}) error {
+func (engine *Engine) Select(queryResult any) error {
 	engine.isSetModel()
 
 	TableName := engine.model.ModelSet().TABLE_NAME
@@ -619,7 +619,7 @@ func (engine *Engine) Select(queryResult interface{}) error {
 		result   = reflect.ValueOf(queryResult)
 	)
 	if result.Kind() != reflect.Ptr {
-		isNotPtrErrorMsg := i18n.T("db.is_not_ptr", map[string]interface{}{
+		isNotPtrErrorMsg := i18n.T("db.is_not_ptr", map[string]any{
 			"name": "queryResult",
 		})
 		return errors.New(isNotPtrErrorMsg)
@@ -628,7 +628,7 @@ func (engine *Engine) Select(queryResult interface{}) error {
 
 	kind := result.Kind()
 	if kind != reflect.Slice && kind != reflect.Array {
-		isNotSlicePtrErrorMsg := i18n.T("db.is_not_slice_or_array", map[string]interface{}{
+		isNotSlicePtrErrorMsg := i18n.T("db.is_not_slice_or_array", map[string]any{
 			"name": "queryResult",
 		})
 		return errors.New(isNotSlicePtrErrorMsg)
@@ -640,7 +640,7 @@ func (engine *Engine) Select(queryResult interface{}) error {
 		ItemType = ItemType.Elem()
 	}
 	if kind := ItemType.Kind(); kind != reflect.Struct && kind != reflect.Map {
-		isNotStructPtrErrorMsg := i18n.T("db.is_not_slice_struct_ptr_or_map", map[string]interface{}{
+		isNotStructPtrErrorMsg := i18n.T("db.is_not_slice_struct_ptr_or_map", map[string]any{
 			"name": "queryResult",
 		})
 		return errors.New(isNotStructPtrErrorMsg)
@@ -671,7 +671,7 @@ func (engine *Engine) Select(queryResult interface{}) error {
 	}
 
 	for rows.Next() {
-		values := make([]interface{}, len(engine.fields))
+		values := make([]any, len(engine.fields))
 
 		var item reflect.Value
 		if ItemType.Kind() == reflect.Struct {
@@ -681,7 +681,7 @@ func (engine *Engine) Select(queryResult interface{}) error {
 			for i, fieldName := range engine.fields {
 				fieldValue := item.FieldByName(fieldName)
 				if !fieldValue.IsValid() {
-					values[i] = new(interface{})
+					values[i] = new(any)
 				} else {
 					values[i] = fieldValue.Addr().Interface()
 				}
@@ -724,7 +724,7 @@ func (engine *Engine) Select(queryResult interface{}) error {
 // First 获取查询结果的第一条记录
 //
 // 参数:
-//   - queryResult: *struct{} 或 map[string]interface{} 用于接收结果的结构体指针或map
+//   - queryResult: *struct{} 或 map[string]any 用于接收结果的结构体指针或map
 //
 // 返回:
 //   - error: 查询过程中的错误
@@ -734,7 +734,7 @@ func (engine *Engine) Select(queryResult interface{}) error {
 //   - 自动映射数据库字段到结构体字段
 //   - 无记录时返回sql.ErrNoRows
 //   - 查询失败时返回错误信息
-func (engine *Engine) First(queryResult interface{}) error {
+func (engine *Engine) First(queryResult any) error {
 	engine.isSetModel()
 
 	TableName := engine.model.ModelSet().TABLE_NAME
@@ -742,7 +742,7 @@ func (engine *Engine) First(queryResult interface{}) error {
 	result := reflect.ValueOf(queryResult)
 	if result.Kind() != reflect.Map {
 		if result.Kind() != reflect.Ptr {
-			isNotPtrErrorMsg := i18n.T("db.is_not_ptr", map[string]interface{}{
+			isNotPtrErrorMsg := i18n.T("db.is_not_ptr", map[string]any{
 				"name": "queryResult",
 			})
 			return errors.New(isNotPtrErrorMsg)
@@ -751,7 +751,7 @@ func (engine *Engine) First(queryResult interface{}) error {
 	}
 
 	if kind := result.Kind(); kind != reflect.Struct && kind != reflect.Map {
-		isNotStructPtrErrorMsg := i18n.T("db.is_not_struct_ptr_or_map", map[string]interface{}{
+		isNotStructPtrErrorMsg := i18n.T("db.is_not_struct_ptr_or_map", map[string]any{
 			"name": "queryResult",
 		})
 		return errors.New(isNotStructPtrErrorMsg)
@@ -778,12 +778,12 @@ func (engine *Engine) First(queryResult interface{}) error {
 		return err
 	}
 
-	values := make([]interface{}, len(engine.fields))
+	values := make([]any, len(engine.fields))
 	if result.Kind() == reflect.Struct {
 		for i, fieldName := range engine.fields {
 			fieldValue := result.FieldByName(fieldName)
 			if !fieldValue.IsValid() {
-				values[i] = new(interface{})
+				values[i] = new(any)
 			} else {
 				values[i] = fieldValue.Addr().Interface()
 			}
@@ -915,7 +915,7 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 	// 字段
 	updateFields := make([]string, 0)
 	// 值
-	updateValues := make([]interface{}, 0)
+	updateValues := make([]any, 0)
 	utils.Zip(engine.fields, engine.field_sql, func(fieldName, field_name string) {
 		field := ModelValue.FieldByName(fieldName)
 		if field.Kind() == reflect.Ptr {

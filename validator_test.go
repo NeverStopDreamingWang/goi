@@ -12,7 +12,7 @@ import (
 // phoneValidator 手机号验证器示例
 type phoneValidator struct{}
 
-func (validator phoneValidator) Validate(value interface{}) goi.ValidationError {
+func (validator phoneValidator) Validate(value any) goi.ValidationError {
 	switch typeValue := value.(type) {
 	case int:
 		valueStr := strconv.Itoa(typeValue)
@@ -33,7 +33,7 @@ func (validator phoneValidator) Validate(value interface{}) goi.ValidationError 
 	return nil
 }
 
-func (validator phoneValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+func (validator phoneValidator) ToGo(value any) (any, goi.ValidationError) {
 	switch typeValue := value.(type) {
 	case int:
 		return strconv.Itoa(typeValue), nil
@@ -47,7 +47,7 @@ func (validator phoneValidator) ToGo(value interface{}) (interface{}, goi.Valida
 // emailValidator 邮箱验证器示例
 type emailValidator struct{}
 
-func (validator emailValidator) Validate(value interface{}) goi.ValidationError {
+func (validator emailValidator) Validate(value any) goi.ValidationError {
 	switch v := value.(type) {
 	case string:
 		re := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
@@ -61,7 +61,7 @@ func (validator emailValidator) Validate(value interface{}) goi.ValidationError 
 }
 
 // 当解析参数值类型与结构体字段类型不一致，且结构体字段类型为自定义类型时，需要实现 ToGo 方法
-func (validator emailValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+func (validator emailValidator) ToGo(value any) (any, goi.ValidationError) {
 	switch v := value.(type) {
 	case string:
 		// 转换类型，并返回
@@ -74,7 +74,7 @@ func (validator emailValidator) ToGo(value interface{}) (interface{}, goi.Valida
 
 type CustomValidator struct{}
 
-func (validator CustomValidator) Validate(value interface{}) goi.ValidationError {
+func (validator CustomValidator) Validate(value any) goi.ValidationError {
 	switch typeValue := value.(type) {
 	case string:
 		var reStr = `^(\d{16})$`
@@ -88,7 +88,7 @@ func (validator CustomValidator) Validate(value interface{}) goi.ValidationError
 	return nil
 }
 
-func (validator CustomValidator) ToGo(value interface{}) (interface{}, goi.ValidationError) {
+func (validator CustomValidator) ToGo(value any) (any, goi.ValidationError) {
 	switch typeValue := value.(type) {
 	case string:
 		// 转换为自定义类型，并返回

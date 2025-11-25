@@ -8,7 +8,7 @@ import (
 type Converter struct {
 	Regex string
 	// 将 URL 片段转换为 Go 值
-	ToGo func(string) (interface{}, error)
+	ToGo func(string) (any, error)
 }
 
 // 内置转换器
@@ -17,7 +17,7 @@ type Converter struct {
 // 示例: 123, 456789
 var intConverter = Converter{
 	Regex: `([0-9]+)`,
-	ToGo: func(value string) (interface{}, error) {
+	ToGo: func(value string) (any, error) {
 		iv, err := strconv.Atoi(value)
 		if err != nil {
 			return nil, err
@@ -31,7 +31,7 @@ var intConverter = Converter{
 // 示例: hello, user-123, article_title
 var stringConverter = Converter{
 	Regex: `([^/]+)`,
-	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToGo:  func(value string) (any, error) { return value, nil },
 }
 
 // slugConverter 用于匹配URL友好的字符串参数
@@ -39,7 +39,7 @@ var stringConverter = Converter{
 // 示例: my-blog-post, user_profile_123
 var slugConverter = Converter{
 	Regex: `([-a-zA-Z0-9_]+)`,
-	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToGo:  func(value string) (any, error) { return value, nil },
 }
 
 // pathConverter 用于匹配完整路径类型的URL参数
@@ -47,7 +47,7 @@ var slugConverter = Converter{
 // 示例: /blog/2024/03, /users/photos/vacation
 var pathConverter = Converter{
 	Regex: `(.+)`,
-	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToGo:  func(value string) (any, error) { return value, nil },
 }
 
 // uuidConverter 用于匹配UUID格式的URL参数
@@ -55,7 +55,7 @@ var pathConverter = Converter{
 // 示例: 550e8400-e29b-41d4-a716-446655440000
 var uuidConverter = Converter{
 	Regex: `([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})`,
-	ToGo:  func(value string) (interface{}, error) { return value, nil },
+	ToGo:  func(value string) (any, error) { return value, nil },
 }
 
 // converterMu 保护 converters

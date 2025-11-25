@@ -8,10 +8,10 @@ import (
 	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
-type Params map[string]interface{}
+type Params map[string]any
 
 // 设置一个键值，会覆盖原来的值
-func (values Params) Set(key string, value interface{}) {
+func (values Params) Set(key string, value any) {
 	values[key] = value
 }
 
@@ -27,11 +27,11 @@ func (values Params) Has(key string) bool {
 }
 
 // 根据键读取一个值到 dest
-func (values Params) Get(key string, dest interface{}) ValidationError {
+func (values Params) Get(key string, dest any) ValidationError {
 	var err error
 	value, ok := values[key]
 	if !ok {
-		requiredParamsMsg := i18n.T("params.required_params", map[string]interface{}{
+		requiredParamsMsg := i18n.T("params.required_params", map[string]any{
 			"name": key,
 		})
 		return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
@@ -40,7 +40,7 @@ func (values Params) Get(key string, dest interface{}) ValidationError {
 	destValue := reflect.ValueOf(dest)
 	// 检查目标变量是否为指针类型
 	if destValue.Kind() != reflect.Ptr {
-		paramsIsNotPtrMsg := i18n.T("params.params_is_not_ptr", map[string]interface{}{
+		paramsIsNotPtrMsg := i18n.T("params.params_is_not_ptr", map[string]any{
 			"name": "dest",
 		})
 		return NewValidationError(http.StatusInternalServerError, paramsIsNotPtrMsg)
@@ -54,21 +54,21 @@ func (values Params) Get(key string, dest interface{}) ValidationError {
 }
 
 // 解析参数到指定结构体
-func (values Params) ParseParams(paramsDest interface{}) ValidationError {
+func (values Params) ParseParams(paramsDest any) ValidationError {
 	var validationErr ValidationError
 	// 使用反射获取参数结构体的值信息
 	paramsValue := reflect.ValueOf(paramsDest)
 
 	// 如果参数不是指针或者不是结构体类型，则返回错误
 	if paramsValue.Kind() != reflect.Ptr {
-		paramsIsNotPtrMsg := i18n.T("params.params_is_not_ptr", map[string]interface{}{
+		paramsIsNotPtrMsg := i18n.T("params.params_is_not_ptr", map[string]any{
 			"name": "paramsDest",
 		})
 		return NewValidationError(http.StatusInternalServerError, paramsIsNotPtrMsg)
 	}
 	paramsValue = paramsValue.Elem()
 	if paramsValue.Kind() != reflect.Struct {
-		paramsIsNotStructPtrMsg := i18n.T("params.params_is_not_struct_ptr", map[string]interface{}{
+		paramsIsNotStructPtrMsg := i18n.T("params.params_is_not_struct_ptr", map[string]any{
 			"name": "paramsDest",
 		})
 		return NewValidationError(http.StatusInternalServerError, paramsIsNotStructPtrMsg)
@@ -111,7 +111,7 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 		required := fieldType.Tag.Get("required")
 		if !ok {
 			if required == "true" { // 必填项返回错误
-				requiredParamsMsg := i18n.T("params.required_params", map[string]interface{}{
+				requiredParamsMsg := i18n.T("params.required_params", map[string]any{
 					"name": fieldName,
 				})
 				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
@@ -123,7 +123,7 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 		if value == nil {
 			allow_null := fieldType.Tag.Get("allow_null")
 			if allow_null == "false" || (required == "true" && allow_null != "true") {
-				requiredParamsMsg := i18n.T("params.params_is_not_null", map[string]interface{}{
+				requiredParamsMsg := i18n.T("params.params_is_not_null", map[string]any{
 					"name": fieldName,
 				})
 				return NewValidationError(http.StatusBadRequest, requiredParamsMsg)
@@ -134,7 +134,7 @@ func (values Params) ParseParams(paramsDest interface{}) ValidationError {
 		// 获取验证器
 		validate, ok := GetValidate(validator_name)
 		if !ok {
-			validatorNotExistsMsg := i18n.T("validator.validator_not_exists", map[string]interface{}{
+			validatorNotExistsMsg := i18n.T("validator.validator_not_exists", map[string]any{
 				"name": validator_name,
 			})
 			return NewValidationError(http.StatusBadRequest, validatorNotExistsMsg)

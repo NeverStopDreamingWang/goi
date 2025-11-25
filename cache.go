@@ -116,15 +116,15 @@ func newCacheManager() *cacheManager {
 
 // initCache 初始化缓存配置
 func (self *cacheManager) initCache() {
-	MaxSizeMsg := i18n.T("server.cache.max_size", map[string]interface{}{
+	MaxSizeMsg := i18n.T("server.cache.max_size", map[string]any{
 		"max_size": FormatBytes(self.MAX_SIZE),
 	})
 	Log.Log(meta, MaxSizeMsg)
-	EvictPolicyMsg := i18n.T("server.cache.evict_policy", map[string]interface{}{
+	EvictPolicyMsg := i18n.T("server.cache.evict_policy", map[string]any{
 		"evict_policy": evictPolicyNames[self.EVICT_POLICY],
 	})
 	Log.Log(meta, EvictPolicyMsg)
-	ExpirationPolicyMsg := i18n.T("server.cache.expiration_policy", map[string]interface{}{
+	ExpirationPolicyMsg := i18n.T("server.cache.expiration_policy", map[string]any{
 		"expiration_policy": expirationPolicyNames[self.EXPIRATION_POLICY],
 	})
 	Log.Log(meta, ExpirationPolicyMsg)
@@ -191,11 +191,11 @@ func (self *cacheManager) Has(key string) bool {
 //
 // 参数:
 //   - key string: 缓存键
-//   - value interface{}: 用于存储解码后的值的指针
+//   - value any: 用于存储解码后的值的指针
 //
 // 返回:
 //   - error: 获取过程中的错误信息
-func (self *cacheManager) Get(key string, value interface{}) error {
+func (self *cacheManager) Get(key string, value any) error {
 	if element, ok := self.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
 
@@ -226,12 +226,12 @@ func (self *cacheManager) Get(key string, value interface{}) error {
 //
 // 参数:
 //   - key string: 缓存键
-//   - value interface{}: 要缓存的值
+//   - value any: 要缓存的值
 //   - expires int: 过期时间(秒)，0表示永不过期
 //
 // 返回:
 //   - error: 设置过程中的错误信息
-func (self *cacheManager) Set(key string, value interface{}, expires int) error {
+func (self *cacheManager) Set(key string, value any, expires int) error {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	err := encoder.Encode(value)
@@ -310,7 +310,7 @@ func (self *cacheManager) cacheEvict() {
 
 	switch self.EVICT_POLICY {
 	case NOEVICTION: // 直接返回错误，不淘汰任何已经存在的键
-		NoEvictionMsg := i18n.T("server.cache.noeviction", map[string]interface{}{
+		NoEvictionMsg := i18n.T("server.cache.noeviction", map[string]any{
 			"max_size": FormatBytes(self.MAX_SIZE),
 		})
 		Log.Error(NoEvictionMsg)

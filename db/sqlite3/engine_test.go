@@ -127,7 +127,7 @@ func ExampleEngine_Migrate() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 迁移模型
-	sqliteDB.Migrate("test_db", UserModel{})
+	sqliteDB.Migrate(UserModel{})
 
 	// Output:
 }
@@ -201,7 +201,7 @@ func ExampleEngine_Select() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 查询多条记录 Select 支持 map 以及 结构体
-	// var users []map[string]interface{}
+	// var users []map[string]any
 	var users []*UserModel
 
 	sqliteDB.SetModel(UserModel{})
@@ -252,7 +252,7 @@ func ExampleEngine_First() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 查询单条记录 First 支持 map 以及 结构体
-	// var user map[string]interface{}
+	// var user map[string]any
 	var user *UserModel
 
 	sqliteDB.SetModel(UserModel{})
@@ -273,7 +273,7 @@ func ExampleEngine_Fields() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 指定查询字段
-	var user map[string]interface{}
+	var user map[string]any
 
 	sqliteDB.SetModel(UserModel{})
 
@@ -424,7 +424,7 @@ func ExampleEngine_WithTransaction() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 事务
-	err := sqliteDB.WithTransaction(func(engine *sqlite3.Engine, args ...interface{}) error {
+	err := sqliteDB.WithTransaction(func(engine *sqlite3.Engine, args ...any) error {
 		// 准备测试数据
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"
