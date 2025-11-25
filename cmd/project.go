@@ -204,13 +204,13 @@ func init() {
 		KEY_PATH:  filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.key"),
 	}
 
-	// 注册中间件
-	Server.MiddleWare = []goi.MiddleWare{
+	// 注册中间件（根路由）
+	Server.Router.Use(
 		security.Default(), // 安全中间件
 		common.Default(), // 通用中间件
 		// corsheaders.Default(), // CORS 跨域中间件
 		clickjacking.Default(), // 点击劫持中间件
-	}
+	)
 
 	// 数据库配置
 	Server.Settings.DATABASES["default"] = &goi.DataBase{

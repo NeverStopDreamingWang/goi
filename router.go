@@ -10,12 +10,13 @@ import (
 )
 
 // 路由表
-type MetaRouter struct {
-	path          string        // 路由
-	desc          string        // 描述
-	viewSet       ViewSet       // 视图方法
-	noRoute       *ViewSet      // 无路由视图
-	includeRouter []*MetaRouter // 子路由
+type Router struct {
+	path        string      // 路由
+	desc        string      // 描述
+	viewSet     ViewSet     // 视图方法
+	noRoute     *ViewSet    // 无路由视图
+	include     []*Router   // 子路由
+	middlewares MiddleWares // 路由中间件
 
 	// 预编译
 	pattern    string         // 路由正则表达式
@@ -24,26 +25,29 @@ type MetaRouter struct {
 }
 
 // 创建路由
-func newRouter() *MetaRouter {
-	return &MetaRouter{
-		path:          "/",
-		desc:          "/",
-		viewSet:       ViewSet{},
-		includeRouter: make([]*MetaRouter, 0, 0),
-		pattern:       "/",
-		regex:         regexp.MustCompile("^/"),
-		paramInfos:    make([]ParamInfo, 0),
-		noRoute:       nil,
+func newRouter() *Router {
+	return &Router{
+		path:        "/",
+		desc:        "/",
+		viewSet:     ViewSet{},
+		noRoute:     nil,
+		include:     make([]*Router, 0),
+		middlewares: make(MiddleWares, 0),
+
+		// 预编译
+		pattern:    "/",
+		regex:      regexp.MustCompile("^/"),
+		paramInfos: make([]ParamInfo, 0),
 	}
 }
 
 // hasChildRouter 判断是否包含指定子路由（通过指针引用校验）
-// 返回 true 表示当前路由的 includeRouter 中已包含该子路由
-func (router MetaRouter) hasChildRouter(child *MetaRouter) {
-	if router.includeRouter == nil || child == nil {
+// 返回 true 表示当前路由的 include 中已包含该子路由
+func (router Router) hasChildRouter(child *Router) {
+	if router.include == nil || child == nil {
 		return
 	}
-	for _, itemRouter := range router.includeRouter {
+	for _, itemRouter := range router.include {
 		if itemRouter.path == child.path { // 指针引用相等
 			pathAlreadyExistsMsg := i18n.T("router.path_already_exists", map[string]any{
 				"path": child.path,
@@ -67,21 +71,35 @@ func (router MetaRouter) hasChildRouter(child *MetaRouter) {
 //   - desc: string 描述
 //
 // 返回:
-//   - *MetaRouter: 子路由实例
-func (router *MetaRouter) Include(path string, desc string) *MetaRouter {
+//   - *Router: 子路由实例
+func (router *Router) Include(path string, desc string) *Router {
 	if strings.HasSuffix(path, "/") == false {
 		path = path + "/"
 	}
-	includeRouter := &MetaRouter{
-		path:          path,
-		desc:          desc,
-		viewSet:       ViewSet{},
-		includeRouter: make([]*MetaRouter, 0, 0),
+	includeRouter := &Router{
+		path:        path,
+		desc:        desc,
+		viewSet:     ViewSet{},
+		noRoute:     nil,
+		include:     make([]*Router, 0, 0),
+		middlewares: nil,
 	}
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
-	router.includeRouter = append(router.includeRouter, includeRouter)
+	router.include = append(router.include, includeRouter)
 	return includeRouter
+}
+
+// Use 注册路由中间件
+//
+// 参数:
+//   - middleware ...MiddleWare: 中间件函数
+//
+// 返回:
+//   - *Router: 当前路由实例
+func (router *Router) Use(middleware ...MiddleWare) *Router {
+	router.middlewares = append(router.middlewares, middleware...)
+	return router
 }
 
 // Path 注册一个路由
@@ -90,16 +108,18 @@ func (router *MetaRouter) Include(path string, desc string) *MetaRouter {
 //   - path: string 路由
 //   - desc: string 描述
 //   - viewSet: ViewSet 视图方法
-func (router *MetaRouter) Path(path string, desc string, viewSet ViewSet) {
-	includeRouter := &MetaRouter{
-		path:          path,
-		desc:          desc,
-		viewSet:       viewSet,
-		includeRouter: nil,
+func (router *Router) Path(path string, desc string, viewSet ViewSet) {
+	includeRouter := &Router{
+		path:        path,
+		desc:        desc,
+		viewSet:     viewSet,
+		noRoute:     nil,
+		include:     nil,
+		middlewares: nil,
 	}
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
-	router.includeRouter = append(router.includeRouter, includeRouter)
+	router.include = append(router.include, includeRouter)
 }
 
 // StaticFile 注册静态文件路由
@@ -108,19 +128,21 @@ func (router *MetaRouter) Path(path string, desc string, viewSet ViewSet) {
 //   - path: string 路由
 //   - desc: string 描述
 //   - filePath: string 文件路径
-func (router *MetaRouter) StaticFile(path string, desc string, filePath string) {
-	includeRouter := &MetaRouter{
+func (router *Router) StaticFile(path string, desc string, filePath string) {
+	includeRouter := &Router{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
 			HEAD: StaticFileView(filePath),
 			GET:  StaticFileView(filePath),
 		},
-		includeRouter: nil,
+		noRoute:     nil,
+		include:     nil,
+		middlewares: nil,
 	}
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
-	router.includeRouter = append(router.includeRouter, includeRouter)
+	router.include = append(router.include, includeRouter)
 }
 
 // StaticDir 注册静态目录路由
@@ -129,7 +151,7 @@ func (router *MetaRouter) StaticFile(path string, desc string, filePath string) 
 //   - path: string 路由
 //   - desc: string 描述
 //   - dirPath: http.Dir 静态映射路径
-func (router *MetaRouter) StaticDir(path string, desc string, dirPath http.Dir) {
+func (router *Router) StaticDir(path string, desc string, dirPath http.Dir) {
 	if dirPath == "" {
 		dirPath = "."
 	}
@@ -137,18 +159,20 @@ func (router *MetaRouter) StaticDir(path string, desc string, dirPath http.Dir) 
 		path = path + "/"
 	}
 	path = path + "<path:fileName>"
-	includeRouter := &MetaRouter{
+	includeRouter := &Router{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
 			HEAD: StaticDirView(dirPath),
 			GET:  StaticDirView(dirPath),
 		},
-		includeRouter: nil,
+		noRoute:     nil,
+		include:     nil,
+		middlewares: nil,
 	}
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
-	router.includeRouter = append(router.includeRouter, includeRouter)
+	router.include = append(router.include, includeRouter)
 }
 
 // StaticFileFS 注册 embed.FS 静态文件路由
@@ -158,19 +182,21 @@ func (router *MetaRouter) StaticDir(path string, desc string, dirPath http.Dir) 
 //   - desc: string 描述
 //   - fileFS: embed.FS 嵌入式文件系统
 //   - defaultPath: string 嵌入文件默认路径
-func (router *MetaRouter) StaticFileFS(path string, desc string, fileFS embed.FS, defaultPath string) {
-	includeRouter := &MetaRouter{
+func (router *Router) StaticFileFS(path string, desc string, fileFS embed.FS, defaultPath string) {
+	includeRouter := &Router{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
 			HEAD: StaticFileFSView(fileFS, defaultPath),
 			GET:  StaticFileFSView(fileFS, defaultPath),
 		},
-		includeRouter: nil,
+		noRoute:     nil,
+		include:     nil,
+		middlewares: nil,
 	}
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
-	router.includeRouter = append(router.includeRouter, includeRouter)
+	router.include = append(router.include, includeRouter)
 }
 
 // StaticDirFS 注册 embed.FS 静态目录路由
@@ -184,39 +210,43 @@ func (router *MetaRouter) StaticFileFS(path string, desc string, fileFS embed.FS
 // 说明:
 //   - path 路径之后自动添加 /<path:fileName> 参数
 //   - 会自动拼接 basePath + fileName 为嵌入文件查找路径
-func (router *MetaRouter) StaticDirFS(path string, desc string, dirFS embed.FS, basePath string) {
+func (router *Router) StaticDirFS(path string, desc string, dirFS embed.FS, basePath string) {
 	if strings.HasSuffix(path, "/") == false {
 		path = path + "/"
 	}
 	path = path + "<path:fileName>"
-	includeRouter := &MetaRouter{
+	includeRouter := &Router{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
 			HEAD: StaticDirFSView(dirFS, basePath),
 			GET:  StaticDirFSView(dirFS, basePath),
 		},
-		includeRouter: nil,
+		noRoute:     nil,
+		include:     nil,
+		middlewares: nil,
 	}
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
-	router.includeRouter = append(router.includeRouter, includeRouter)
+	router.include = append(router.include, includeRouter)
 }
 
 // NoRoute 注册未匹配路由时的处理视图，默认返回 404
 //
 // 参数:
 //   - viewSet: ViewSet 视图方法
-func (router *MetaRouter) NoRoute(viewSet ViewSet) {
+func (router *Router) NoRoute(viewSet ViewSet) {
 	router.noRoute = &viewSet
 }
 
-// Route 为 MetaRouter 路由的副本
+// Route 为 Router 路由的副本
 type Route struct {
-	Path     string  // 路由
-	Desc     string  // 描述
-	ViewSet  ViewSet // 视图方法
-	Children []Route // 子路由
+	Path     string      // 路由
+	Desc     string      // 描述
+	ViewSet  ViewSet     // 视图方法
+	NoRoute  *ViewSet    // 无路由视图
+	Include  []Route     // 子路由
+	Handlers MiddleWares // 路由中间件
 
 	// 预编译
 	Pattern    string         // 路由正则表达式
@@ -228,11 +258,11 @@ type Route struct {
 //
 // 返回:
 //   - Route: 路由信息
-func (router MetaRouter) GetRoute() Route {
+func (router Router) GetRoute() Route {
 	var children []Route
-	if len(router.includeRouter) > 0 {
-		children = make([]Route, 0, len(router.includeRouter))
-		for _, itemRouter := range router.includeRouter {
+	if len(router.include) > 0 {
+		children = make([]Route, 0, len(router.include))
+		for _, itemRouter := range router.include {
 			children = append(children, itemRouter.GetRoute())
 		}
 	}
@@ -240,7 +270,9 @@ func (router MetaRouter) GetRoute() Route {
 		Path:       router.path,
 		Desc:       router.desc,
 		ViewSet:    router.viewSet,
-		Children:   children,
+		NoRoute:    router.noRoute,
+		Include:    children,
+		Handlers:   router.middlewares,
 		Pattern:    router.pattern,
 		Regex:      router.regex,
 		ParamInfos: router.paramInfos,

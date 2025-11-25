@@ -15,7 +15,7 @@ type ParamInfo struct {
 
 // compilePattern 将路由定义编译为正则
 // 支持占位符: <type:name>，type 来自 converter.go 中的注册转换器
-func (router *MetaRouter) compilePattern() {
+func (router *Router) compilePattern() {
 	if router.pattern != "" {
 		return
 	}
@@ -64,7 +64,7 @@ func (router *MetaRouter) compilePattern() {
 	router.pattern = patternBuilder.String()
 
 	var rePattern string
-	if router.includeRouter == nil { // 不是路由组
+	if router.include == nil { // 不是路由组
 		rePattern = "^" + router.pattern + "$"
 	} else {
 		rePattern = "^" + router.pattern
@@ -80,33 +80,34 @@ func (router *MetaRouter) compilePattern() {
 //
 // 返回:
 //   - Params: 匹配的参数映射
+//   - MiddleWares: 匹配的路由中间件
 //   - bool: 是否匹配成功
-func (router MetaRouter) match(path string) (Params, bool) {
+func (router Router) match(path string) (Params, MiddleWares, bool) {
 	// 保护：确保已编译正则，避免空指针
 	if router.regex == nil {
 		(&router).compilePattern()
 	}
 	loc := router.regex.FindStringSubmatch(path)
 	if loc == nil || len(loc)-1 != len(router.paramInfos) {
-		return nil, false
+		return nil, nil, false
 	}
-	if len(router.paramInfos) == 0 {
-		return nil, true
-	}
-	// 第0个是完整匹配，从1开始依次为各参数
-	params := make(Params, len(router.paramInfos))
-	for i, paramInfo := range router.paramInfos {
-		// i 对应第 i+1 个分组
-		if i+1 < len(loc) {
-			rawValue := loc[i+1]
-			convertedValue, err := paramInfo.Converter.ToGo(rawValue)
-			if err != nil {
-				return nil, false
+	var params Params
+	if len(router.paramInfos) > 0 {
+		// 第0个是完整匹配，从1开始依次为各参数
+		params = make(Params, len(router.paramInfos))
+		for i, paramInfo := range router.paramInfos {
+			// i 对应第 i+1 个分组
+			if i+1 < len(loc) {
+				rawValue := loc[i+1]
+				convertedValue, err := paramInfo.Converter.ToGo(rawValue)
+				if err != nil {
+					return nil, nil, false
+				}
+				params[paramInfo.Name] = convertedValue
 			}
-			params[paramInfo.Name] = convertedValue
 		}
 	}
-	return params, true
+	return params, router.middlewares, true
 }
 
 // resolve 解析URL路径
@@ -117,25 +118,32 @@ func (router MetaRouter) match(path string) (Params, bool) {
 // 返回:
 //   - *ViewSet: 匹配的视图集
 //   - Params: 匹配的参数映射
+//   - MiddleWares: 匹配的路由中间件
 //   - bool: 是否匹配成功
-func (router MetaRouter) resolve(Path string) (*ViewSet, Params, bool) {
-	params, ok := router.match(Path)
+func (router Router) resolve(Path string) (*ViewSet, Params, MiddleWares, bool) {
+	params, middlewares, ok := router.match(Path)
 	if ok == false {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
-	if router.includeRouter == nil {
-		return &router.viewSet, params, true
+	if router.include == nil {
+		return &router.viewSet, params, middlewares, true
 	}
 	// 子路由
-	for _, itemRouter := range router.includeRouter {
-		viewSet, params, isPattern := itemRouter.resolve(Path[len(router.path):])
+	for _, itemRouter := range router.include {
+		viewSet, paramsChild, middlewaresChild, isPattern := itemRouter.resolve(Path[len(router.path):])
 		if isPattern == true {
-			return viewSet, params, isPattern
+			// 合并参数
+			for key, value := range paramsChild {
+				params[key] = value
+			}
+			// 合并中间件
+			middlewares = append(middlewares, middlewaresChild...)
+			return viewSet, params, middlewares, isPattern
 		}
 	}
 	// 无匹配
 	if router.noRoute != nil {
-		return router.noRoute, params, true
+		return router.noRoute, params, middlewares, true
 	}
-	return nil, nil, false
+	return nil, nil, nil, false
 }
