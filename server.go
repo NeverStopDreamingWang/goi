@@ -3,6 +3,7 @@ package goi
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -49,7 +50,6 @@ func NewHttpServer() *Engine {
 
 // 启动 http 服务
 func (engine *Engine) RunServer() {
-	var err error
 	startedMsg := i18n.T("server.started")
 	engine.Log.Log(meta, startedMsg)
 
@@ -105,17 +105,16 @@ func (engine *Engine) RunServer() {
 		sig, _ := <-serverChan
 		switch sig {
 		case os.Kill, os.Interrupt, syscall.SIGTERM:
-			err = engine.StopServer()
+			err := engine.StopServer()
 			if err != nil {
+				engine.Log.Error(err)
 				panic(err)
 			}
-			return
 		default:
 			invalidOperationMsg := i18n.T("server.invalid_operation", map[string]any{
 				"name": sig,
 			})
-			engine.Log.Log(meta, invalidOperationMsg)
-			return
+			panic(invalidOperationMsg)
 		}
 	}()
 
@@ -126,19 +125,23 @@ func (engine *Engine) RunServer() {
 	ln, err := net.Listen(engine.Settings.NET_WORK, engine.server.Addr)
 	if err != nil {
 		engine.Log.Error(err)
+		panic(err)
 	}
 	if engine.Settings.SSL.STATUS == true {
 		certificate, err := os.ReadFile(engine.Settings.SSL.CERT_PATH)
 		if err != nil {
 			engine.Log.Error(err)
+			panic(err)
 		}
 		key, err := os.ReadFile(engine.Settings.SSL.KEY_PATH)
 		if err != nil {
 			engine.Log.Error(err)
+			panic(err)
 		}
 		cert, err := tls.X509KeyPair(certificate, key)
 		if err != nil {
 			engine.Log.Error(err)
+			panic(err)
 		}
 		engine.server.TLSConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
@@ -170,27 +173,26 @@ func (engine *Engine) RunServer() {
 	}
 	if err != nil && err != http.ErrServerClosed {
 		engine.Log.Error(err)
+		panic(err)
 	}
 }
 
 // 停止 http 服务
-func (engine *Engine) StopServer() error {
-	var err error
-
+func (engine *Engine) StopServer() (err error) {
 	// 执行用户定义的回调函数（逆序执行：先进后出）
 	for i := len(shutdownCallbacks) - 1; i >= 0; i-- {
 		shutdownCallback := shutdownCallbacks[i]
 		shutdownHandlerMsg := i18n.T("server.shutdown_handler", map[string]any{
 			"name": shutdownCallback.Name(),
 		})
-		engine.Log.Log(meta, shutdownHandlerMsg)
+		engine.Log.Error(shutdownHandlerMsg)
 
 		err = shutdownCallback.OnShutdown()
 		if err != nil {
 			shutdownHandlerErrorMsg := i18n.T("server.shutdown_handler_error", map[string]any{
 				"err": err,
 			})
-			engine.Log.Log(meta, shutdownHandlerErrorMsg)
+			return errors.New(shutdownHandlerErrorMsg)
 		}
 	}
 
@@ -206,7 +208,7 @@ func (engine *Engine) StopServer() error {
 				"name":   name,
 				"err":    err,
 			})
-			engine.Log.Log(meta, closeDatabaseErrorMsg)
+			return errors.New(closeDatabaseErrorMsg)
 		}
 	}
 
