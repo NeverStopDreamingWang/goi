@@ -366,17 +366,20 @@ func (self *Logger) StartupName() string {
 //   - wg *sync.WaitGroup: 等待组，用于同步协程
 func (self *Logger) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-ticker.C:
 			err := self.CheckSplit()
 			if err != nil {
 				consoleLogger.Error(err)
 				panic(err)
 			}
-			time.Sleep(1 * time.Second)
 		}
 	}
 }
