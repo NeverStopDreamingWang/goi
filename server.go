@@ -96,6 +96,7 @@ func (engine *Engine) RunServer() {
 			"name": task.StartupName(),
 		})
 		engine.Log.Log(meta, taskNameMsg)
+		startup.waitGroup.Add(1)
 		go task.OnStartup(startup.ctx, startup.waitGroup)
 	}
 
@@ -104,7 +105,7 @@ func (engine *Engine) RunServer() {
 
 	go func() {
 		// 等待关闭信号
-		sig, _ := <-serverChan
+		sig := <-serverChan
 		switch sig {
 		case os.Kill, os.Interrupt, syscall.SIGTERM:
 			err := engine.StopServer()

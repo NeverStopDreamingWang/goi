@@ -628,7 +628,6 @@ func (self *cache) StartupName() string {
 //   - ctx context.Context: 上下文对象，用于控制协程退出
 //   - wg *sync.WaitGroup: 等待组，用于同步协程
 func (self *cache) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
 	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
 	for {
 		select {
