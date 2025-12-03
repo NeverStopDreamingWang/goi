@@ -76,22 +76,20 @@ func init() {
 	sqlite3DB.Migrate(MyModel{})
 }
 
-
 // 模型
 type MyModel struct {
-	Id          *int64  ` + "`" + `field_name:"id" field_type:"BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'ID'" json:"id"` + "`" + `
-	Name        *string ` + "`" + `field_name:"name" field_type:"VARCHAR(255) NOT NULL UNIQUE COMMENT '名称'" json:"name"` + "`" + `
+	Id         *int64  ` + "`" + `field_name:"id" field_type:"BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'ID'" json:"id"` + "`" + `
+	Name       *string ` + "`" + `field_name:"name" field_type:"VARCHAR(255) NOT NULL UNIQUE COMMENT '名称'" json:"name"` + "`" + `
 	CreateTime *string ` + "`" + `field_name:"create_time" field_type:"DATETIME NOT NULL COMMENT '创建时间'" json:"create_time"` + "`" + `
 	UpdateTime *string ` + "`" + `field_name:"update_time" field_type:"DATETIME DEFAULT NULL COMMENT '更新时间'" json:"update_time"` + "`" + `
 }
-
 
 // 设置表配置
 func (self MyModel) ModelSet() *sqlite3.Settings {
 	modelSettings := &sqlite3.Settings{
 		MigrationsHandler: sqlite3.MigrationsHandler{ // 迁移时处理函数
-			BeforeHandler: nil,  // 迁移之前处理函数
-			AfterHandler:  nil,  // 迁移之后处理函数
+			BeforeHandler: nil, // 迁移之前处理函数
+			AfterHandler:  nil, // 迁移之后处理函数
 		},
 
 		TABLE_NAME: "user_tb", // 设置表名
@@ -184,6 +182,16 @@ func (self *MyModel) Update(validated_data *MyModel) error {
 	return nil
 }
 
+func (self MyModel) Delete() error {
+	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
+	sqlite3DB.SetModel(self)
+	_, err := sqlite3DB.Where("` + "`" + `id` + "`" + ` = ?", self.Id).Delete()
+	if err != nil {
+		return errors.New("删除失败")
+	}
+	return nil
+}
+
 `
 		return fmt.Sprintf(content, appName)
 	},
@@ -233,8 +241,8 @@ import (
 
 // 参数验证
 type listValidParams struct {
-	Page      int ` + "`" + `name:"page" type:"int" required:"true"` + "`" + `
-	Page_Size int ` + "`" + `name:"page_size" type:"int" required:"true"` + "`" + `
+	Page     int64 ` + "`" + `name:"page" type:"int" required:"true"` + "`" + `
+	PageSize int64 ` + "`" + `name:"page_size" type:"int" required:"true"` + "`" + `
 }
 
 func listView(request *goi.Request) any {
