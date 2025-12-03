@@ -305,18 +305,18 @@ func (self *Task) StartupName() string {
 
 // OnStartup 启动任务
 func (self *Task) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
 	defer wg.Done()
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			goi.Log.Info("任务结束")
 			return
-		default:
+		case <-ticker.C:
 			// TODO
-
-			time.Sleep(1 * time.Second)
 		}
 	}
 }
