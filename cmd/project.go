@@ -39,7 +39,7 @@ var MainAppFileList = []InitFile{
 	settings,
 	converter,
 	validator,
-	logs,
+	logger,
 	ssl,
 }
 
@@ -180,6 +180,8 @@ func init() {
 
 	// 项目路径
 	Server.Settings.BASE_DIR, _ = os.Getwd()
+	// DEBUG
+	Server.Settings.DEBUG = true
 	// 网络协议
 	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 监听地址
@@ -261,14 +263,12 @@ func init() {
 	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
 	Server.Cache.MAX_SIZE = 0                     // 单位为字节，0 为不限制使用
 
-	// 日志 DEBUG 设置
-	Server.Log.DEBUG = true
-	// 注册日志
-	defaultLog := newDefaultLog() // 默认日志
-	err = Server.Log.RegisterLogger(defaultLog)
-	if err != nil {
-		panic(err)
-	}
+	// 创建日志，或者修改全局日志配置
+	Server.Log = newDefaultLog() // 默认日志
+	// 设置全局日志
+	goi.Log = Server.Log
+	// 注册日志切割任务
+	goi.RegisterOnStartup(goi.Log)
 
 	// 设置验证器错误，不指定则使用默认
 	Server.Validator.SetValidationError(validationError{})
@@ -277,32 +277,29 @@ func init() {
 	// Server.Settings.Set(key string, value any)
 	// Server.Settings.Get(key string, dest any)
 
+	// 注册后台任务，在 RunServer 之前注册，之后注册的任务不会执行
+	// RunServer 内部会启动注册 goroutine 执行任务
+	// goi.RegisterOnStartup(&Task{})
+
 	// 注册关闭回调处理程序
-	shutdown := &Shutdown{}
-	goi.RegisterOnShutdown(shutdown)
+	goi.RegisterOnShutdown(&Shutdown{})
 }
 
 type Shutdown struct{}
 
-func (self Shutdown) Name() string {
-	return "关闭自定义数据库连接"
+// ShutdownName 关闭回调名称
+func (self *Shutdown) ShutdownName() string {
+	return "自定义关闭操作"
 }
 
+// OnShutdown 关闭回调处理程序
 func (self *Shutdown) OnShutdown() error {
-	goi.Log.Info("关闭操作")
 	return nil
-}
-
-// 后台任务
-func init() {
-	// 注册后台任务，在 RunServer 之前注册，之后注册的任务不会执行
-	// RunServer 内部会启动注册 goroutine 执行任务
-	goi.RegisterOnStartup(&Task{})
 }
 
 type Task struct{}
 
-func (self *Task) Name() string {
+func (self *Task) StartupName() string {
 	return "任务名称"
 }
 
@@ -462,8 +459,8 @@ func (validator phoneValidator) ToGo(value any) (any, goi.ValidationError) {
 }
 
 // 日志文件
-var logs = InitFile{
-	Name: "logs.go",
+var logger = InitFile{
+	Name: "logger.go",
 	Content: func() string {
 		content := `package %s
 
@@ -548,46 +545,6 @@ func getFileFunc(filePath string) (*os.File, error) {
 		}
 	}
 	return file, nil
-}
-
-// 默认日志
-func newDefaultLog() *goi.Logger {
-	var err error
-
-	OutPath := filepath.Join(Server.Settings.BASE_DIR, "logs", "server.log")
-	OutDir := filepath.Dir(OutPath) // 检查目录
-	_, err = os.Stat(OutDir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(OutDir, 0755)
-		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误: %%v", err))
-		}
-	}
-
-	defaultLog := &goi.Logger{
-		Name: "默认日志",
-		Path: OutPath,
-		Level: []goi.Level{ // 所有等级的日志
-			goi.DEBUG,
-			goi.INFO,
-			goi.WARNING,
-			goi.ERROR,
-		},
-		Logger:          nil,
-		File:            nil,
-		LoggerPrint:     LogPrintln, // 日志输出格式
-		CreateTime:      goi.GetTime(),
-		SPLIT_SIZE:      1024 * 1024 * 20, // 切割大小
-		SPLIT_TIME:      "2006-01-02",     // 切割日期，每天
-		GetFileFunc:     getFileFunc,      // 创建文件对象方法
-		SplitLoggerFunc: nil,              // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
-	}
-	defaultLog.File, err = getFileFunc(defaultLog.Path)
-	if err != nil {
-		panic(fmt.Sprintf("初始化[%%v]日志错误: %%v", defaultLog.Name, err))
-	}
-	defaultLog.Logger = log.New(defaultLog.File, "", 0)
-	return defaultLog
 }
 
 `
