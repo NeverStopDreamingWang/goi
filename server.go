@@ -182,12 +182,12 @@ func (engine *Engine) RunServer() {
 // 停止 http 服务
 func (engine *Engine) StopServer() (err error) {
 	// 执行用户定义的回调函数（逆序执行：先进后出）
-	for i := len(shutdownCallbacks) - 1; i >= 0; i-- {
-		shutdownCallback := shutdownCallbacks[i]
+	for i := len(shutdown.callbacks) - 1; i >= 0; i-- {
+		shutdownCallback := shutdown.callbacks[i]
 		shutdownHandlerMsg := i18n.T("server.shutdown_handler", map[string]any{
-			"name": shutdownCallback.Name(),
+			"name": shutdownCallback.ShutdownName(),
 		})
-		engine.Log.Error(shutdownHandlerMsg)
+		engine.Log.Log(meta, shutdownHandlerMsg)
 
 		err = shutdownCallback.OnShutdown()
 		if err != nil {

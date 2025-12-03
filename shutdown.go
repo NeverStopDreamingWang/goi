@@ -1,14 +1,25 @@
 package goi
 
+// shutdownManager 关闭服务管理器
+type shutdownManager struct {
+	callbacks []ShutdownCallback
+}
+
+var shutdown = newShutdownManager()
+
+func newShutdownManager() *shutdownManager {
+	return &shutdownManager{
+		callbacks: make([]ShutdownCallback, 0),
+	}
+}
+
 // 关闭服务回调
 type ShutdownCallback interface {
-	// Name 获取回调名称
-	Name() string
+	// ShutdownName 关闭服务名称
+	ShutdownName() string
 	// OnShutdown 关闭服务处理程序
 	OnShutdown() error
 }
-
-var shutdownCallbacks []ShutdownCallback // 用户定义的关闭服务回调处理程序
 
 // RegisterOnShutdown 注册关闭服务回调处理程序
 //
@@ -18,5 +29,5 @@ var shutdownCallbacks []ShutdownCallback // 用户定义的关闭服务回调处
 // 注意:
 //   - 回调函数会逆序执行（先注册的后执行）
 func RegisterOnShutdown(shutdownCallback ShutdownCallback) {
-	shutdownCallbacks = append(shutdownCallbacks, shutdownCallback)
+	shutdown.callbacks = append(shutdown.callbacks, shutdownCallback)
 }
