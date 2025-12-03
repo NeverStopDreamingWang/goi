@@ -7,7 +7,7 @@
     "current_time_zone": "当前时区: {{ .time_zone }}",
     "log_info": "- [{{ .name }}] 切割大小: {{ .split_size }} 切割格式: {{ .split_time }}",
     "cache": {
-      "periodic_delete_expires": "定期删除过期缓存",
+      "periodic_delete_expires": "缓存-定期删除过期",
       "max_size": "缓存大小: {{ .max_size }}",
       "evict_policy": "- 淘汰策略: {{ .evict_policy }}",
       "expiration_policy": "- 过期策略: {{ .expiration_policy }}",

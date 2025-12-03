@@ -7,7 +7,7 @@
     "current_time_zone": "Current Time Zone: {{ .time_zone }}",
     "log_info": "- [{{ .name }}] Split Size: {{ .split_size }} Split format: {{ .split_time }}",
     "cache": {
-      "periodic_delete_expires": "Periodic delete expired cache",
+      "periodic_delete_expires": "Cache-Periodic delete expired",
       "max_size": "Cache Max Size: {{ .max_size }}",
       "evict_policy": "- Evict Policy: {{ .evict_policy }}",
       "expiration_policy": "- Expiration Policy: {{ .expiration_policy }}",
