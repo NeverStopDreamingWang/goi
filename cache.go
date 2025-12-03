@@ -591,7 +591,6 @@ func (self *cache) cachePeriodicDeleteExpires() {
 	cacheCount := len(self.dict)
 	if cacheCount <= 0 {
 		self.lock.RUnlock()
-		time.Sleep(3 * time.Second)
 		return
 	}
 	count := rand.Intn(cacheCount)
@@ -629,13 +628,17 @@ func (self *cache) StartupName() string {
 //   - wg *sync.WaitGroup: 等待组，用于同步协程
 func (self *cache) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
+
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-ticker.C:
+			// 到周期时间再执行清理逻辑
 			self.cachePeriodicDeleteExpires()
-			time.Sleep(3 * time.Second)
 		}
 	}
 }
