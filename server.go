@@ -93,7 +93,7 @@ func (engine *Engine) RunServer() {
 	// 启动后台任务
 	for _, task := range startup.startups {
 		taskNameMsg := i18n.T("server.startup_task", map[string]any{
-			"name": task.Name(),
+			"name": task.StartupName(),
 		})
 		engine.Log.Log(meta, taskNameMsg)
 		go task.OnStartup(startup.ctx, startup.waitGroup)

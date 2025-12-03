@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// startupManager 启动服务管理器
 type startupManager struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -26,8 +27,8 @@ func newStartupManager() *startupManager {
 
 // Startup 表示一个在服务启动时运行的后台任务
 type Startup interface {
-	// Name 返回任务名称，用于日志或调试
-	Name() string
+	// StartupName 启动任务名称
+	StartupName() string
 	// OnStartup 启动任务（通常内部是一个循环，监听 ctx.Done）
 	OnStartup(ctx context.Context, wg *sync.WaitGroup)
 }
