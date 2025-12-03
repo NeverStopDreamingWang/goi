@@ -582,31 +582,6 @@ func (self *cache) cacheEvict() {
 	}
 }
 
-// Name 获取任务名称
-func (self *cache) Name() string {
-	nameMsg := i18n.T("server.cache.periodic_delete_expires")
-	return nameMsg
-}
-
-// OnStartup 定期删除过期缓存项
-//
-// 参数:
-//   - ctx context.Context: 上下文对象，用于控制协程退出
-//   - wg *sync.WaitGroup: 等待组，用于同步协程
-func (self *cache) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			self.cachePeriodicDeleteExpires()
-			time.Sleep(3 * time.Second)
-		}
-	}
-}
-
 // cachePeriodicDeleteExpires 定期删除过期缓存项
 func (self *cache) cachePeriodicDeleteExpires() {
 	if self.EXPIRATION_POLICY != PERIODIC {
@@ -636,6 +611,33 @@ func (self *cache) cachePeriodicDeleteExpires() {
 	self.lock.RUnlock()
 	for _, element := range elementRemove {
 		self.del(element)
+	}
+}
+
+// StartupName 启动任务名称
+//
+// 返回:
+//   - string: 启动任务名称
+func (self *cache) StartupName() string {
+	return i18n.T("server.cache.periodic_delete_expires")
+}
+
+// OnStartup 定期删除过期缓存项
+//
+// 参数:
+//   - ctx context.Context: 上下文对象，用于控制协程退出
+//   - wg *sync.WaitGroup: 等待组，用于同步协程
+func (self *cache) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			self.cachePeriodicDeleteExpires()
+			time.Sleep(3 * time.Second)
+		}
 	}
 }
 

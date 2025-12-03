@@ -55,7 +55,6 @@
     "value_invalid": "The type of \"{{ .name }}\" is invalid"
   },
   "log": {
-    "split_logger": "Log splitting",
     "invalid_path": "Path is invalid: \"\"\n",
     "invalid_level": "Level is invalid []\n",
     "invalid_file": "File is invalid nil\n",
