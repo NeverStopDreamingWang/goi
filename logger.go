@@ -13,6 +13,45 @@ import (
 	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
+// NewLogger 创建新的日志器
+//
+// 参数:
+//   - path string: 日志输出路径，例如 "logs/server.log"
+//
+// 返回:
+//   - *Logger: 日志器实例
+func NewLogger(path string) *Logger {
+	if path == "" {
+		return nil
+	}
+	pathDir := filepath.Dir(path) // 检查目录
+	_, err := os.Stat(pathDir)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(pathDir, 0644)
+		if err != nil {
+			panic(err)
+		}
+	}
+	logger := &Logger{
+		Name:            "默认日志",
+		Path:            path,
+		File:            nil,
+		Logger:          nil,
+		SplitSize:       1024 * 1024 * 10, // 切割大小
+		SplitTime:       "2006-01-02",     // 切割日期，每天
+		CreateTime:      GetTime(),
+		PrintFunc:       nil, // 自定义日志输出格式
+		GetFileFunc:     nil, // 创建文件对象方法
+		SplitLoggerFunc: nil, // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
+	}
+	logger.File, err = logger.GetFile()
+	if err != nil {
+		panic(err)
+	}
+	logger.Logger = log.New(logger.File, "", 0)
+	return logger
+}
+
 // Level 日志等级类型
 type Level string
 
@@ -27,146 +66,88 @@ const (
 
 // Logger 日志管理器
 type Logger struct {
-	Name            string                                        // 日志名称
-	Path            string                                        // 日志输出路径
-	Level           []Level                                       // 日志等级
-	File            *os.File                                      // 日志文件对象
-	CreateTime      time.Time                                     // 日志文件创建时间，每次日志切割时需要重置
-	Logger          *log.Logger                                   // 日志对象
-	LoggerPrint     func(logger *Logger, level Level, log ...any) // 自定义日志输出
-	SPLIT_SIZE      int64                                         // 日志切割大小，默认为 1G 1024 * 1024 * 1024
-	SPLIT_TIME      string                                        // 日志切割大小，默认按天切割
-	GetFileFunc     func(filePath string) (*os.File, error)       // 创建文件对象方法
-	SplitLoggerFunc func(metaLogger *Logger) (*os.File, error)    // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
-	lock            sync.Mutex                                    // 互斥锁
-}
+	Name          string        // 日志名称
+	Path          string        // 日志输出路径
+	File          *os.File      // 日志文件对象
+	Logger        *log.Logger   // 日志对象
+	SplitSize     int64         // 日志切割大小，默认为 1G 1024 * 1024 * 1024
+	SplitTime     string        // 日志切割大小，默认按天切割
+	SplitInterval time.Duration // 日志切割检查间隔
+	CreateTime    time.Time     // 日志文件创建时间，每次日志切割时需要重置
+	lock          sync.Mutex    // 互斥锁
+	// 自定义方法
+	PrintFunc       func(logger *Logger, level Level, logs ...any) // 自定义日志输出格式
+	GetFileFunc     func(filePath string) (*os.File, error)        // 创建文件对象方法
+	SplitLoggerFunc func(metaLogger *Logger) (*os.File, error)     // 自定义日志切割：符合切割条件时，传入日志对象，返回新的文件对象
 
-// loggerManager 日志系统管理器
-//
-// 字段:
-//   - DEBUG bool: 是否开启调试模式
-//   - console_logger *Logger: 控制台日志器
-//   - loggers []*Logger: 日志器列表
-type loggerManager struct {
-	DEBUG          bool      // 开发模式，开启后自动输出到控制台
-	console_logger *Logger   // DEBUG 日志
-	loggers        []*Logger // 日志列表
-}
-
-// newLoggerManager 创建新的日志系统管理器
-//
-// 返回:
-//   - *loggerManager: 日志系统管理器实例
-func newLoggerManager() *loggerManager {
-	lm := &loggerManager{
-		DEBUG:   true,        // 开发模式，开启后自动输出到控制台
-		loggers: []*Logger{}, // 日志
-	}
-	// 注册日志切割任务
-	RegisterOnStartup(lm)
-	return lm
-}
-
-// RegisterLogger 注册日志器
-//
-// 参数:
-//   - loggerManager *Logger: 要注册的日志器
-//
-// 返回:
-//   - error: 注册过程中的错误信息
-func (self *loggerManager) RegisterLogger(logger *Logger) error {
-	if logger.Path == "" {
-		invalidPathMsg := i18n.T("log.invalid_path")
-		return errors.New(invalidPathMsg)
-	}
-	if len(logger.Level) == 0 {
-		invalidLevelMsg := i18n.T("log.invalid_level")
-		return errors.New(invalidLevelMsg)
-	}
-	if logger.File == nil {
-		invalidFileMsg := i18n.T("log.invalid_file")
-		return errors.New(invalidFileMsg)
-	}
-	if logger.Logger == nil {
-		invalidObjectMsg := i18n.T("log.invalid_object")
-		return errors.New(invalidObjectMsg)
-	}
-	// 检查是否满足切割条件
-	err := checkSplitLoggerFunc(logger)
-	if err != nil {
-		return err
-	}
-
-	self.loggers = append(self.loggers, logger)
-	return nil
 }
 
 // DebugF 记录调试级别日志
 //
 // 参数:
 //   - format string: 日志格式
-//   - log ...any: 日志内容
-func (self *loggerManager) DebugF(format string, log ...any) {
-	self.Debug(fmt.Sprintf(format, log...))
+//   - logs ...any: 日志内容
+func (self *Logger) DebugF(format string, logs ...any) {
+	self.Debug(fmt.Sprintf(format, logs...))
 }
 
 // Debug 记录调试级别日志
 //
 // 参数:
-//   - log ...any: 日志内容
-func (self *loggerManager) Debug(log ...any) {
-	self.Log(DEBUG, log...)
+//   - logs ...any: 日志内容
+func (self *Logger) Debug(logs ...any) {
+	self.Log(DEBUG, logs...)
 }
 
 // InfoF 记录信息级别日志
 //
 // 参数:
 //   - format string: 日志格式
-//   - log ...any: 日志内容
-func (self *loggerManager) InfoF(format string, log ...any) {
-	self.Info(fmt.Sprintf(format, log...))
+//   - logs ...any: 日志内容
+func (self *Logger) InfoF(format string, logs ...any) {
+	self.Info(fmt.Sprintf(format, logs...))
 }
 
 // Info 记录信息级别日志
 //
 // 参数:
-//   - log ...any: 日志内容
-func (self *loggerManager) Info(log ...any) {
-	self.Log(INFO, log...)
+//   - logs ...any: 日志内容
+func (self *Logger) Info(logs ...any) {
+	self.Log(INFO, logs...)
 }
 
 // WarningF 记录警告级别日志
 //
 // 参数:
 //   - format string: 日志格式
-//   - log ...any: 日志内容
-func (self *loggerManager) WarningF(format string, log ...any) {
-	self.Warning(fmt.Sprintf(format, log...))
+//   - logs ...any: 日志内容
+func (self *Logger) WarningF(format string, logs ...any) {
+	self.Warning(fmt.Sprintf(format, logs...))
 }
 
 // Warning 记录警告级别日志
 //
 // 参数:
-//   - log ...any: 日志内容
-func (self *loggerManager) Warning(log ...any) {
-	self.Log(WARNING, log...)
+//   - logs ...any: 日志内容
+func (self *Logger) Warning(logs ...any) {
+	self.Log(WARNING, logs...)
 }
 
 // ErrorF 记录错误级别日志
 //
 // 参数:
 //   - format string: 日志格式
-//   - log ...any: 日志内容
-func (self *loggerManager) ErrorF(format string, log ...any) {
-	self.Error(fmt.Sprintf(format, log...))
+//   - logs ...any: 日志内容
+func (self *Logger) ErrorF(format string, logs ...any) {
+	self.Error(fmt.Sprintf(format, logs...))
 }
 
 // Error 记录错误级别日志
 //
 // 参数:
-//   - log ...any: 日志内容
-func (self *loggerManager) Error(log ...any) {
-	self.Log(ERROR, log...)
+//   - logs ...any: 日志内容
+func (self *Logger) Error(logs ...any) {
+	self.Log(ERROR, logs...)
 }
 
 // LogF 记录指定级别的日志
@@ -174,9 +155,9 @@ func (self *loggerManager) Error(log ...any) {
 // 参数:
 //   - level Level: 日志级别
 //   - format string: 日志格式
-//   - log ...any: 日志内容
-func (self *loggerManager) LogF(level Level, format string, log ...any) {
-	self.Log(level, fmt.Sprintf(format, log...))
+//   - logs ...any: 日志内容
+func (self *Logger) LogF(level Level, format string, logs ...any) {
+	self.Log(level, fmt.Sprintf(format, logs...))
 }
 
 // Log 记录指定级别的日志
@@ -184,101 +165,41 @@ func (self *loggerManager) LogF(level Level, format string, log ...any) {
 // 参数:
 //   - level Level: 日志级别
 //   - logs ...any: 日志内容
-func (self *loggerManager) Log(level Level, logs ...any) {
-	// DEBUG
-	if self.DEBUG == true {
-		if self.console_logger == nil {
-			// 初始化控制台日志
-			self.console_logger = &Logger{
-				Name:            "Debug-console",
-				Path:            "",
-				Level:           []Level{DEBUG, INFO, WARNING, ERROR},
-				Logger:          log.New(os.Stdout, "", 0),
-				File:            nil,
-				CreateTime:      GetTime(),
-				SPLIT_SIZE:      0,
-				SPLIT_TIME:      "",
-				GetFileFunc:     nil,
-				SplitLoggerFunc: nil,
-				LoggerPrint:     defaultLoggerPrint,
-			}
-			self.console_logger.Logger.SetFlags(0)
-		}
-		self.console_logger.lock.Lock()
-		self.console_logger.LoggerPrint(self.console_logger, level, logs...)
-		self.console_logger.lock.Unlock()
-	} else if self.console_logger != nil {
-		self.console_logger = nil
+func (self *Logger) Log(level Level, logs ...any) {
+	// DEBUG 模式下所有日志都输出到控制台
+	if Settings.DEBUG == true {
+		// 初始化控制台日志
+		consoleLogger = getConsoleLogger()
+		consoleLogger.lock.Lock()
+		consoleLogger.Print(consoleLogger, level, logs...)
+		consoleLogger.lock.Unlock()
+	} else {
+		consoleLogger = nil
 	}
 
-	// 输出到所有符合的日志中
-	for _, logger := range self.loggers {
-		if !isLevel(logger, level) {
-			continue
-		}
-		logger.lock.Lock()
-		if logger.LoggerPrint != nil {
-			logger.LoggerPrint(logger, level, logs...) // 调用自定义输出
-		} else {
-			defaultLoggerPrint(logger, level, logs...) // 调用默认输出
-		}
-		logger.lock.Unlock()
-	}
+	self.lock.Lock()
+	self.Print(self, level, logs...)
+	self.lock.Unlock()
 }
 
-// Name 获取任务名称
-func (self *loggerManager) Name() string {
-	nameMsg := i18n.T("log.split_logger")
-	return nameMsg
-}
-
-// OnStartup 日志切割管理协程
+// Print 默认日志打印格式化函数
 //
 // 参数:
-//   - ctx context.Context: 上下文对象，用于控制协程退出
-//   - wg *sync.WaitGroup: 等待组，用于同步协程
-func (self *loggerManager) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			self.splitLogger()
-			time.Sleep(1 * time.Second)
-		}
-	}
-}
-
-// splitLogger 日志切割管理协程
-func (self *loggerManager) splitLogger() {
-	var err error
-	for _, logger := range self.loggers {
-		err = checkSplitLoggerFunc(logger)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-// isLevel 是否为当前日志器的日志等级
-func isLevel(logger *Logger, level Level) bool {
-	for _, loggerLever := range logger.Level {
-		if level == loggerLever || level == meta {
-			return true
-		}
-	}
-	return false
-}
-
-// defaultLoggerPrint 默认日志打印格式化函数
-//
-// 参数:
-//   - loggerManager *Logger: 日志器
+//   - logger *Logger: 日志器
 //   - level Level: 日志级别
 //   - logs ...any: 日志内容
-func defaultLoggerPrint(logger *Logger, level Level, logs ...any) {
+func (self *Logger) Print(logger *Logger, level Level, logs ...any) {
+	if self.Logger == nil {
+		invalidObjectMsg := i18n.T("log.invalid_object")
+		panic(invalidObjectMsg)
+	}
+
+	// 自定义日志输出
+	if self.PrintFunc != nil {
+		self.PrintFunc(self, level, logs...)
+		return
+	}
+
 	timeStr := fmt.Sprintf("[%v]", GetTime().Format(time.DateTime))
 	if level != "" {
 		timeStr += fmt.Sprintf(" %v", level)
@@ -287,37 +208,36 @@ func defaultLoggerPrint(logger *Logger, level Level, logs ...any) {
 	logger.Logger.Println(logs...)
 }
 
-// checkSplitLoggerFunc 检查是否需要进行日志切割
-//
-// 参数:
-//   - metaLogger *Logger: 日志器
+// CheckSplit 检查是否需要进行日志切割
 //
 // 返回:
 //   - error: 检查过程中的错误信息
-func checkSplitLoggerFunc(metaLogger *Logger) error {
+func (self *Logger) CheckSplit() error {
+	if self.File == nil {
+		invalidFileMsg := i18n.T("log.invalid_file")
+		return errors.New(invalidFileMsg)
+	}
+
 	var err error
 	nowTime := GetTime()
 	isSplit := false
-	if metaLogger.SPLIT_TIME != "" {
-		if metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME) != nowTime.Format(metaLogger.SPLIT_TIME) {
+	if self.SplitTime != "" {
+		if self.CreateTime.Format(self.SplitTime) != nowTime.Format(self.SplitTime) {
 			isSplit = true
 		}
 	}
-	if isSplit == false && metaLogger.SPLIT_SIZE != 0 {
-		if metaLogger.File == nil {
-			return nil
-		}
-		fileInfo, err := metaLogger.File.Stat()
+	if isSplit == false && self.SplitSize != 0 {
+		fileInfo, err := self.File.Stat()
 		if err != nil {
 			splitLogStatErrorMsg := i18n.T("log.split_log_stat_error", map[string]any{
-				"name": metaLogger.Name,
+				"name": self.Name,
 				"err":  err,
 			})
 			panic(splitLogStatErrorMsg)
 			return nil
 		}
 		fileSize := fileInfo.Size()
-		if metaLogger.SPLIT_SIZE <= fileSize {
+		if self.SplitSize <= fileSize {
 			isSplit = true
 		}
 	}
@@ -325,37 +245,39 @@ func checkSplitLoggerFunc(metaLogger *Logger) error {
 		return nil
 	}
 
-	metaLogger.lock.Lock()
-	defer metaLogger.lock.Unlock()
-
-	_ = metaLogger.File.Close() // 关闭旧的文件对象
-	var file *os.File
-	if metaLogger.SplitLoggerFunc != nil {
-		file, err = metaLogger.SplitLoggerFunc(metaLogger)
-		if err != nil {
-			return err
-		}
-	} else {
-		file, err = defaultSplitLoggerFunc(metaLogger)
-		if err != nil {
-			return err
-		}
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	file, err := self.SplitLogger()
+	if err != nil {
+		return err
 	}
-	metaLogger.File = file                       // 更新日志文件对象
-	metaLogger.Logger.SetOutput(metaLogger.File) // 设置新的输出文件对象
-	metaLogger.CreateTime = nowTime              // 更新日志文件时间
+	if file != nil {
+		self.File = file                 // 更新日志文件对象
+		self.Logger.SetOutput(self.File) // 设置新的输出文件对象
+		self.CreateTime = nowTime        // 更新日志文件时间
+	}
 	return nil
 }
 
-// defaultSplitLoggerFunc 默认日志切割实现
-//
-// 参数:
-//   - metaLogger *Logger: 日志器
+// SplitLogger 默认日志切割实现
 //
 // 返回:
 //   - *os.File: 新的日志文件对象
 //   - error: 切割过程中的错误信息
-func defaultSplitLoggerFunc(metaLogger *Logger) (*os.File, error) {
+func (self *Logger) SplitLogger() (*os.File, error) {
+	if self.File == nil {
+		invalidFileMsg := i18n.T("log.invalid_file")
+		return nil, errors.New(invalidFileMsg)
+	}
+
+	// 关闭旧的文件对象
+	_ = self.File.Close()
+
+	// 自定义日志切割
+	if self.SplitLoggerFunc != nil {
+		return self.SplitLoggerFunc(self)
+	}
+
 	var (
 		fileName string
 		baseName string
@@ -364,8 +286,8 @@ func defaultSplitLoggerFunc(metaLogger *Logger) (*os.File, error) {
 		err      error
 	)
 
-	fileName = filepath.Base(metaLogger.Path)
-	fileDir = filepath.Dir(metaLogger.Path)
+	fileName = filepath.Base(self.Path)
+	fileDir = filepath.Dir(self.Path)
 	for i := len(fileName) - 1; i >= 0 && !os.IsPathSeparator(fileName[i]); i-- {
 		if fileName[i] == '.' {
 			baseName = fileName[:i]
@@ -374,43 +296,46 @@ func defaultSplitLoggerFunc(metaLogger *Logger) (*os.File, error) {
 		}
 	}
 	// 自动加 _n
-	oldFilePath := filepath.Join(fileDir, fmt.Sprintf("%v_%v%v", baseName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), fileExt))
+	oldFilePath := filepath.Join(fileDir, fmt.Sprintf("%v_%v%v", baseName, self.CreateTime.Format(self.SplitTime), fileExt))
 	_, err = os.Stat(oldFilePath)
 	for idx := 1; err == nil || os.IsNotExist(err) == false; idx++ {
-		oldFilePath = filepath.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", baseName, metaLogger.CreateTime.Format(metaLogger.SPLIT_TIME), idx, fileExt))
+		oldFilePath = filepath.Join(fileDir, fmt.Sprintf("%v_%v_%v%v", baseName, self.CreateTime.Format(self.SplitTime), idx, fileExt))
 		_, err = os.Stat(oldFilePath)
 	}
-	err = os.Rename(metaLogger.Path, oldFilePath)
+	err = os.Rename(self.Path, oldFilePath)
 	if err != nil {
 		splitLogReNameErrorMsg := i18n.T("log.split_log_rename_error", map[string]any{
-			"name": metaLogger.Name,
+			"name": self.Name,
 			"err":  err,
 		})
 		return nil, errors.New(splitLogReNameErrorMsg)
 	}
-
-	if metaLogger.GetFileFunc != nil {
-		return metaLogger.GetFileFunc(metaLogger.Path)
-	}
 	// 初始化新的文件对象
-	return defaultGetFileFunc(metaLogger.Path)
+	return self.GetFile()
 }
 
-// defaultGetFileFunc 默认文件创建函数
-//
-// 参数:
-//   - filePath string: 文件路径
+// GetFile 默认文件创建函数
 //
 // 返回:
 //   - *os.File: 文件对象
 //   - error: 创建过程中的错误信息
-func defaultGetFileFunc(filePath string) (*os.File, error) {
+func (self *Logger) GetFile() (*os.File, error) {
+	if self.Path == "" {
+		invalidPathMsg := i18n.T("log.invalid_path")
+		return nil, errors.New(invalidPathMsg)
+	}
+
+	// 自定义文件创建
+	if self.GetFileFunc != nil {
+		return self.GetFileFunc(self.Path)
+	}
+
 	var file *os.File
 	var err error
 
-	_, err = os.Stat(filePath)
+	_, err = os.Stat(self.Path)
 	if os.IsNotExist(err) { // 不存在则创建
-		file, err = os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		file, err = os.OpenFile(self.Path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			return nil, err
 		}
@@ -418,10 +343,65 @@ func defaultGetFileFunc(filePath string) (*os.File, error) {
 		return nil, err
 	} else {
 		// 文件存在，打开文件
-		file, err = os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0755)
+		file, err = os.OpenFile(self.Path, os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return file, nil
+}
+
+// StartupName 启动任务名称
+//
+// 返回:
+//   - string: 启动任务名称
+func (self *Logger) StartupName() string {
+	return fmt.Sprintf("日志切割-%v", self.Name)
+}
+
+// OnStartup 日志切割管理协程
+//
+// 参数:
+//   - ctx context.Context: 上下文对象，用于控制协程退出
+//   - wg *sync.WaitGroup: 等待组，用于同步协程
+func (self *Logger) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done() // 确保 goroutine 完成时减少 waitGroup 计数
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			err := self.CheckSplit()
+			if err != nil {
+				consoleLogger.Error(err)
+				panic(err)
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}
+}
+
+var consoleLogger *Logger
+
+// 默认日志
+func getConsoleLogger() *Logger {
+	if consoleLogger != nil {
+		return consoleLogger
+	}
+	// 初始化控制台日志
+	consoleLogger = &Logger{
+		Name:            "Debug-console",
+		Path:            "",
+		Logger:          log.New(os.Stdout, "", 0),
+		File:            nil,
+		SplitSize:       0,
+		SplitTime:       "",
+		CreateTime:      GetTime(),
+		PrintFunc:       nil,
+		GetFileFunc:     nil,
+		SplitLoggerFunc: nil,
+	}
+	consoleLogger.Logger.SetFlags(0)
+	return consoleLogger
 }

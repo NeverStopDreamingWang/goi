@@ -55,7 +55,6 @@
     "value_invalid": "\"{{ .name }}\" 的类型无效"
   },
   "log": {
-    "split_logger": "日志切割",
     "invalid_path": "Path 为无效的: \"\"\n",
     "invalid_level": "Level 为无效的 []\n",
     "invalid_file": "File 为无效的 nil\n",

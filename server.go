@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -19,20 +20,20 @@ import (
 // Http 服务
 var Settings = newSettings()
 var Cache = newCache()
-var Log = newLoggerManager()
+var Log = NewLogger(filepath.Join(Settings.BASE_DIR, "logs", "server.log"))
 var Validator = newValidator()
 
 var serverChan = make(chan os.Signal, 1)
 
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
-	startTime *time.Time     // 启动时间
-	server    http.Server    // net/http 服务
-	Router    *Router        // 路由
-	Settings  *settings      // 设置
-	Cache     *cache         // 缓存
-	Log       *loggerManager // 日志
-	Validator *validator     // 验证器
+	startTime *time.Time  // 启动时间
+	server    http.Server // net/http 服务
+	Router    *Router     // 路由
+	Settings  *settings   // 设置
+	Cache     *cache      // 缓存
+	Log       *Logger     // 日志
+	Validator *validator  // 验证器
 }
 
 // 创建一个 Http 服务
@@ -53,13 +54,13 @@ func (engine *Engine) RunServer() {
 	startedMsg := i18n.T("server.started")
 	engine.Log.Log(meta, startedMsg)
 
-	if engine.Log.DEBUG == true {
-		goiVersionMsg := i18n.T("server.goi_version", map[string]any{
-			"version": version,
-		})
-		engine.Log.Log(meta, goiVersionMsg)
-	}
+	// goi 版本
+	goiVersionMsg := i18n.T("server.goi_version", map[string]any{
+		"version": version,
+	})
+	engine.Log.Log(meta, goiVersionMsg)
 
+	// 启动时间
 	startTime := GetTime()
 	engine.startTime = &startTime
 	startTimeMsg := i18n.T("server.start_time", map[string]any{
@@ -67,8 +68,10 @@ func (engine *Engine) RunServer() {
 	})
 	engine.Log.Log(meta, startTimeMsg)
 
-	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Log.DEBUG))
+	// DEBUG
+	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Settings.DEBUG))
 
+	// 时区
 	if engine.Settings.GetTimeZone() != "" {
 		currentTimeZoneMsg := i18n.T("server.current_time_zone", map[string]any{
 			"time_zone": engine.Settings.GetTimeZone(),
@@ -76,14 +79,13 @@ func (engine *Engine) RunServer() {
 		engine.Log.Log(meta, currentTimeZoneMsg)
 	}
 
-	for _, logger := range engine.Log.loggers {
-		logInfoMsg := i18n.T("server.log_info", map[string]any{
-			"name":       logger.Name,
-			"split_size": FormatBytes(logger.SPLIT_SIZE),
-			"split_time": logger.SPLIT_TIME,
-		})
-		engine.Log.Log(meta, logInfoMsg)
-	}
+	// 全局默认日志
+	logInfoMsg := i18n.T("server.log_info", map[string]any{
+		"name":       engine.Log.Name,
+		"split_size": FormatBytes(engine.Log.SplitSize),
+		"split_time": engine.Log.SplitTime,
+	})
+	engine.Log.Log(meta, logInfoMsg)
 
 	// 初始化缓存
 	engine.Cache.initCache()

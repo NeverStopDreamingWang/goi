@@ -25,6 +25,7 @@ type SSL struct {
 
 // 项目设置
 type settings struct {
+	DEBUG        bool                 // 是否开启 DEBUG 模式
 	NET_WORK     string               // 网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	BIND_ADDRESS string               // 监听地址
 	PORT         uint16               // 服务端口
@@ -49,6 +50,7 @@ type settings struct {
 func newSettings() *settings {
 	i18n.SetLocalize(string(ZH_CN))
 	return &settings{
+		DEBUG:        true,
 		NET_WORK:     "tcp",
 		BIND_ADDRESS: "127.0.0.1",
 		PORT:         8080,
