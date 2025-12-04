@@ -92,14 +92,23 @@ func (values Params) ParseParams(paramsDest any) ValidationError {
 		}
 
 		fieldName = fieldType.Tag.Get("name")
-		if fieldName == "" || fieldName == "-" {
+		fieldName, _, _ = strings.Cut(fieldName, ",")
+		if fieldName == "-" {
+			continue
+		}
+		if fieldName == "" {
 			// 无 name 标签则尝试获取 json 标签
 			fieldName = fieldType.Tag.Get("json")
-			if fieldName == "" || fieldName == "-" {
-				// 无 json 标签则使用字段名小写
-				fieldName = strings.ToLower(fieldType.Name) // 字段名
+			fieldName, _, _ = strings.Cut(fieldName, ",")
+			if fieldName == "-" {
+				continue
 			}
 		}
+		if fieldName == "" {
+			// 无 json 标签则使用字段名小写
+			fieldName = strings.ToLower(fieldType.Name) // 字段名
+		}
+
 		validator_name = fieldType.Tag.Get("type") // 类型
 		if validator_name == "" || validator_name == "-" {
 			// 无 type 标签，跳过验证读取
