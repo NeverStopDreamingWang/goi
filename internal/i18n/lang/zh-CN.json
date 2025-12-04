@@ -52,7 +52,7 @@
     "params_is_not_struct_ptr": "\"{{ .name }}\" 参数必须是结构体指针类型",
     "params_is_not_can_set": "\"{{ .name }}\" 是不可赋值的值",
     "params_type_is_unsupported": "不支持的变量类型",
-    "value_invalid": "\"{{ .name }}\" 的类型无效"
+    "value_invalid": "值 \"{{ .value }}\" 的类型无效，期望类型：{{ .type }}"
   },
   "log": {
     "invalid_path": "Path 为无效的: \"\"\n",
