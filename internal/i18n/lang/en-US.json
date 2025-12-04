@@ -52,7 +52,7 @@
     "params_is_not_struct_ptr": "\"{{ .name }}\" The parameter must be a structure pointer type",
     "params_is_not_can_set": "\"{{ .name }}\" is a value that cannot be assigned",
     "params_type_is_unsupported": "Unsupported variable types",
-    "value_invalid": "The type of \"{{ .name }}\" is invalid"
+    "value_invalid": "Value \"{{ .value }}\" has invalid type, expected: {{ .type }}"
   },
   "log": {
     "invalid_path": "Path is invalid: \"\"\n",

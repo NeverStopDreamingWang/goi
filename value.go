@@ -17,6 +17,17 @@ import (
 //   - destValue reflect.Value: 目标值
 //   - source any: 源值
 func SetValue(destValue reflect.Value, source any) error {
+	sourceValue := reflect.ValueOf(source)
+	if !sourceValue.IsValid() {
+		return nil
+	}
+	if sourceValue.Kind() == reflect.Ptr {
+		if sourceValue.IsNil() {
+			return nil
+		}
+		sourceValue = sourceValue.Elem()
+	}
+
 	// 处理指针类型
 	if destValue.Kind() == reflect.Ptr {
 		// 检查字段值是否是零值
@@ -34,29 +45,19 @@ func SetValue(destValue reflect.Value, source any) error {
 		return errors.New(paramsIsNotCanSetMsg)
 	}
 
-	fieldType := destValue.Type()
-	// 处理 nil 值
-	if source == nil {
-		destValue.Set(reflect.Zero(fieldType))
-		return nil
-	}
-
-	sourceValue := reflect.ValueOf(source)
-	if sourceValue.Kind() == reflect.Ptr {
-		// 检查字段值是否是零值
-		if sourceValue.IsNil() {
-			// 如果字段值是零值，则创建一个新的指针对象并设置为该字段的值
-			sourceValue.Set(reflect.New(sourceValue.Type().Elem()))
-		}
-		sourceValue = sourceValue.Elem()
-	}
-
 	sourceType := sourceValue.Type()
+	fieldType := destValue.Type()
 	// 直接类型匹配
 	if sourceType.AssignableTo(fieldType) {
 		destValue.Set(sourceValue)
 		return nil
 	}
+
+	valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
+		"value": source,
+		"type":  fieldType.String(),
+	})
+	valueInvalidErr := errors.New(valueInvalidMsg)
 
 	// 类型转换处理
 	switch fieldType.Kind() {
@@ -67,14 +68,11 @@ func SetValue(destValue reflect.Value, source any) error {
 		case string:
 			boolValue, err := strconv.ParseBool(v)
 			if err != nil {
-				return errors.New(err.Error())
+				return fmt.Errorf("%w\n%v", valueInvalidErr, err)
 			}
 			destValue.SetBool(boolValue)
 		default:
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-				"name": source,
-			})
-			return errors.New(valueInvalidMsg)
+			return valueInvalidErr
 		}
 	case reflect.String:
 		switch v := source.(type) {
@@ -86,49 +84,82 @@ func SetValue(destValue reflect.Value, source any) error {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		switch v := source.(type) {
 		case int, int8, int16, int32, int64:
-			destValue.SetInt(reflect.ValueOf(v).Int())
+			i := reflect.ValueOf(v).Int()
+			if destValue.OverflowInt(i) {
+				return valueInvalidErr
+			}
+			destValue.SetInt(i)
 		case uint, uint8, uint16, uint32, uint64:
-			destValue.SetInt(int64(reflect.ValueOf(v).Uint()))
+			u := reflect.ValueOf(v).Uint()
+			if u > math.MaxInt64 {
+				return valueInvalidErr
+			}
+			i := int64(u)
+			if destValue.OverflowInt(i) {
+				return valueInvalidErr
+			}
+			destValue.SetInt(i)
 		case float32, float64:
-			floatVal := reflect.ValueOf(v).Float()
-			if floatVal > float64(math.MaxInt64) || floatVal < float64(math.MinInt64) {
-				valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-					"name": source,
-				})
-				return errors.New(valueInvalidMsg)
+			f := reflect.ValueOf(v).Float()
+			if f < float64(math.MinInt64) || f > float64(math.MaxInt64) {
+				return valueInvalidErr
 			}
-			destValue.SetInt(int64(floatVal))
+			i := int64(f)
+			if destValue.OverflowInt(i) {
+				return valueInvalidErr
+			}
+			destValue.SetInt(i)
 		case string:
-			intValue, err := strconv.ParseInt(v, 10, fieldType.Bits())
+			i, err := strconv.ParseInt(v, 10, fieldType.Bits())
 			if err != nil {
-				return errors.New(err.Error())
+				return fmt.Errorf("%w\n%v", valueInvalidErr, err)
 			}
-			destValue.SetInt(intValue)
+			if destValue.OverflowInt(i) {
+				return valueInvalidErr
+			}
+			destValue.SetInt(i)
 		default:
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-				"name": source,
-			})
-			return errors.New(valueInvalidMsg)
+			return valueInvalidErr
 		}
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		switch v := source.(type) {
 		case uint, uint8, uint16, uint32, uint64:
-			destValue.SetUint(reflect.ValueOf(v).Uint())
-		case int, int8, int16, int32, int64:
-			destValue.SetUint(uint64(reflect.ValueOf(v).Int()))
-		case float32, float64:
-			destValue.SetUint(uint64(reflect.ValueOf(v).Float()))
-		case string:
-			uintValue, err := strconv.ParseUint(v, 10, fieldType.Bits())
-			if err != nil {
-				return errors.New(err.Error())
+			u := reflect.ValueOf(v).Uint()
+			if destValue.OverflowUint(u) {
+				return valueInvalidErr
 			}
-			destValue.SetUint(uintValue)
+			destValue.SetUint(u)
+		case int, int8, int16, int32, int64:
+			i := reflect.ValueOf(v).Int()
+			if i < 0 {
+				return valueInvalidErr
+			}
+			u := uint64(i)
+			if destValue.OverflowUint(u) {
+				return valueInvalidErr
+			}
+			destValue.SetUint(u)
+		case float32, float64:
+			f := reflect.ValueOf(v).Float()
+			if f < 0 || f > float64(math.MaxUint64) {
+				return valueInvalidErr
+			}
+			u := uint64(f)
+			if destValue.OverflowUint(u) {
+				return valueInvalidErr
+			}
+			destValue.SetUint(u)
+		case string:
+			u, err := strconv.ParseUint(v, 10, fieldType.Bits())
+			if err != nil {
+				return fmt.Errorf("%w\n%v", valueInvalidErr, err)
+			}
+			if destValue.OverflowUint(u) {
+				return valueInvalidErr
+			}
+			destValue.SetUint(u)
 		default:
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-				"name": source,
-			})
-			return errors.New(valueInvalidMsg)
+			return valueInvalidErr
 		}
 	case reflect.Float32, reflect.Float64:
 		switch v := source.(type) {
@@ -141,21 +172,15 @@ func SetValue(destValue reflect.Value, source any) error {
 		case string:
 			floatValue, err := strconv.ParseFloat(v, fieldType.Bits())
 			if err != nil {
-				return errors.New(err.Error())
+				return fmt.Errorf("%w\n%v", valueInvalidErr, err)
 			}
 			destValue.SetFloat(floatValue)
 		default:
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-				"name": source,
-			})
-			return errors.New(valueInvalidMsg)
+			return valueInvalidErr
 		}
 	case reflect.Map:
 		if sourceValue.Kind() != reflect.Map {
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-				"name": source,
-			})
-			return errors.New(valueInvalidMsg)
+			return valueInvalidErr
 		}
 
 		if destValue.IsNil() {
@@ -166,10 +191,7 @@ func SetValue(destValue reflect.Value, source any) error {
 		for _, key := range sourceValue.MapKeys() {
 			// 确保键和值的类型兼容
 			if key.Type().AssignableTo(keyType) == false {
-				valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-					"name": source,
-				})
-				return errors.New(valueInvalidMsg)
+				return valueInvalidErr
 			}
 
 			valueVal := sourceValue.MapIndex(key)
@@ -186,22 +208,30 @@ func SetValue(destValue reflect.Value, source any) error {
 			}
 		}
 		return nil
-	case reflect.Slice, reflect.Array:
+	case reflect.Slice:
 		if sourceValue.Kind() != reflect.Slice && sourceValue.Kind() != reflect.Array {
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-				"name": source,
-			})
-			return errors.New(valueInvalidMsg)
+			return valueInvalidErr
 		}
 
+		destLen := destValue.Len()
+		sourceLen := sourceValue.Len()
+		total := destLen + sourceLen
 		if destValue.IsNil() {
-			// 创建一个新的切片并设置给 destValue
-			newSlice := reflect.MakeSlice(fieldType, sourceValue.Len(), sourceValue.Len())
+			newSlice := reflect.MakeSlice(fieldType, sourceLen, sourceLen)
+			destValue.Set(newSlice)
+		} else if destValue.Cap() < total {
+			// 如果目标切片不为空且容量不足，则创建一个新的切片并复制数据
+			newSlice := reflect.MakeSlice(fieldType, total, total)
+			reflect.Copy(newSlice, destValue)
 			destValue.Set(newSlice)
 		}
+		// 如果目标切片的长度小于总长度，则调整其长度
+		if destValue.Len() < total {
+			destValue.Set(destValue.Slice(0, total))
+		}
 
-		for i := 0; i < sourceValue.Len(); i++ {
-			err := SetValue(destValue.Index(i), sourceValue.Index(i).Interface())
+		for i := 0; i < sourceLen; i++ {
+			err := SetValue(destValue.Index(destLen+i), sourceValue.Index(i).Interface())
 			if err != nil {
 				return err
 			}
@@ -210,23 +240,23 @@ func SetValue(destValue reflect.Value, source any) error {
 	case reflect.Struct:
 		// 处理结构体类型
 		if sourceValue.Kind() != reflect.Map {
-			valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-				"name": source,
-			})
-			return errors.New(valueInvalidMsg)
+			return valueInvalidErr
 		}
 
 		// 处理 map[string]any 类型
 		for i := 0; i < fieldType.NumField(); i++ {
 			structField := destValue.Field(i)
 			fieldName := fieldType.Field(i).Name
-			// 尝试获取 tag 中的 name，如果没有则使用字段名
-			tagName := fieldType.Field(i).Tag.Get("json")
-			if tagName == "" || tagName == "-" {
-				tagName = strings.ToLower(fieldName)
-			}
 			// 先尝试使用 tag name 获取值，如果没有则尝试使用字段名
-			mapValue := sourceValue.MapIndex(reflect.ValueOf(tagName))
+			tagName := fieldType.Field(i).Tag.Get("json")
+			tagName, _, _ = strings.Cut(tagName, ",")
+			if tagName == "-" {
+				continue
+			}
+			var mapValue reflect.Value
+			if tagName != "" {
+				mapValue = sourceValue.MapIndex(reflect.ValueOf(tagName))
+			}
 			if !mapValue.IsValid() {
 				mapValue = sourceValue.MapIndex(reflect.ValueOf(fieldName))
 			}
@@ -240,10 +270,7 @@ func SetValue(destValue reflect.Value, source any) error {
 		}
 		return nil
 	default:
-		valueInvalidMsg := i18n.T("params.value_invalid", map[string]any{
-			"name": source,
-		})
-		return errors.New(valueInvalidMsg)
+		return valueInvalidErr
 	}
 	return nil
 }
