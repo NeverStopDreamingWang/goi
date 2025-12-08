@@ -11,6 +11,14 @@ import (
 	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
+type AnyUnmarshaler interface {
+	UnmarshalAny(value any) error
+}
+
+var (
+	anyUnmarshalerType = reflect.TypeFor[AnyUnmarshaler]()
+)
+
 // SetValue 将 source 赋值给 destValue
 //
 // 参数:
@@ -45,11 +53,29 @@ func SetValue(destValue reflect.Value, source any) error {
 		return errors.New(paramsIsNotCanSetMsg)
 	}
 
+	// 自定义类型处理
+	if destValue.CanInterface() && destValue.Type().Implements(anyUnmarshalerType) {
+		return destValue.Interface().(AnyUnmarshaler).UnmarshalAny(source)
+	}
+	if destValue.CanAddr() {
+		pv := destValue.Addr()
+		if pv.CanInterface() && pv.Type().Implements(anyUnmarshalerType) {
+			return pv.Interface().(AnyUnmarshaler).UnmarshalAny(source)
+		}
+	}
+
 	sourceType := sourceValue.Type()
 	fieldType := destValue.Type()
-	// 直接类型匹配
+
+	// 类型匹配
 	if sourceType.AssignableTo(fieldType) {
 		destValue.Set(sourceValue)
+		return nil
+	}
+
+	// 类型转换
+	if sourceType.ConvertibleTo(fieldType) {
+		destValue.Set(sourceValue.Convert(fieldType))
 		return nil
 	}
 
