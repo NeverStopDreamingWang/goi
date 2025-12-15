@@ -53,7 +53,7 @@ func getComment(field reflect.StructField) string {
 		return fieldComment
 	}
 	fieldType, ok := field.Tag.Lookup("field_type")
-	if !ok {
+	if ok {
 		var commentRe = `(?i)COMMENT\s+['"]([^'"]+)['"]`
 		re := regexp.MustCompile(commentRe)
 		matches := re.FindStringSubmatch(fieldType)
