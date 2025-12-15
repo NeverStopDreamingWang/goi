@@ -73,7 +73,10 @@
     "before_migration_error": "Before migration BeforeHandler error: {{ .err }}\n",
     "migration": {
       "sqlite3": "Migrating {{ .engine }} {{ .name }} table: {{ .tb_name }}...",
-      "mysql": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}..."
+      "mysql": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
+      "postgresql": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
+      "oracle": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
+      "sqlserver": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}..."
     },
     "migration_error": "Migration error: {{ .err }}\n",
     "after_migration": "After migration AfterHandler ...",

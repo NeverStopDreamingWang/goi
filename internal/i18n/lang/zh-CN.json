@@ -73,7 +73,10 @@
     "before_migration_error": "迁移之前 BeforeHandler 错误: {{ .err }}\n",
     "migration": {
       "sqlite3": "正在迁移 {{ .engine }} {{ .name }} 表: {{ .tb_name }}...",
-      "mysql": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}..."
+      "mysql": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}...",
+      "postgresql": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}...",
+      "oracle": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}...",
+      "sqlserver": "正在迁移 {{ .engine }} {{ .name }} 数据库: {{ .db_name }} 表: {{ .tb_name }}..."
     },
     "migration_error": "迁移错误: {{ .err }}\n",
     "after_migration": "迁移之后 AfterHandler...",
