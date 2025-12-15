@@ -63,10 +63,9 @@
     "split_log_rename_error": "Log splitting-[{{ .name }}] Log renaming error: {{ .err }}\n"
   },
   "db": {
-    "transaction_cannot_be_nested_error": "Transactions cannot be nested",
     "databases_not_error": "No \"{{ .name }}\" in DATABASES\n",
-    "register_engine_connect_is_not_nil": "The database engine connection function is nil\n",
-    "register_engine_connect_twice": "Register called twice for Engine connect: \"{{ .name }}\"\n",
+    "register_engine_is_not_nil": "The database engine is nil\n",
+    "register_engine_twice": "Register called twice for Engine: \"{{ .name }}\"\n",
     "engine_not_registered": "Engine not registered: \"{{ .name }}\"\n",
     "engine_type_is_not_match": "Engine type mismatch, want {{ .want_type }}, got {{ .got_type }}\n",
     "select_error": "{{ .engine }} DataBase \"{{ .db_name }}\" Query error: {{ .err }}\n",
@@ -80,6 +79,7 @@
     "after_migration": "After migration AfterHandler ...",
     "after_migration_error": "After migration AfterHandler error: {{ .err }}\n",
     "not_SetModel_error": "Please set SetModel first\n",
+    "transaction_cannot_be_nested_error": "Transactions cannot be nested",
     "field_is_not_error": "{{ .name }} field does not exist\n",
     "where_args_placeholder_error": "The number of arguments does not match the placeholder\n",
     "is_not_ptr": "{{ .name }} is not a pointer type",
