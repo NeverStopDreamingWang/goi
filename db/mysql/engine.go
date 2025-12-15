@@ -732,7 +732,7 @@ func (engine *Engine) Select(queryResult any) error {
 
 			for i, fieldName := range engine.fields {
 				fieldValue := item.FieldByName(fieldName)
-				if !fieldValue.IsValid() {
+				if !fieldValue.IsValid() || !fieldValue.CanAddr() {
 					values[i] = new(any)
 				} else {
 					values[i] = fieldValue.Addr().Interface()
@@ -827,7 +827,7 @@ func (engine *Engine) First(queryResult any) error {
 	if result.Kind() == reflect.Struct {
 		for i, fieldName := range engine.fields {
 			fieldValue := result.FieldByName(fieldName)
-			if !fieldValue.IsValid() {
+			if !fieldValue.IsValid() || !fieldValue.CanAddr() {
 				values[i] = new(any)
 			} else {
 				values[i] = fieldValue.Addr().Interface()
