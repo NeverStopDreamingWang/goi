@@ -38,6 +38,7 @@ func factory(UseDataBases string, database goi.DataBase) db.Engine {
 //
 // 说明:
 //   - 如果 ENGINE 不匹配则 panic
+//   - 需要手动添加 _ "github.com/lib/pq" 包
 func ConnectDatabase(UseDataBases string, database goi.DataBase) *Engine {
 	if database.ENGINE != driverName {
 		engineNotMatchErrorMsg := i18n.T("db.engine_type_is_not_match", map[string]any{
@@ -72,6 +73,7 @@ func ConnectDatabase(UseDataBases string, database goi.DataBase) *Engine {
 // 说明:
 //   - 从全局配置中获取数据库连接信息
 //   - 如果 ENGINE 不匹配则 panic
+//   - 需要手动添加 _ "github.com/lib/pq" 包
 func Connect(UseDataBases string) *Engine {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {

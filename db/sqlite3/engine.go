@@ -69,7 +69,7 @@ func ConnectDatabase(UseDataBases string, database goi.DataBase) *Engine {
 //
 // 说明:
 //   - 从全局配置中获取数据库连接信息
-//   - 如果配置不存在或连接失败则panic
+//   - 如果 ENGINE 不匹配则 panic
 func Connect(UseDataBases string) *Engine {
 	database, ok := goi.Settings.DATABASES[UseDataBases]
 	if !ok {
@@ -105,10 +105,10 @@ func (engine Engine) Name() string {
 	return engine.name
 }
 
-// GetSQL 获取最近一次执行的SQL语句
+// GetSQL 获取最近一次执行的 SQL 语句
 //
 // 返回:
-//   - string: 最近一次执行的SQL语句
+//   - string: 最近一次执行的 SQL 语句
 func (engine Engine) GetSQL() string {
 	return engine.sql
 }
@@ -116,7 +116,7 @@ func (engine Engine) GetSQL() string {
 // 事务执行函数
 type TransactionFunc func(engine *Engine, args ...any) error
 
-// WithTransaction 在事务中执行指定的函数
+// WithTransaction 使用事务执行函数
 //
 // 参数:
 //   - transactionFunc: TransactionFunc func(engine *Engine, args ...any) error 事务执行函数
@@ -126,8 +126,9 @@ type TransactionFunc func(engine *Engine, args ...any) error
 //   - error: 事务执行的错误，发生错误时会自动回滚
 //
 // 说明:
+//   - 使用值接收者，在事务内部会基于当前 Engine 复制一个副本，避免事务内外状态互相干扰
 //   - 不支持嵌套事务，如果当前已在事务中则返回错误
-//   - 事务函数执行失败时自动回滚
+//   - 事务函数执行失败时自动回滚，支持内部 panic，panic 会在回滚后重新抛出
 func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...any) error {
 	if engine.transaction != nil {
 		transactionCannotBeNestedErrorMsg := i18n.T("db.transaction_cannot_be_nested_error")
@@ -160,10 +161,10 @@ func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...an
 	return engine.transaction.Commit()
 }
 
-// Execute 执行SQL语句
+// Execute 执行 SQL 语句
 //
 // 参数:
-//   - query: string SQL语句
+//   - query: string SQL语句，使用 ? 作为占位符，例如: "id = ? AND status IN (?)"
 //   - args: ...any SQL参数值列表
 //
 // 返回:
@@ -180,10 +181,10 @@ func (engine *Engine) Execute(query string, args ...any) (sql.Result, error) {
 	return engine.DB.Exec(query, args...)
 }
 
-// QueryRow 执行查询SQL语句
+// QueryRow 执行查询 SQL 语句
 //
 // 参数:
-//   - query: string SQL查询语句
+//   - query: string SQL查询语句，使用 ? 作为占位符，例如: "id = ? AND status IN (?)"
 //   - args: ...any SQL参数值列表
 //
 // 返回:
@@ -200,10 +201,10 @@ func (engine *Engine) QueryRow(query string, args ...any) *sql.Row {
 	return engine.DB.QueryRow(query, args...)
 }
 
-// Query 执行查询SQL语句
+// Query 执行查询 SQL 语句
 //
 // 参数:
-//   - query: string SQL查询语句
+//   - query: string SQL查询语句，使用 ? 作为占位符，例如: "id = ? AND status IN (?)"
 //   - args: ...any SQL参数值列表
 //
 // 返回:
@@ -272,7 +273,6 @@ func (engine *Engine) Migrate(model Model) {
 		if !ok {
 			fieldName = strings.ToLower(field.Name)
 		}
-
 		columns = append(columns, fmt.Sprintf("  `%v` %v", fieldName, fieldType))
 	}
 
@@ -318,7 +318,7 @@ func (engine *Engine) Migrate(model Model) {
 //
 // 说明:
 //   - 内部方法，用于验证模型是否已设置
-//   - 如果未设置模型则panic
+//   - 如果未设置模型则 panic
 func (engine *Engine) isSetModel() {
 	if engine.model == nil {
 		notSetModelErrorMsg := i18n.T("db.not_SetModel_error")
@@ -329,14 +329,15 @@ func (engine *Engine) isSetModel() {
 // SetModel 设置当前操作的数据模型
 //
 // 参数:
-//   - model: Model 数据模型实例
+//   - model: Model 要设置的数据模型实例
 //
 // 返回:
-//   - *Engine: 当前实例指针，支持链式调用
+//   - *Engine: 当前 Engine 指针，支持链式调用
 //
 // 说明:
-//   - 设置后会重置所有查询条件
-//   - 解析模型的字段信息用于后续操作
+//   - 会重置内部的字段缓存、条件、排序、分组、分页等状态
+//   - 只解析带有 field_type 标签的结构体字段
+//   - 数据库字段名默认使用字段名的小写形式，或由 field_name 标签显式指定
 func (engine *Engine) SetModel(model Model) *Engine {
 	engine.model = model
 	// 获取字段
@@ -372,16 +373,17 @@ func (engine *Engine) SetModel(model Model) *Engine {
 // Fields 指定查询要返回的字段
 //
 // 参数:
-//   - fields: ...string 要查询的字段名列表
+//   - fields: ...string 要查询的字段名列表（模型结构体中的字段名）
 //
 // 返回:
 //   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
 //   - 字段名必须是模型结构体中已定义的字段
-//   - 只返回带有field_type标签的字段
+//   - 只返回带有 field_type 标签的字段，未标记的字段会被忽略
 //   - 字段名大小写不敏感，会自动转换为数据库字段名
-//   - 如果字段不存在则会panic
+//   - 数据库字段名默认使用字段名的小写形式，或由 field_name 标签显式指定
+//   - 如果字段不存在则会 panic
 func (engine Engine) Fields(fields ...string) *Engine {
 	modelType := reflect.TypeOf(engine.model)
 	if modelType.Kind() == reflect.Ptr {
@@ -425,9 +427,9 @@ func (engine Engine) Fields(fields ...string) *Engine {
 //   - error: 插入过程中的错误
 //
 // 说明:
-//   - 调用前必须先通过SetModel设置数据模型
+//   - 调用前必须先通过 SetModel 设置数据模型
 //   - 支持指针和非指针类型的字段值
-//   - 只插入带有field_type标签的字段
+//   - 只插入带有 field_type 标签的字段
 func (engine *Engine) Insert(model Model) (sql.Result, error) {
 	engine.isSetModel()
 
@@ -459,19 +461,19 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 	return engine.Execute(engine.sql, insertValues...)
 }
 
-// Where 设置查询条件
+// Where 构造 WHERE 条件
 //
 // 参数:
-//   - query: string WHERE条件语句
-//   - args: ...any 条件参数值列表
+//   - query: string 条件语句，使用 ? 作为占位符，例如: "id = ? AND status IN (?)"
+//   - args: ...any 对应占位符的参数列表，支持基本类型和切片/数组
 //
 // 返回:
 //   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
-//   - 支持多次调用，条件之间使用AND连接
-//   - 支持参数占位符?自动替换
-//   - 支持 in 切片类型的参数
+//   - 支持多次调用，条件之间使用 AND 连接
+//   - 对切片/数组参数会自动展开为 IN (...) 形式，占位符数量与元素个数一致
+//   - 空切片/数组会被当作普通参数处理，此时生成的 SQL 可能不是预期的 IN () 语义，应在业务层避免传入空集合
 func (engine Engine) Where(query string, args ...any) *Engine {
 	queryParts := strings.Split(query, "?")
 	if len(queryParts)-1 != len(args) {
@@ -518,10 +520,10 @@ func (engine Engine) Where(query string, args ...any) *Engine {
 //   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
-//   - 字段名会自动去除首尾的空格和引号字符
-//   - 字段名会自动添加反引号
+//   - 字段名会被自动去除首尾空格和引号
+//   - 字段名最终会使用 SQLite3 的反引号引用: `column`
 //   - 空字段名会被忽略
-//   - 不传参数时清空分组条件
+//   - 多次调用会覆盖之前的分组设置
 func (engine Engine) GroupBy(groups ...string) *Engine {
 	var groupFields []string
 	for _, field := range groups {
@@ -542,16 +544,16 @@ func (engine Engine) GroupBy(groups ...string) *Engine {
 // OrderBy 设置排序条件
 //
 // 参数:
-//   - orders: ...string 排序规则列表，字段名前加"-"表示降序，否则为升序
+//   - orders: ...string 排序字段列表，支持前缀 "-" 表示倒序，例如: "name", "-created_at"
 //
 // 返回:
 //   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
 //   - 字段名会自动去除首尾的空格和引号字符
-//   - 字段名会自动添加反引号
-//   - 空字段名会被忽略
-//   - 不传参数时清空排序条件
+//   - 不带前缀时使用 ASC 升序，带 "-" 前缀时使用 DESC 降序
+//   - 字段名最终会使用 SQLite3 的反引号引用: `column` ASC/DESC
+//   - 多次调用会覆盖之前的排序设置
 func (engine Engine) OrderBy(orders ...string) *Engine {
 	var orderFields []string
 	for _, order := range orders {
@@ -584,8 +586,8 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 // Page 设置分页参数
 //
 // 参数:
-//   - page: int64 页码，从1开始
-//   - pagesize: int64 每页记录数
+//   - page: int64 页码，从 1 开始
+//   - pageSize: int64 每页记录数
 //
 // 返回:
 //   - int64: 总记录数
@@ -593,10 +595,11 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 页码小于等于0时自动设为1
-//   - 每页记录数小于等于0时设为默认值10
+//   - 页码小于等于 0 时自动设为 1
+//   - 每页记录数小于等于 0 时设为默认值 10
 //   - 总页数根据总记录数和每页记录数计算
-//   - 会自动执行一次COUNT查询获取总记录数
+//   - 会自动执行一次 Count 查询获取总记录数
+//   - SQLite3 使用 LIMIT pageSize OFFSET offset 实现分页
 func (engine *Engine) Page(page int64, pageSize int64) (int64, int64, error) {
 	if page <= 0 {
 		page = 1
@@ -614,16 +617,16 @@ func (engine *Engine) Page(page int64, pageSize int64) (int64, int64, error) {
 // Select 执行查询并将结果扫描到切片中
 //
 // 参数:
-//   - queryResult: []*struct{} 或 []map[string]any 用于接收结果的切片指针
+//   - queryResult: *[]T 或 []*T，用于接收结果的切片指针，其中 T 可以是 struct 或 map 类型
 //
 // 返回:
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 必须传入结构体指针切片或map切片
-//   - 支持指针和非指针类型的字段
-//   - 自动映射数据库字段到结构体字段
-//   - 查询失败时返回错误信息
+//   - 必须传入切片指针，且元素类型为结构体或 map
+//   - 支持指针和非指针类型的结构体元素（[]T / []*T）
+//   - 会根据 SetModel/Fields 解析的字段集合，自动将数据库字段映射到结构体字段或 map 键上
+//   - 查询结束后会检查 rows.Err()，不会静默吞掉迭代过程中的错误
 func (engine *Engine) Select(queryResult any) error {
 	engine.isSetModel()
 
@@ -657,7 +660,6 @@ func (engine *Engine) Select(queryResult any) error {
 	}
 
 	fieldsSQL := strings.Join(engine.field_sql, "`,`")
-
 	engine.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQL, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
@@ -731,15 +733,15 @@ func (engine *Engine) Select(queryResult any) error {
 // First 获取查询结果的第一条记录
 //
 // 参数:
-//   - queryResult: *struct{} 或 map[string]any 用于接收结果的结构体指针或map
+//   - queryResult: *struct{} 或 map[string]any / *map[string]any，用于接收结果的结构体指针或 map
 //
 // 返回:
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 必须传入结构体指针或map
-//   - 自动映射数据库字段到结构体字段
-//   - 无记录时返回sql.ErrNoRows
+//   - 必须传入结构体指针或 map/map 指针
+//   - 自动映射数据库字段到结构体字段或 map 键
+//   - 无记录时返回 nil（不视为错误），调用方可通过业务逻辑判断是否为空
 //   - 查询失败时返回错误信息
 func (engine *Engine) First(queryResult any) error {
 	engine.isSetModel()
@@ -816,15 +818,15 @@ func (engine *Engine) First(queryResult any) error {
 	return nil
 }
 
-// Count 获取符合当前条件的记录总数
+// Count 统计符合当前条件的记记录数
 //
 // 返回:
-//   - int64: 记录总数
+//   - int64: 满足当前 WHERE 条件的记录总数
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 必须先通过SetModel设置数据模型
-//   - 会考虑当前设置的WHERE条件
+//   - 必须先通过 SetModel 设置数据模型
+//   - 会根据当前设置的 WHERE 条件生成 COUNT 语句
 //   - 查询失败时返回0和错误信息
 func (engine *Engine) Count() (int64, error) {
 	engine.isSetModel()
@@ -848,18 +850,17 @@ func (engine *Engine) Count() (int64, error) {
 	return count, nil
 }
 
-// Exists 检查是否存在符合条件的记录
+// Exists 判断是否存在符合条件的记录
 //
 // 返回:
-//   - bool: 是否存在记录
+//   - bool: 是否存在至少一条满足条件的记录
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 必须先通过SetModel设置数据模型
-//   - 会考虑当前设置的WHERE条件
-//   - 使用SELECT 1优化查询性能
-//   - 查询出错时返回false和错误信息
-//   - 无记录时返回false和nil
+//   - 必须先通过 SetModel 设置数据模型
+//   - 会根据当前 WHERE 条件生成 SELECT 1 FROM `table`" ...
+//   - 使用 QueryRow 执行，若返回 sql.ErrNoRows 则视为不存在（false, nil）
+//   - 其他错误会原样返回
 func (engine *Engine) Exists() (bool, error) {
 	engine.isSetModel()
 
@@ -888,17 +889,17 @@ func (engine *Engine) Exists() (bool, error) {
 // Update 更新符合条件的记录
 //
 // 参数:
-//   - model: Model 包含更新数据的模型实例
+//   - model: Model 要更新的数据模型实例
 //
 // 返回:
 //   - sql.Result: 更新操作的结果
 //   - error: 更新过程中的错误
 //
 // 说明:
-//   - 调用前必须先通过SetModel设置数据模型
+//   - 调用前必须先通过 SetModel 设置数据模型
 //   - 只更新非空字段
 //   - 支持指针和非指针类型的字段值
-//   - 会考虑当前设置的WHERE条件
+//   - 会根据当前设置的 WHERE 条件生成 UPDATE 语句
 func (engine *Engine) Update(model Model) (sql.Result, error) {
 	engine.isSetModel()
 
@@ -940,8 +941,9 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 //   - error: 删除过程中的错误
 //
 // 说明:
-//   - 调用前必须先通过SetModel设置数据模型
-//   - 根据当前设置的WHERE条件删除记录
+//   - 调用前必须先通过 SetModel 设置数据模型
+//   - 会根据当前设置的 WHERE 条件生成 DELETE 语句
+//   - 未设置 WHERE 条件时将删除整张表中的所有记录，使用时需谨慎
 func (engine *Engine) Delete() (sql.Result, error) {
 	engine.isSetModel()
 
@@ -954,6 +956,13 @@ func (engine *Engine) Delete() (sql.Result, error) {
 }
 
 // Close 关闭数据库连接
+//
+// 返回:
+//   - error: 关闭连接时发生的错误
+//
+// 说明:
+//   - 内部调用 sql.DB.Close()
+//   - 一般在应用进程退出前框架自动调用注册过的数据库连接
 func (engine *Engine) Close() error {
 	return engine.DB.Close()
 }
