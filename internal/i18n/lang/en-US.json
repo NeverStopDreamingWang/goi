@@ -68,7 +68,7 @@
     "register_engine_twice": "Register called twice for Engine: \"{{ .name }}\"\n",
     "engine_not_registered": "Engine not registered: \"{{ .name }}\"\n",
     "engine_type_is_not_match": "Engine type mismatch, want {{ .want_type }}, got {{ .got_type }}\n",
-    "select_error": "{{ .engine }} DataBase \"{{ .db_name }}\" Query error: {{ .err }}\n",
+    "select_error": "{{ .engine }} \"{{ .name }\" DataBase {{ .db_name }} Query error: {{ .err }}\n",
     "before_migration": "Before migration BeforeHandler ...",
     "before_migration_error": "Before migration BeforeHandler error: {{ .err }}\n",
     "migration": {
