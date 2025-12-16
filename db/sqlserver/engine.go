@@ -513,7 +513,7 @@ func (engine Engine) Where(query string, args ...any) *Engine {
 		}
 
 		if (paramValue.Kind() == reflect.Slice || paramValue.Kind() == reflect.Array) && paramValue.Len() != 0 {
-			placeholders := "(" + strings.Repeat("?,", paramValue.Len()-1) + "?" + ")"
+			placeholders := "(" + strings.TrimRight(strings.Repeat("?,", paramValue.Len()), ",") + ")"
 			queryBuilder.WriteString(placeholders)
 
 			// 将切片/数组元素加入 args
