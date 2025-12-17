@@ -33,7 +33,7 @@ func init() {
 	pgDB := db.Connect[*postgresql.Engine]("default")
 
 	// 迁移模型前清理旧表(如果存在)
-	_, _ = pgDB.Execute("DROP TABLE IF EXISTS \"user_tb\"")
+	_, _ = pgDB.Execute(`DROP TABLE IF EXISTS "user_tb"`)
 
 	// 迁移模型
 	pgDB.Migrate("public", UserModel{})
@@ -51,7 +51,7 @@ func init() {
 
 	pgDB.SetModel(UserModel{})
 	// PostgreSQL 推荐使用 RETURNING 子句获取主键
-	row := pgDB.QueryRow("INSERT INTO \"user_tb\" (\"username\", \"password\", \"create_time\") VALUES (?, ?, ?) RETURNING id", username, password, now)
+	row := pgDB.QueryRow(`INSERT INTO "user_tb" ("username", "password", "create_time") VALUES (?, ?, ?) RETURNING id`, username, password, now)
 	var id int64
 	if err := row.Scan(&id); err != nil {
 		fmt.Println("插入错误:", err)

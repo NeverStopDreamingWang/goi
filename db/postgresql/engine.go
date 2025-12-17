@@ -290,11 +290,11 @@ func (engine *Engine) Migrate(schema string, model Model) {
 		if !ok {
 			fieldName = strings.ToLower(field.Name)
 		}
-		columns = append(columns, fmt.Sprintf("  \"%v\" %v", fieldName, fieldType))
+		columns = append(columns, fmt.Sprintf(`  "%v" %v`, fieldName, fieldType))
 	}
 
 	columnsSQL := strings.Join(columns, ",\n")
-	createSQL := fmt.Sprintf("CREATE TABLE \"%v\".\"%v\" (\n%v\n)", schema, settings.TABLE_NAME, columnsSQL)
+	createSQL := fmt.Sprintf(`CREATE TABLE "%v"."%v" (%v)`, schema, settings.TABLE_NAME, columnsSQL)
 
 	// 创建表
 	if settings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
@@ -474,10 +474,10 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 		}
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, "\",\"")
+	fieldsSQL := strings.Join(engine.field_sql, `","`)
 	valuesSQL := strings.TrimRight(strings.Repeat("?,", len(engine.fields)), ",")
 
-	engine.sql = fmt.Sprintf("INSERT INTO \"%v\" (\"%v\") VALUES (%v)", TableName, fieldsSQL, valuesSQL)
+	engine.sql = fmt.Sprintf(`INSERT INTO "%v" ("%v") VALUES (%v)`, TableName, fieldsSQL, valuesSQL)
 	return engine.Execute(engine.sql, insertValues...)
 }
 
@@ -552,7 +552,7 @@ func (engine Engine) GroupBy(groups ...string) *Engine {
 		if field == "" {
 			continue
 		}
-		groupFields = append(groupFields, fmt.Sprintf("\"%s\"", field))
+		groupFields = append(groupFields, fmt.Sprintf(`"%s"`, field))
 	}
 	if len(groupFields) > 0 {
 		engine.group_sql = fmt.Sprintf(" GROUP BY %s", strings.Join(groupFields, ", "))
@@ -594,7 +594,7 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 			fieldName = order
 			sequence = "ASC"
 		}
-		orderFields = append(orderFields, fmt.Sprintf("\"%s\" %s", fieldName, sequence))
+		orderFields = append(orderFields, fmt.Sprintf(`"%s" %s`, fieldName, sequence))
 	}
 	if len(orderFields) > 0 {
 		engine.order_sql = fmt.Sprintf(" ORDER BY %s", strings.Join(orderFields, ", "))
@@ -680,8 +680,8 @@ func (engine *Engine) Select(queryResult any) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, "\",\"")
-	engine.sql = fmt.Sprintf("SELECT \"%v\" FROM \"%v\"", fieldsSQL, TableName)
+	fieldsSQL := strings.Join(engine.field_sql, `","`)
+	engine.sql = fmt.Sprintf(`SELECT "%v" FROM "%v"`, fieldsSQL, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -782,8 +782,8 @@ func (engine *Engine) First(queryResult any) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, "\",\"")
-	engine.sql = fmt.Sprintf("SELECT \"%v\" FROM \"%v\"", fieldsSQL, TableName)
+	fieldsSQL := strings.Join(engine.field_sql, `","`)
+	engine.sql = fmt.Sprintf(`SELECT "%v" FROM "%v"`, fieldsSQL, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -854,7 +854,7 @@ func (engine *Engine) Count() (int64, error) {
 
 	TableName := engine.model.ModelSet().TABLE_NAME
 
-	engine.sql = fmt.Sprintf("SELECT count(*) FROM \"%v\"", TableName)
+	engine.sql = fmt.Sprintf(`SELECT count(*) FROM "%v"`, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -887,7 +887,7 @@ func (engine *Engine) Exists() (bool, error) {
 
 	TableName := engine.model.ModelSet().TABLE_NAME
 
-	engine.sql = fmt.Sprintf("SELECT 1 FROM \"%v\"", TableName)
+	engine.sql = fmt.Sprintf(`SELECT 1 FROM "%v"`, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -941,13 +941,13 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 			field = field.Elem()
 		}
 		if field.IsValid() {
-			updateFields = append(updateFields, fmt.Sprintf("\"%v\"= ?", fieldSQL))
+			updateFields = append(updateFields, fmt.Sprintf(`"%v"= ?`, fieldSQL))
 			updateValues = append(updateValues, field.Interface())
 		}
 	})
 	fieldsSQL := strings.Join(updateFields, ",")
 
-	engine.sql = fmt.Sprintf("UPDATE \"%v\" SET %v", TableName, fieldsSQL)
+	engine.sql = fmt.Sprintf(`UPDATE "%v" SET %v`, TableName, fieldsSQL)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 		updateValues = append(updateValues, engine.args...)
@@ -969,7 +969,7 @@ func (engine *Engine) Delete() (sql.Result, error) {
 	engine.isSetModel()
 
 	TableName := engine.model.ModelSet().TABLE_NAME
-	engine.sql = fmt.Sprintf("DELETE FROM \"%v\"", TableName)
+	engine.sql = fmt.Sprintf(`DELETE FROM "%v"`, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}

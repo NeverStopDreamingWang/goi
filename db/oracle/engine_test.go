@@ -34,7 +34,7 @@ func init() {
 	oraDB := db.Connect[*oracle.Engine]("oracle_default")
 
 	// 迁移模型前清理旧表(如果存在)
-	_, _ = oraDB.Execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE \"USER_TB\"'; EXCEPTION WHEN OTHERS THEN NULL; END;")
+	_, _ = oraDB.Execute(`BEGIN EXECUTE IMMEDIATE 'DROP TABLE "USER_TB"'; EXCEPTION WHEN OTHERS THEN NULL; END;`)
 
 	// 迁移模型
 	oraDB.Migrate("", UserModel{})
