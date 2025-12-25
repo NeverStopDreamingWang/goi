@@ -308,7 +308,7 @@ func (engine *Engine) Migrate(schema string, model Model) {
 		}
 	}
 
-	migrationModelMsg := i18n.T("db.migration.mysql", map[string]any{
+	migrationModelMsg := i18n.T("db.migration.sqlserver", map[string]any{
 		"engine":  driverName,
 		"name":    engine.name,
 		"db_name": schema,
@@ -474,10 +474,10 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 		}
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, ",")
+	fieldsSQL := strings.Join(engine.field_sql, "],[")
 	valuesSQL := strings.TrimRight(strings.Repeat("?,", len(engine.fields)), ",")
 
-	engine.sql = fmt.Sprintf("INSERT INTO [%v] (%v) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
+	engine.sql = fmt.Sprintf("INSERT INTO [%v] ([%v]) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
 	return engine.Execute(engine.sql, insertValues...)
 }
 
@@ -620,7 +620,8 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 //   - 每页记录数小于等于 0 时设为默认值 10
 //   - 总页数根据总记录数和每页记录数计算
 //   - 会自动执行一次 Count 查询获取总记录数
-//   - SQL Server 使用 OFFSET pageSize ROWS FETCH NEXT offset ROWS ONLY 实现分页
+//   - SQL Server 使用 OFFSET ... ROWS FETCH NEXT ... ROWS ONLY 实现分页
+//   - 注意：SQL Server 的 OFFSET/FETCH 语法必须配合 ORDER BY 使用，请确保调用 OrderBy 方法
 func (engine *Engine) Page(page int64, pageSize int64) (int64, int64, error) {
 	if page <= 0 {
 		page = 1
@@ -680,8 +681,8 @@ func (engine *Engine) Select(queryResult any) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, ",")
-	engine.sql = fmt.Sprintf("SELECT %v FROM [%v]", fieldsSQL, TableName)
+	fieldsSQL := strings.Join(engine.field_sql, "],[")
+	engine.sql = fmt.Sprintf("SELECT [%v] FROM [%v]", fieldsSQL, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -782,8 +783,8 @@ func (engine *Engine) First(queryResult any) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, ",")
-	engine.sql = fmt.Sprintf("SELECT %v FROM [%v]", fieldsSQL, TableName)
+	fieldsSQL := strings.Join(engine.field_sql, "],[")
+	engine.sql = fmt.Sprintf("SELECT [%v] FROM [%v]", fieldsSQL, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}

@@ -250,7 +250,8 @@ func (engine *Engine) Migrate(schema string, model Model) {
 	settings := model.ModelSet()
 
 	// 使用 ALL_TABLES 按 OWNER + TABLE_NAME 检查
-	row := engine.QueryRow("SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER = UPPER(?) AND TABLE_NAME = UPPER(?)", schema, settings.TABLE_NAME)
+	// 使用双引号创建的标识符会保持原始大小写，因此这里不使用 UPPER
+	row := engine.QueryRow("SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER = ? AND TABLE_NAME = ?", schema, settings.TABLE_NAME)
 
 	var exists int
 	err = row.Scan(&exists)
@@ -290,7 +291,7 @@ func (engine *Engine) Migrate(schema string, model Model) {
 	}
 
 	columnsSQL := strings.Join(columns, ",")
-	createSQL := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, strings.ToUpper(schema), strings.ToUpper(settings.TABLE_NAME), columnsSQL)
+	createSQL := fmt.Sprintf(`CREATE TABLE "%s"."%s" (%s)`, schema, settings.TABLE_NAME, columnsSQL)
 
 	// 创建表
 	if settings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
@@ -940,7 +941,7 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 			field = field.Elem()
 		}
 		if field.IsValid() {
-			updateFields = append(updateFields, fmt.Sprintf(`"%v"= ?`, fieldSQL))
+			updateFields = append(updateFields, fmt.Sprintf(`"%v" = ?`, fieldSQL))
 			updateValues = append(updateValues, field.Interface())
 		}
 	})
