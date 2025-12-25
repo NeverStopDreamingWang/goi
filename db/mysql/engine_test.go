@@ -111,10 +111,10 @@ func InitUser() error {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	var (
-		id              int64  = 1
-		username        string = "超级管理员"
-		password        string = "admin"
-		create_Datetime        = goi.GetTime().Format(time.DateTime)
+		id              int64 = 1
+		username              = "超级管理员"
+		password              = "admin"
+		create_Datetime       = goi.GetTime().Format(time.DateTime)
 		err             error
 	)
 
