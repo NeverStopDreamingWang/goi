@@ -239,7 +239,7 @@ func (engine *Engine) Migrate(model Model) {
 	var err error
 	settings := model.ModelSet()
 
-	row := engine.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name =?;", settings.TABLE_NAME)
+	row := engine.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?;", settings.TABLE_NAME)
 
 	var exists int
 	err = row.Scan(&exists)
@@ -275,11 +275,13 @@ func (engine *Engine) Migrate(model Model) {
 		if !ok {
 			fieldName = strings.ToLower(field.Name)
 		}
-		columns = append(columns, fmt.Sprintf("  `%v` %v", fieldName, fieldType))
+		columns = append(columns, fmt.Sprintf(`  "%v" %v`, fieldName, fieldType))
 	}
 
 	columnsSQL := strings.Join(columns, ",\n")
-	createSQL := fmt.Sprintf("CREATE TABLE `%v` (\n%v\n)", settings.TABLE_NAME, columnsSQL)
+	createSQL := fmt.Sprintf(`CREATE TABLE "%v" (
+%v
+)`, settings.TABLE_NAME, columnsSQL)
 	if settings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
 		beforeMigrationMsg := i18n.T("db.before_migration")
 		goi.Log.Info(beforeMigrationMsg)
@@ -456,10 +458,10 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 		}
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, "`,`")
+	fieldsSQL := strings.Join(engine.field_sql, `","`)
 	valuesSQL := strings.TrimRight(strings.Repeat("?,", len(engine.fields)), ",")
 
-	engine.sql = fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
+	engine.sql = fmt.Sprintf(`INSERT INTO "%v" ("%v") VALUES (%v)`, TableName, fieldsSQL, valuesSQL)
 	return engine.Execute(engine.sql, insertValues...)
 }
 
@@ -523,7 +525,7 @@ func (engine Engine) Where(query string, args ...any) *Engine {
 //
 // 说明:
 //   - 字段名会被自动去除首尾空格和引号
-//   - 字段名最终会使用 SQLite3 的反引号引用: `column`
+//   - 字段名最终会使用双引号引用: "column"
 //   - 空字段名会被忽略
 //   - 多次调用会覆盖之前的分组设置
 func (engine Engine) GroupBy(groups ...string) *Engine {
@@ -533,7 +535,7 @@ func (engine Engine) GroupBy(groups ...string) *Engine {
 		if field == "" {
 			continue
 		}
-		groupFields = append(groupFields, fmt.Sprintf("`%s`", field))
+		groupFields = append(groupFields, fmt.Sprintf(`"%s"`, field))
 	}
 	if len(groupFields) > 0 {
 		engine.group_sql = fmt.Sprintf(" GROUP BY %s", strings.Join(groupFields, ", "))
@@ -554,7 +556,7 @@ func (engine Engine) GroupBy(groups ...string) *Engine {
 // 说明:
 //   - 字段名会自动去除首尾的空格和引号字符
 //   - 不带前缀时使用 ASC 升序，带 "-" 前缀时使用 DESC 降序
-//   - 字段名最终会使用 SQLite3 的反引号引用: `column` ASC/DESC
+//   - 字段名最终会使用双引号引用: "column" ASC/DESC
 //   - 多次调用会覆盖之前的排序设置
 func (engine Engine) OrderBy(orders ...string) *Engine {
 	var orderFields []string
@@ -575,7 +577,7 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 			fieldName = order
 			sequence = "ASC"
 		}
-		orderFields = append(orderFields, fmt.Sprintf("`%s` %s", fieldName, sequence))
+		orderFields = append(orderFields, fmt.Sprintf(`"%s" %s`, fieldName, sequence))
 	}
 	if len(orderFields) > 0 {
 		engine.order_sql = fmt.Sprintf(" ORDER BY %s", strings.Join(orderFields, ", "))
@@ -661,8 +663,8 @@ func (engine *Engine) Select(queryResult any) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, "`,`")
-	engine.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQL, TableName)
+	fieldsSQL := strings.Join(engine.field_sql, `","`)
+	engine.sql = fmt.Sprintf(`SELECT "%v" FROM "%v"`, fieldsSQL, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -763,8 +765,8 @@ func (engine *Engine) First(queryResult any) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, "`,`")
-	engine.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQL, TableName)
+	fieldsSQL := strings.Join(engine.field_sql, `","`)
+	engine.sql = fmt.Sprintf(`SELECT "%v" FROM "%v"`, fieldsSQL, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -835,7 +837,7 @@ func (engine *Engine) Count() (int64, error) {
 
 	TableName := engine.model.ModelSet().TABLE_NAME
 
-	engine.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
+	engine.sql = fmt.Sprintf(`SELECT count(*) FROM "%v"`, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -868,7 +870,7 @@ func (engine *Engine) Exists() (bool, error) {
 
 	TableName := engine.model.ModelSet().TABLE_NAME
 
-	engine.sql = fmt.Sprintf("SELECT 1 FROM `%v`", TableName)
+	engine.sql = fmt.Sprintf(`SELECT 1 FROM "%v"`, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}
@@ -925,13 +927,13 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 			field = field.Elem()
 		}
 		if field.IsValid() {
-			updateFields = append(updateFields, fmt.Sprintf("`%v`=?", fieldSQL))
+			updateFields = append(updateFields, fmt.Sprintf(`"%v" = ?`, fieldSQL))
 			updateValues = append(updateValues, field.Interface())
 		}
 	})
 	fieldsSQL := strings.Join(updateFields, ",")
 
-	engine.sql = fmt.Sprintf("UPDATE `%v` SET %v", TableName, fieldsSQL)
+	engine.sql = fmt.Sprintf(`UPDATE "%v" SET %v`, TableName, fieldsSQL)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 		updateValues = append(updateValues, engine.args...)
@@ -953,7 +955,7 @@ func (engine *Engine) Delete() (sql.Result, error) {
 	engine.isSetModel()
 
 	TableName := engine.model.ModelSet().TABLE_NAME
-	engine.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
+	engine.sql = fmt.Sprintf(`DELETE FROM "%v"`, TableName)
 	if len(engine.where_sql) > 0 {
 		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
 	}

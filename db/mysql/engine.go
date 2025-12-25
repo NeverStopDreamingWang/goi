@@ -242,7 +242,7 @@ func (engine *Engine) Migrate(schema string, model Model) {
 	var err error
 	settings := model.ModelSet()
 
-	row := engine.QueryRow("SELECT 1 FROM `information_schema`.`tables` WHERE `table_schema`=? AND `table_name`=?;", schema, settings.TABLE_NAME)
+	row := engine.QueryRow("SELECT 1 FROM `information_schema`.`tables` WHERE `table_schema` = ? AND `table_name` = ?;", schema, settings.TABLE_NAME)
 
 	var exists int
 	err = row.Scan(&exists)
@@ -970,7 +970,7 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 			field = field.Elem()
 		}
 		if field.IsValid() {
-			updateFields = append(updateFields, fmt.Sprintf("`%v`=?", fieldSQL))
+			updateFields = append(updateFields, fmt.Sprintf("`%v` = ?", fieldSQL))
 			updateValues = append(updateValues, field.Interface())
 		}
 	})
