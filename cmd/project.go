@@ -316,7 +316,7 @@ func (self *Task) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
 			goi.Log.Info("任务结束")
 			return
 		case <-ticker.C:
-			// TODO
+			goi.Log.Info("执行任务")
 		}
 	}
 }
@@ -420,16 +420,16 @@ func (validator phoneValidator) Validate(value any) goi.ValidationError {
 		var reStr = ` + "`^(1[3456789]\\d{9})$`" + `
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(valueStr) == false {
-			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%%v", value))
 		}
 	case string:
 		var reStr = ` + "`^(1[3456789]\\d{9})$`" + `
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
-			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%v", value))
+			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%%v", value))
 		}
 	default:
-		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
+		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%%v", value))
 	}
 	return nil
 }
@@ -441,12 +441,12 @@ func (validator phoneValidator) ToGo(value any) (any, goi.ValidationError) {
 	case string:
 		intValue, err := strconv.Atoi(typeValue)
 		if err != nil {
-			return nil, goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%v", value))
+			return nil, goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%%v", value))
 		}
 		return intValue, nil
 	default:
 		// 尝试转换为字符串
-		return fmt.Sprintf("%v", value), nil
+		return fmt.Sprintf("%%v", value), nil
 	}
 }
 
