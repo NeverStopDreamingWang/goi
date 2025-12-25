@@ -762,7 +762,7 @@ func (engine *Engine) Select(queryResult any) error {
 // 说明:
 //   - 必须传入结构体指针或 map/map 指针
 //   - 自动映射数据库字段到结构体字段或 map 键
-//   - 无记录时返回 nil（不视为错误），调用方可通过业务逻辑判断是否为空
+//   - 无记录时返回 sql.ErrNoRows
 //   - 查询失败时返回错误信息
 func (engine *Engine) First(queryResult any) error {
 	engine.isSetModel()
@@ -938,6 +938,9 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 	utils.Zip(engine.fields, engine.field_sql, func(fieldName, fieldSQL string) {
 		field := modelValue.FieldByName(fieldName)
 		if field.Kind() == reflect.Ptr {
+			if field.IsNil() {
+				return
+			}
 			field = field.Elem()
 		}
 		if field.IsValid() {

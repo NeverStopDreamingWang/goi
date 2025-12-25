@@ -11,6 +11,15 @@ import (
 	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
 
+// 预编译的正则表达式
+var (
+	commentRe       = regexp.MustCompile(`(?i)COMMENT\s+['"]([^'"]+)['"]`)
+	autoIncrementRe = regexp.MustCompile(`(?i)AUTO_INCREMENT`)
+	defaultRe       = regexp.MustCompile(`(?i)DEFAULT`)
+	notNullRe       = regexp.MustCompile(`(?i)NOT\s+NULL`)
+	varcharRe       = regexp.MustCompile(`(?i)VARCHAR\((\d+)\)`)
+)
+
 // MySQL Engine Validate 验证器
 // attrs 验证数据
 // partial 是否仅验证提供的非零值字段，零值字段跳过不验证必填选
@@ -54,9 +63,7 @@ func getComment(field reflect.StructField) string {
 	}
 	fieldType, ok := field.Tag.Lookup("field_type")
 	if ok {
-		var commentRe = `(?i)COMMENT\s+['"]([^'"]+)['"]`
-		re := regexp.MustCompile(commentRe)
-		matches := re.FindStringSubmatch(fieldType)
+		matches := commentRe.FindStringSubmatch(fieldType)
 		if len(matches) > 1 {
 			return matches[1]
 		}
@@ -114,28 +121,18 @@ func validateFieldType(fieldType string, fieldValue reflect.Value) error {
 
 // 不允许为空
 func isNotNullValidate(fieldType string) bool {
-	var re *regexp.Regexp
-	var autoIncrementRe = `(?i)AUTO_INCREMENT`
-	re = regexp.MustCompile(autoIncrementRe)
-	if re.MatchString(fieldType) {
+	if autoIncrementRe.MatchString(fieldType) {
 		return false
 	}
-	var defaultRe = `(?i)DEFAULT`
-	re = regexp.MustCompile(defaultRe)
-	if re.MatchString(fieldType) {
+	if defaultRe.MatchString(fieldType) {
 		return false
 	}
-
-	var notNullRe = `(?i)NOT\s+NULL`
-	re = regexp.MustCompile(notNullRe)
-	return re.MatchString(fieldType)
+	return notNullRe.MatchString(fieldType)
 }
 
 // varchar 类型
 func varcharValidate(fieldType string, value any) error {
-	var VarcharRe = `(?i)VARCHAR\((\d+)\)`
-	re := regexp.MustCompile(VarcharRe)
-	matches := re.FindStringSubmatch(fieldType)
+	matches := varcharRe.FindStringSubmatch(fieldType)
 	if len(matches) < 2 {
 		return nil
 	}
