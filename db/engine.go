@@ -18,7 +18,6 @@ type Engine interface {
 	Execute(query string, args ...any) (sql.Result, error)
 	QueryRow(query string, args ...any) *sql.Row
 	Query(query string, args ...any) (*sql.Rows, error)
-	Close() error
 }
 
 type ConnectFunc func(UseDataBases string, database goi.DataBase) Engine
