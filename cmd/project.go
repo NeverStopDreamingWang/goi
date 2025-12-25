@@ -481,15 +481,12 @@ func newDefaultLog() *goi.Logger {
 
 	var err error
 
-	path := filepath.Join(Server.Settings.BASE_DIR, "logs", "server.log")
-	OutDir := filepath.Dir(path) // 检查目录
-	_, err = os.Stat(OutDir)
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(OutDir, 0755)
-		if err != nil {
-			panic(fmt.Sprintf("创建日志目录错误: %%v", err))
-		}
+	LogDir := filepath.Join(Server.Settings.BASE_DIR, "logs") // 检查目录
+	err = os.MkdirAll(LogDir, 0644)
+	if err != nil {
+		panic(fmt.Sprintf("创建日志目录错误: %%v", err))
 	}
+	path := filepath.Join(LogDir, "server.log")
 
 	logger := &goi.Logger{
 		Name:       "默认日志",
