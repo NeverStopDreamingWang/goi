@@ -971,15 +971,3 @@ func (engine *Engine) Delete() (sql.Result, error) {
 	}
 	return engine.Execute(engine.sql, engine.args...)
 }
-
-// Close 关闭数据库连接
-//
-// 返回:
-//   - error: 关闭连接时发生的错误
-//
-// 说明:
-//   - 内部调用 sql.DB.Close()
-//   - 一般在应用进程退出前框架自动调用注册过的数据库连接
-func (engine *Engine) Close() error {
-	return engine.DB.Close()
-}
