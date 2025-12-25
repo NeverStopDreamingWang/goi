@@ -1,4 +1,4 @@
-package postgresql_test
+package postgres_test
 
 import (
 	"database/sql"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/NeverStopDreamingWang/goi"
 	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/db/postgresql"
+	"github.com/NeverStopDreamingWang/goi/db/postgres"
 )
 
 // 注意: 要运行这些示例测试，需要本地已启动 PostgreSQL，且修改 DSN 与权限
@@ -30,7 +30,7 @@ func init() {
 	}
 
 	// 初始化测试数据库（示例）
-	pgDB := db.Connect[*postgresql.Engine]("default")
+	pgDB := db.Connect[*postgres.Engine]("default")
 
 	// 迁移模型前清理旧表(如果存在)
 	_, _ = pgDB.Execute(`DROP TABLE IF EXISTS "user_tb"`)
@@ -68,14 +68,14 @@ type UserModel struct {
 	UpdateTime *string `field_name:"update_time" field_type:"TIMESTAMP WITH TIME ZONE" json:"update_time"`
 }
 
-func (userModel UserModel) ModelSet() *postgresql.Settings {
+func (userModel UserModel) ModelSet() *postgres.Settings {
 	encryptFields := []string{
 		"username",
 		"password",
 	}
 
-	modelSettings := &postgresql.Settings{
-		MigrationsHandler: postgresql.MigrationsHandler{
+	modelSettings := &postgres.Settings{
+		MigrationsHandler: postgres.MigrationsHandler{
 			BeforeHandler: nil,
 			AfterHandler:  nil,
 		},
@@ -88,13 +88,13 @@ func (userModel UserModel) ModelSet() *postgresql.Settings {
 }
 
 func ExampleEngine_Migrate() {
-	pgDB := db.Connect[*postgresql.Engine]("default")
+	pgDB := db.Connect[*postgres.Engine]("default")
 	pgDB.Migrate("public", UserModel{})
 	// Output:
 }
 
 func ExampleEngine_Insert() {
-	pgDB := db.Connect[*postgresql.Engine]("default")
+	pgDB := db.Connect[*postgres.Engine]("default")
 
 	username := "test_user"
 	password := "test123456"

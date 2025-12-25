@@ -1,4 +1,4 @@
-package postgresql
+package postgres
 
 import "github.com/NeverStopDreamingWang/goi"
 
