@@ -175,6 +175,10 @@ func (self *Logger) Log(level Level, logs ...any) {
 		consoleLogger.lock.Unlock()
 	} else {
 		consoleLogger = nil
+		// DEBUG 模式关闭时，跳过 DEBUG 级别日志
+		if level == DEBUG {
+			return
+		}
 	}
 
 	self.lock.Lock()
