@@ -43,7 +43,8 @@
   },
   "validator": {
     "validator_not_exists": "The validator \"{{ .name }}\" does not exist",
-    "params_error": "Parameter error: {{ .err }}"
+    "params_error": "Parameter error: {{ .value }}",
+    "time_format_error": "Time format error: {{ .value }}, support format: 2006-01-02 15:04:05 or ISO8601"
   },
   "params": {
     "required_params": "Missing \"{{ .name }}\" required parameter",

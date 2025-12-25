@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/NeverStopDreamingWang/goi/internal/i18n"
 )
@@ -134,6 +135,7 @@ var validates = map[string]Validate{
 	"bool":   &boolValidator{},
 	"int":    &intValidator{},
 	"string": &stringValidator{},
+	"time":   &timeValidator{},
 	"slice":  &sliceValidator{},
 	"map":    &mapValidator{},
 	"slug":   &slugValidator{},
@@ -178,14 +180,14 @@ func (validator boolValidator) Validate(value any) ValidationError {
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-				"err": value,
+				"value": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
 		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-			"err": value,
+			"value": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -217,14 +219,14 @@ func (validator intValidator) Validate(value any) ValidationError {
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-				"err": value,
+				"value": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
 		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-			"err": value,
+			"value": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -252,7 +254,7 @@ func (validator stringValidator) Validate(value any) ValidationError {
 		return nil
 	default:
 		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-			"err": value,
+			"value": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -268,6 +270,59 @@ func (validator stringValidator) ToGo(value any) (any, ValidationError) {
 	}
 }
 
+// time.Time 类型
+// 支持格式: "2006-01-02 15:04:05" 和 ISO8601 (time.RFC3339)
+type timeValidator struct{}
+
+var supportedTimeLayouts = []string{
+	time.RFC3339Nano,
+	time.RFC3339,
+	time.DateTime,
+	time.RFC1123,
+	time.RFC1123Z,
+}
+
+func parseTime(value string) (time.Time, bool) {
+	for _, layout := range supportedTimeLayouts {
+		if t, err := time.Parse(layout, value); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+func (validator timeValidator) Validate(value any) ValidationError {
+	switch typeValue := value.(type) {
+	case string:
+		if _, ok := parseTime(typeValue); !ok {
+			timeFormatErrorMsg := i18n.T("validator.time_format_error", map[string]any{
+				"value": value,
+			})
+			return NewValidationError(http.StatusBadRequest, timeFormatErrorMsg)
+		}
+	default:
+		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
+			"value": value,
+		})
+		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
+	}
+	return nil
+}
+
+func (validator timeValidator) ToGo(value any) (any, ValidationError) {
+	switch typeValue := value.(type) {
+	case string:
+		if t, ok := parseTime(typeValue); ok {
+			return t, nil
+		}
+		timeFormatErrorMsg := i18n.T("validator.time_format_error", map[string]any{
+			"value": value,
+		})
+		return nil, NewValidationError(http.StatusBadRequest, timeFormatErrorMsg)
+	default:
+		return typeValue, nil
+	}
+}
+
 // sliceValidator 切片类型验证器
 type sliceValidator struct{}
 
@@ -278,7 +333,7 @@ func (validator sliceValidator) Validate(value any) ValidationError {
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-				"err": value,
+				"value": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
@@ -293,7 +348,7 @@ func (validator sliceValidator) Validate(value any) ValidationError {
 			return nil
 		}
 		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-			"err": value,
+			"value": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -332,7 +387,7 @@ func (validator mapValidator) Validate(value any) ValidationError {
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-				"err": value,
+				"value": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
@@ -347,7 +402,7 @@ func (validator mapValidator) Validate(value any) ValidationError {
 			return nil
 		}
 		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-			"err": value,
+			"value": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -387,14 +442,14 @@ func (validator slugValidator) Validate(value any) ValidationError {
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-				"err": value,
+				"value": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
 		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-			"err": value,
+			"value": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
@@ -419,14 +474,14 @@ func (validator uuidValidator) Validate(value any) ValidationError {
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-				"err": value,
+				"value": value,
 			})
 			return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 		}
 		return nil
 	default:
 		paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
-			"err": value,
+			"value": value,
 		})
 		return NewValidationError(http.StatusBadRequest, paramsErrorMsg)
 	}
