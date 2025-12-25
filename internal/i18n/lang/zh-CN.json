@@ -43,7 +43,8 @@
   },
   "validator": {
     "validator_not_exists": "验证器 \"{{ .name }}\" 不存在",
-    "params_error": "参数错误: {{ .err }}"
+    "params_error": "参数错误: {{ .value }}",
+    "time_format_error": "时间格式错误：{{ .value }}，支持格式: 2006-01-02 15:04:05 或 ISO8601"
   },
   "params": {
     "required_params": "缺少 \"{{ .name }}\" 必填参数",
