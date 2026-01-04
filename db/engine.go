@@ -20,7 +20,7 @@ type Engine interface {
 	Query(query string, args ...any) (*sql.Rows, error)
 }
 
-type ConnectFunc func(UseDataBases string, database goi.DataBase) Engine
+type ConnectFunc func(UseDataBases string, database *goi.DataBase) Engine
 
 // engineMu 保护 engines
 var engineMu sync.RWMutex
@@ -87,12 +87,13 @@ func Connect[T Engine](UseDataBases string) T {
 		})
 		panic(fmt.Errorf(databasesNotErrorMsg))
 	}
-	return ConnectDatabase[T](UseDataBases, *database)
+	return ConnectDatabase[T](UseDataBases, database)
 }
 
 // ConnectDatabase 连接 ORM 数据库引擎（泛型）
 //
 // 参数:
+//   - UseDataBases: string 数据库配置名称
 //   - database: *goi.DataBase 数据库连接管理器
 //
 // 返回:
@@ -102,7 +103,7 @@ func Connect[T Engine](UseDataBases string) T {
 //   - 根据 DataBase.Engine（应为驱动名字符串）查找注册的引擎工厂
 //   - 使用工厂基于已建立的 *sql.DB 构造具体引擎实例
 //   - 将具体实例断言为 T；若类型不匹配则 panic
-func ConnectDatabase[T Engine](UseDataBases string, database goi.DataBase) T {
+func ConnectDatabase[T Engine](UseDataBases string, database *goi.DataBase) T {
 	connect, ok := GetConnectFunc(database.ENGINE)
 	if !ok {
 		engineNotRegisteredMsg := i18n.T("db.engine_not_registered", map[string]any{
