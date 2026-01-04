@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -20,7 +19,7 @@ import (
 // Http 服务
 var Settings = newSettings()
 var Cache = newCache()
-var Log = NewLogger(filepath.Join(Settings.BASE_DIR, "logs", "server.log"))
+var Log *Logger
 var Validator = newValidator()
 
 var serverChan = make(chan os.Signal, 1)
