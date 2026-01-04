@@ -22,7 +22,7 @@ func init() {
 }
 
 // factory 是 db.Engine 的工厂函数
-func factory(UseDataBases string, database goi.DataBase) db.Engine {
+func factory(UseDataBases string, database *goi.DataBase) db.Engine {
 	return ConnectDatabase(UseDataBases, database)
 }
 
@@ -30,7 +30,7 @@ func factory(UseDataBases string, database goi.DataBase) db.Engine {
 //
 // 参数:
 //   - UseDataBases: string 数据库配置名称
-//   - database: goi.DataBase 数据库连接管理器
+//   - database: *goi.DataBase 数据库连接管理器
 //
 // 返回:
 //   - *Engine: MySQL 数据库操作实例
@@ -38,7 +38,7 @@ func factory(UseDataBases string, database goi.DataBase) db.Engine {
 // 说明:
 //   - 如果 ENGINE 不匹配则 panic
 //   - 需要手动添加 _ "github.com/go-sql-driver/mysql" 包
-func ConnectDatabase(UseDataBases string, database goi.DataBase) *Engine {
+func ConnectDatabase(UseDataBases string, database *goi.DataBase) *Engine {
 	if database.ENGINE != driverName {
 		engineNotMatchErrorMsg := i18n.T("db.engine_type_is_not_match", map[string]any{
 			"want_type": driverName,
@@ -81,7 +81,7 @@ func Connect(UseDataBases string) *Engine {
 		})
 		panic(databasesNotErrorMsg)
 	}
-	return ConnectDatabase(UseDataBases, *database)
+	return ConnectDatabase(UseDataBases, database)
 }
 
 // Engine 结构体用于管理 MySQL 数据库连接和操作
