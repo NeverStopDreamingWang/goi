@@ -277,9 +277,10 @@ type timeValidator struct{}
 var supportedTimeLayouts = []string{
 	time.RFC3339Nano,
 	time.RFC3339,
-	time.DateTime,
 	time.RFC1123,
 	time.RFC1123Z,
+	time.DateTime,
+	time.DateOnly,
 }
 
 func parseTime(value string) (time.Time, bool) {
