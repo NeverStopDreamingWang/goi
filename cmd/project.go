@@ -372,6 +372,7 @@ import (
 	"strconv"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/response"
 )
 
 func init() {
@@ -403,10 +404,10 @@ func (validationErr validationError) Error() string {
 func (validationErr validationError) Response() goi.Response {
 	return goi.Response{
 		Status: http.StatusOK,
-		Data: goi.Data{
+		Data: response.Data{
 			Code:    validationErr.Status,
 			Message: validationErr.Message,
-			Results: nil,
+			Data: nil,
 		},
 	}
 }

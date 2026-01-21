@@ -83,15 +83,16 @@ import (
 	"net/http"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/response"
 )
 
 func Ping(request *goi.Request) any {
 	goi.Log.DebugF("Test1")
 
-	return goi.Data{
+	return response.Data{
 		Code:    http.StatusOK,
 		Message: "Hello World",
-		Results: nil,
+		Data: nil,
 	}
 }
 

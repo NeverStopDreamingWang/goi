@@ -237,6 +237,7 @@ import (
 	"net/http"
 
 	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/response"
 )
 
 // 参数验证
@@ -256,16 +257,16 @@ func listView(request *goi.Request) any {
 		return validationErr.Response()
 	}
 
-	return goi.Data{
+	return response.Data{
 		Code:    http.StatusOK,
 		Message: "",
-		Results: nil,
+		Data: nil,
 	}
 }
 
 // 参数验证
 type createValidParams struct {
-	Name string ` + "`" + `name:"name" type:"string" required:"true"` + "`" + `
+	Name *string ` + "`" + `name:"name" type:"string" required:"true"` + "`" + `
 }
 
 func createView(request *goi.Request) any {
@@ -279,10 +280,10 @@ func createView(request *goi.Request) any {
 		return validationErr.Response()
 	}
 
-	return goi.Data{
+	return response.Data{
 		Code:    http.StatusOK,
 		Message: "创建成功",
-		Results: "",
+		Data: "",
 	}
 }
 
@@ -294,10 +295,10 @@ func retrieveView(request *goi.Request) any {
 		return validationErr.Response()
 	}
 
-	return goi.Data{
+	return response.Data{
 		Code:    http.StatusOK,
 		Message: "",
-		Results: "",
+		Data: "",
 	}
 }
 
@@ -323,10 +324,10 @@ func updateView(request *goi.Request) any {
 		return validationErr.Response()
 	}
 
-	return goi.Data{
+	return response.Data{
 		Code:    http.StatusOK,
 		Message: "修改成功",
-		Results: "",
+		Data: "",
 	}
 }
 
@@ -339,10 +340,10 @@ func deleteView(request *goi.Request) any {
 		return validationErr.Response()
 	}
 
-	return goi.Data{
+	return response.Data{
 		Code:    http.StatusOK,
 		Message: "删除成功",
-		Results: nil,
+		Data: nil,
 	}
 }
 
