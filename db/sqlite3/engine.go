@@ -130,35 +130,34 @@ type TransactionFunc func(engine *Engine, args ...any) error
 // 说明:
 //   - 使用值接收者，在事务内部会基于当前 Engine 复制一个副本，避免事务内外状态互相干扰
 //   - 不支持嵌套事务，如果当前已在事务中则返回错误
-//   - 事务函数执行失败时自动回滚，支持内部 panic，panic 会在回滚后重新抛出
-func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...any) error {
+//   - 事务函数执行失败时自动回滚，支持内部 panic
+func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...any) (err error) {
 	if engine.transaction != nil {
 		transactionCannotBeNestedErrorMsg := i18n.T("db.transaction_cannot_be_nested_error")
 		return errors.New(transactionCannotBeNestedErrorMsg)
 	}
 
 	// 开启事务
-	var err error
 	engine.transaction, err = engine.DB.Begin()
 	if err != nil {
 		return err
 	}
 
 	// 执行事务中的操作
+	panicked := true
 	defer func() {
-		if r := recover(); r != nil {
+		if panicked || err != nil {
 			_ = engine.transaction.Rollback()
-			panic(r)
 		}
 	}()
 
 	// 执行传入的函数
 	err = transactionFunc(&engine, args...)
 	if err != nil {
-		_ = engine.transaction.Rollback()
 		return err
 	}
 
+	panicked = false
 	// 提交事务
 	return engine.transaction.Commit()
 }
