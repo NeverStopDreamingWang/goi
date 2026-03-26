@@ -12,7 +12,7 @@ import (
 
 type TransactionFunc func(engine Engine, args ...any) error
 
-// Engine 结构体用于管理MySQL数据库连接和操作
+// Engine 结构体用于管理`数据库连接和操作
 type Engine interface {
 	Name() string
 	Execute(query string, args ...any) (sql.Result, error)
