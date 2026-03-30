@@ -105,20 +105,28 @@ func (request *Request) BodyParamsParsing(parsing parse.Parsing) Params {
 //
 // 字段:
 //   - ResponseWriter http.ResponseWriter: 标准响应写入器
-//   - StatusCode int: 响应状态码
-//   - Bytes int64: 已写入的字节数
+//   - Status int: HTTP状态码
+//   - Data any: 响应数据
+//   - bytes int64: 已写入的字节数
 //
 // 用于请求日志记录和响应监控
 type ResponseWriter struct {
-	http.ResponseWriter       // 内嵌http.ResponseWriter接口
-	Status              int   // 响应状态码
-	Bytes               int64 // 已写入的字节数
+	http.ResponseWriter     // 内嵌http.ResponseWriter接口
+	Status              int // 响应状态码
+	Data                any // 响应数据
+
+	bytes int64 // 已写入的字节数
+}
+
+// Header 返回响应头
+func (responseWriter *ResponseWriter) Header() http.Header {
+	return responseWriter.ResponseWriter.Header()
 }
 
 // WriteHeader 设置HTTP响应状态码
 //
 // 参数:
-//   - code int: HTTP状态码
+// - code int: HTTP状态码
 func (responseWriter *ResponseWriter) WriteHeader(code int) {
 	responseWriter.Status = code
 	responseWriter.ResponseWriter.WriteHeader(code)
@@ -133,13 +141,16 @@ func (responseWriter *ResponseWriter) WriteHeader(code int) {
 //   - int: 已写入的字节数
 //   - error: 写入过程中的错误信息
 func (responseWriter *ResponseWriter) Write(b []byte) (int, error) {
+	if responseWriter.bytes != 0 {
+		return 0, errors.New("response has been written")
+	}
 	// 若未显式写入状态码，则按约定补写 200
 	if responseWriter.Status == 0 {
 		responseWriter.WriteHeader(http.StatusOK)
 	}
 	// 调用嵌入的http.ResponseWriter的Write方法
 	bytesWritten, err := responseWriter.ResponseWriter.Write(b)
-	responseWriter.Bytes += int64(bytesWritten)
+	responseWriter.bytes += int64(bytesWritten)
 	return bytesWritten, err
 }
 

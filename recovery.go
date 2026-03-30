@@ -11,7 +11,7 @@ func (engine *Engine) recovery(request *Request, responseWriter *ResponseWriter,
 	err := recover()
 	if err != nil {
 		// 如果没有写入响应，则写入 500 错误
-		if responseWriter.Status == 0 && responseWriter.Bytes == 0 {
+		if responseWriter.Status == 0 && responseWriter.bytes == 0 {
 			responseWriter.WriteHeader(http.StatusInternalServerError)
 			_, _ = responseWriter.Write([]byte("Internal Server Error"))
 		}
@@ -26,7 +26,7 @@ func (engine *Engine) recovery(request *Request, responseWriter *ResponseWriter,
 		request.Object.RemoteAddr,
 		request.Object.Method,
 		request.Object.URL.Path,
-		responseWriter.Bytes,
+		responseWriter.bytes,
 		timeMs,
 		request.Object.Proto,
 		responseWriter.Status,
