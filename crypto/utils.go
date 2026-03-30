@@ -76,7 +76,7 @@ func GenerateRandomSecretKey() (string, error) {
 // GenerateRead 生成随机字节序列
 //
 // 参数:
-//   - Bytes []byte: 用于存储随机字节的切片，长度决定生成的字节数
+//   - bytes []byte: 用于存储随机字节的切片，长度决定生成的字节数
 //
 // 返回:
 //   - error: 生成过程中的错误
