@@ -77,7 +77,8 @@
       "mysql": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
       "postgresql": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
       "oracle": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
-      "sqlserver": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}..."
+      "sqlserver": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}...",
+      "kingbase": "Migrating {{ .engine }} {{ .name }} database: {{ .db_name }} table: {{ .tb_name }}..."
     },
     "migration_error": "Migration error: {{ .err }}\n",
     "after_migration": "After migration AfterHandler ...",
