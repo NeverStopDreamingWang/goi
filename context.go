@@ -106,14 +106,12 @@ func (request *Request) BodyParamsParsing(parsing parse.Parsing) Params {
 // 字段:
 //   - ResponseWriter http.ResponseWriter: 标准响应写入器
 //   - Status int: HTTP状态码
-//   - Data any: 响应数据
 //   - bytes int64: 已写入的字节数
 //
 // 用于请求日志记录和响应监控
 type ResponseWriter struct {
 	http.ResponseWriter     // 内嵌http.ResponseWriter接口
 	Status              int // 响应状态码
-	Data                any // 响应数据
 
 	bytes int64 // 已写入的字节数
 }
