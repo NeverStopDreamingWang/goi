@@ -139,13 +139,6 @@ func (responseWriter *ResponseWriter) WriteHeader(code int) {
 //   - int: 已写入的字节数
 //   - error: 写入过程中的错误信息
 func (responseWriter *ResponseWriter) Write(b []byte) (int, error) {
-	if responseWriter.bytes != 0 {
-		return 0, errors.New("response has been written")
-	}
-	// 若未显式写入状态码，则按约定补写 200
-	if responseWriter.Status == 0 {
-		responseWriter.WriteHeader(http.StatusOK)
-	}
 	// 调用嵌入的http.ResponseWriter的Write方法
 	bytesWritten, err := responseWriter.ResponseWriter.Write(b)
 	responseWriter.bytes += int64(bytesWritten)
