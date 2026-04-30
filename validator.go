@@ -330,7 +330,7 @@ type sliceValidator struct{}
 func (validator sliceValidator) Validate(value any) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
-		var reStr = `^(\[.\])$`
+		var reStr = `^(\[.*\])$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
@@ -384,7 +384,7 @@ type mapValidator struct{}
 func (validator mapValidator) Validate(value any) ValidationError {
 	switch typeValue := value.(type) {
 	case string:
-		var reStr = `^(\{.\})$`
+		var reStr = `^(\{.*\})$`
 		re := regexp.MustCompile(reStr)
 		if re.MatchString(typeValue) == false {
 			paramsErrorMsg := i18n.T("validator.params_error", map[string]any{
