@@ -146,6 +146,28 @@ func (responseWriter *ResponseWriter) Write(b []byte) (int, error) {
 	return bytesWritten, err
 }
 
+// Flush 若底层 http.ResponseWriter 支持 http.Flusher 则触发分块刷新，否则静默 no-op
+//
+// 用于流式响应、SSE、长连接等场景，由 RawHandler 视图主动调用
+func (responseWriter *ResponseWriter) Flush() {
+	if f, ok := responseWriter.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// RawHandler 视图函数返回 RawHandler 时，框架不会再对返回值做 json.Marshal 与
+// Content-Length 设置，转而由 fn 自行写入 status / header / body 并按需 flush
+//
+// 适用于：流式响应、SSE、反向代理透传、自定义二进制协议等需要直接操作 ResponseWriter 的场景
+//
+// 参数:
+//   - w *ResponseWriter: 响应写入器
+//   - r *Request: HTTP 请求对象
+//
+// 返回:
+//   - error: 写入过程中的错误信息
+type RawHandler func(w http.ResponseWriter, r *Request) error
+
 // Response 定义处理程序的响应格式
 //
 // 字段:
