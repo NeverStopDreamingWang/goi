@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -165,7 +166,7 @@ func (response *Response) Header() http.Header {
 	return response.headers
 }
 
-func (response *Response) write(request *Request, responseWriter http.ResponseWriter) (int, error) {
+func (response *Response) write(request *Request, responseWriter *ResponseWriter) (int, error) {
 	var err error
 	var dataByte []byte
 	var contentType string
@@ -181,6 +182,9 @@ func (response *Response) write(request *Request, responseWriter http.ResponseWr
 	switch value := response.Data.(type) {
 	case nil:
 		return 0, nil
+	case RawHandler:
+		err = value(responseWriter, request)
+		return int(responseWriter.bytes), err
 	case string:
 		dataByte = []byte(value)
 		contentType = "text/plain"
@@ -211,6 +215,18 @@ func (response *Response) write(request *Request, responseWriter http.ResponseWr
 	case embed.FS:
 		http.ServeFileFS(responseWriter, request.Object, value, request.Object.URL.Path)
 		return 0, nil
+	case io.Reader:
+		// 注意：本分支放在所有具名 reader 类型（*os.File / http.File 等）之后，
+		// 避免它们被 io.Reader 接口吞掉，绕过原有的 ServeContent 处理
+		if closer, ok := value.(io.Closer); ok {
+			defer closer.Close()
+		}
+		if responseWriter.Header().Get(ContentType) == "" {
+			responseWriter.Header().Set(ContentType, "application/octet-stream")
+		}
+		responseWriter.WriteHeader(response.Status)
+		written, copyErr := io.Copy(responseWriter, value)
+		return int(written), copyErr
 	default:
 		dataByte, err = json.Marshal(value)
 		contentType = "application/json"
