@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"path"
 )
 
 // StaticFileView 静态文件视图
@@ -93,13 +92,12 @@ func StaticFileFSView(fileFS fs.FS, defaultPath string) HandlerFunc {
 //
 // 参数:
 //   - dirFS fs.FS: 嵌入式文件系统
-//   - basePath string: 嵌入式文件系统基础路径
 //
 // 说明:
 //   - 需要在路由中包含 <path:fileName> 参数
-//   - 会自动拼接 basePath + fileName 为嵌入文件查找路径
+//   - 以 fileName 作为嵌入文件查找路径
 //   - 生成静态路由的通用 View ，由上层统一处理 Content-Type
-func StaticDirFSView(dirFS fs.FS, basePath string) HandlerFunc {
+func StaticDirFSView(dirFS fs.FS) HandlerFunc {
 	return func(request *Request) any {
 		var fileName string
 		var validationErr ValidationError
@@ -107,6 +105,6 @@ func StaticDirFSView(dirFS fs.FS, basePath string) HandlerFunc {
 		if validationErr != nil {
 			return validationErr.Response()
 		}
-		return FS{FS: dirFS, Name: path.Join(basePath, fileName)}
+		return FS{FS: dirFS, Name: fileName}
 	}
 }
