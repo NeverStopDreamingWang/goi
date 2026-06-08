@@ -2,6 +2,7 @@ package goi
 
 import (
 	"embed"
+	"io/fs"
 	"net/http"
 	"regexp"
 	"strings"
@@ -129,12 +130,13 @@ func (router *Router) Path(path string, desc string, viewSet ViewSet) {
 //   - desc: string 描述
 //   - filePath: string 文件路径
 func (router *Router) StaticFile(path string, desc string, filePath string) {
+	view := StaticFileView(filePath)
 	includeRouter := &Router{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			HEAD: StaticFileView(filePath),
-			GET:  StaticFileView(filePath),
+			HEAD: view,
+			GET:  view,
 		},
 		noRoute:     nil,
 		include:     nil,
@@ -159,12 +161,13 @@ func (router *Router) StaticDir(path string, desc string, dirPath http.Dir) {
 		path = path + "/"
 	}
 	path = path + "<path:fileName>"
+	view := StaticDirView(dirPath)
 	includeRouter := &Router{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			HEAD: StaticDirView(dirPath),
-			GET:  StaticDirView(dirPath),
+			HEAD: view,
+			GET:  view,
 		},
 		noRoute:     nil,
 		include:     nil,
@@ -183,12 +186,13 @@ func (router *Router) StaticDir(path string, desc string, dirPath http.Dir) {
 //   - fileFS: embed.FS 嵌入式文件系统
 //   - defaultPath: string 嵌入文件默认路径
 func (router *Router) StaticFileFS(path string, desc string, fileFS embed.FS, defaultPath string) {
+	view := StaticFileFSView(fileFS, defaultPath)
 	includeRouter := &Router{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			HEAD: StaticFileFSView(fileFS, defaultPath),
-			GET:  StaticFileFSView(fileFS, defaultPath),
+			HEAD: view,
+			GET:  view,
 		},
 		noRoute:     nil,
 		include:     nil,
@@ -209,18 +213,27 @@ func (router *Router) StaticFileFS(path string, desc string, fileFS embed.FS, de
 //
 // 说明:
 //   - path 路径之后自动添加 /<path:fileName> 参数
-//   - 会自动拼接 basePath + fileName 为嵌入文件查找路径
+//   - 以 basePath 作为根锚定嵌入式文件系统，再以 fileName 查找文件
 func (router *Router) StaticDirFS(path string, desc string, dirFS embed.FS, basePath string) {
 	if strings.HasSuffix(path, "/") == false {
 		path = path + "/"
 	}
 	path = path + "<path:fileName>"
+
+	if basePath == "" {
+		basePath = "."
+	}
+	subFS, err := fs.Sub(dirFS, basePath)
+	if err != nil {
+		panic(err)
+	}
+	view := StaticDirFSView(subFS)
 	includeRouter := &Router{
 		path: path,
 		desc: desc,
 		viewSet: ViewSet{
-			HEAD: StaticDirFSView(dirFS, basePath),
-			GET:  StaticDirFSView(dirFS, basePath),
+			HEAD: view,
+			GET:  view,
 		},
 		noRoute:     nil,
 		include:     nil,
