@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"strconv"
@@ -233,6 +234,9 @@ func (response *Response) write(request *Request, responseWriter *ResponseWriter
 		return 0, nil
 	case FS:
 		http.ServeFileFS(responseWriter, request.Object, value.FS, value.Name)
+		return 0, nil
+	case fs.FS:
+		http.ServeFileFS(responseWriter, request.Object, value, request.Object.URL.Path)
 		return 0, nil
 	case embed.FS:
 		http.ServeFileFS(responseWriter, request.Object, value, request.Object.URL.Path)
