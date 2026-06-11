@@ -52,36 +52,36 @@ type ValidationError interface {
 // 返回:
 //   - ValidationError: 验证错误实例
 func NewValidationError(status int, message string, args ...any) ValidationError {
-	if Validator == nil {
+	if Validation == nil {
 		return defaultValidationError{}.NewValidationError(status, message, args...)
 	}
-	return Validator.validation_error.NewValidationError(status, message, args...)
+	return Validation.validationError.NewValidationError(status, message, args...)
 }
 
-// newValidator 创建新的验证器管理器
+// newValidation 创建新的验证管理器
 //
 // 返回:
-//   - *validator: 验证器管理器实例
-func newValidator() *validator {
-	return &validator{
-		validation_error: defaultValidationError{}, // 使用默认参数验证错误
+//   - *validation: 验证管理器实例
+func newValidation() *validation {
+	return &validation{
+		validationError: defaultValidationError{}, // 使用默认参数验证错误
 	}
 }
 
-// validator 验证器管理结构
+// validation 验证管理器结构
 //
 // 字段:
-//   - validation_error ValidationError: 验证错误处理器
-type validator struct {
-	validation_error ValidationError
+//   - validationError ValidationError: 验证错误处理器
+type validation struct {
+	validationError ValidationError
 }
 
 // SetValidationError 设置验证错误处理器
 //
 // 参数:
 //   - validationError ValidationError: 自定义的验证错误处理器
-func (metaValidator *validator) SetValidationError(validationError ValidationError) {
-	metaValidator.validation_error = validationError
+func (v *validation) SetValidationError(validationError ValidationError) {
+	v.validationError = validationError
 }
 
 // defaultValidationError 默认验证错误实现
@@ -115,23 +115,23 @@ func (validationErr defaultValidationError) Response() Response {
 	}
 }
 
-// Validate 验证器接口
+// Validator 验证器接口
 //
 // 方法:
-//   - Validate: 验证方法
+//   - Validator: 验证方法
 //   - ToGo: 将字符串转换为Go值，ToGo 的返回值要与读取字段类型一致
-type Validate interface {
+type Validator interface {
 	Validate(value any) ValidationError
 	ToGo(value any) (any, ValidationError)
 }
 
-// validateMu 保护 validates
-var validateMu sync.RWMutex
+// validatorMu 保护 validators
+var validatorMu sync.RWMutex
 
-// validates 存储验证器映射
+// validators 存储验证器映射
 // key: 验证器名称
 // value: 验证器实例
-var validates = map[string]Validate{
+var validators = map[string]Validator{
 	"bool":   &boolValidator{},
 	"int":    &intValidator{},
 	"string": &stringValidator{},
@@ -142,30 +142,30 @@ var validates = map[string]Validate{
 	"uuid":   &uuidValidator{},
 }
 
-// RegisterValidate 注册自定义验证器
+// RegisterValidator 注册自定义验证器
 //
 // 参数:
 //   - name string: 验证器名称
-//   - validate Validate: 验证器实例
-func RegisterValidate(name string, validate Validate) {
-	validateMu.Lock()
-	defer validateMu.Unlock()
-	validates[name] = validate
+//   - validator Validator: 验证器实例
+func RegisterValidator(name string, v Validator) {
+	validatorMu.Lock()
+	defer validatorMu.Unlock()
+	validators[name] = v
 }
 
-// GetValidate 获取验证器
+// GetValidator 获取验证器
 //
 // 参数:
 //   - name string: 验证器名称
 //
 // 返回:
-//   - Validate: 验证器实例
+//   - Validator: 验证器实例
 //   - bool: 是否存在
-func GetValidate(name string) (Validate, bool) {
-	validateMu.RLock()
-	defer validateMu.RUnlock()
-	validate, ok := validates[name]
-	return validate, ok
+func GetValidator(name string) (Validator, bool) {
+	validatorMu.RLock()
+	defer validatorMu.RUnlock()
+	v, ok := validators[name]
+	return v, ok
 }
 
 // boolValidator 布尔类型验证器

@@ -67,7 +67,7 @@ func (validator emailValidator) ToGo(value any) (any, goi.ValidationError) {
 		// 转换类型，并返回
 		return Email{Address: v}, nil
 	default:
-		// Validate 会拦截返回
+		// Validator 会拦截返回
 		return nil, nil
 	}
 }
@@ -113,16 +113,16 @@ type testParamsValidParams struct {
 	Custom Custom `name:"custom" type:"custom" required:"true"`
 }
 
-// ExampleRegisterValidate 展示如何注册和使用自定义验证器
-func ExampleRegisterValidate() {
+// ExampleRegisterValidator 展示如何注册和使用自定义验证器
+func ExampleRegisterValidator() {
 	// 注册手机号验证器
-	goi.RegisterValidate("phone", phoneValidator{})
+	goi.RegisterValidator("phone", phoneValidator{})
 
 	// 注册邮箱验证器
-	goi.RegisterValidate("email", emailValidator{})
+	goi.RegisterValidator("email", emailValidator{})
 
 	// 注册自定义验证器
-	goi.RegisterValidate("custom", CustomValidator{})
+	goi.RegisterValidator("custom", CustomValidator{})
 
 	var validationErr goi.ValidationError
 
