@@ -1,4 +1,4 @@
-package parse
+package parser
 
 import (
 	"encoding/json"
@@ -18,15 +18,15 @@ var EnableDecoderUseNumber = false
 // keys which do not match any non-ignored, exported fields in the destination.
 var EnableDecoderDisallowUnknownFields = false
 
-var JSON jsonParsing
+var JSON jsonParser
 
-type jsonParsing struct{}
+type jsonParser struct{}
 
-func (jsonParsing) Name() string {
+func (jsonParser) Name() string {
 	return "json"
 }
 
-func (jsonParsing) Parse(request *http.Request) (Params, error) {
+func (jsonParser) Parse(request *http.Request) (Params, error) {
 	var err error
 	params := make(Params)
 

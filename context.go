@@ -12,7 +12,7 @@ import (
 	"strconv"
 
 	"github.com/NeverStopDreamingWang/goi/internal/i18n"
-	"github.com/NeverStopDreamingWang/goi/parse"
+	"github.com/NeverStopDreamingWang/goi/parser"
 )
 
 const ContentType = "Content-Type"
@@ -79,23 +79,23 @@ func (request *Request) QueryParams() Params {
 //   - JSON数据会被解析为any类型
 //   - 如果解析失败会触发panic
 func (request *Request) BodyParams() Params {
-	parsing := parse.GetParsing(request.Object.Header.Get(ContentType))
+	parsing := parser.GetParser(request.Object.Header.Get(ContentType))
 	return request.BodyParamsParsing(parsing)
 }
 
 func (request *Request) BodyParamsJSON() Params {
-	return request.BodyParamsParsing(parse.JSON)
+	return request.BodyParamsParsing(parser.JSON)
 }
 
 func (request *Request) BodyParamsXML() Params {
-	return request.BodyParamsParsing(parse.XML)
+	return request.BodyParamsParsing(parser.XML)
 }
 
 func (request *Request) BodyParamsYAML() Params {
-	return request.BodyParamsParsing(parse.YAML)
+	return request.BodyParamsParsing(parser.YAML)
 }
 
-func (request *Request) BodyParamsParsing(parsing parse.Parsing) Params {
+func (request *Request) BodyParamsParsing(parsing parser.Parser) Params {
 	params, err := parsing.Parse(request.Object)
 	if err != nil {
 		panic(err)
