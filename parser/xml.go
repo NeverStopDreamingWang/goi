@@ -1,4 +1,4 @@
-package parse
+package parser
 
 import (
 	"encoding/xml"
@@ -8,15 +8,15 @@ import (
 const MIME_XML = "application/xml"
 const MIME_XML2 = "text/xml"
 
-var XML xmlParsing
+var XML xmlParser
 
-type xmlParsing struct{}
+type xmlParser struct{}
 
-func (xmlParsing) Name() string {
+func (xmlParser) Name() string {
 	return "xml"
 }
 
-func (xmlParsing) Parse(request *http.Request) (Params, error) {
+func (xmlParser) Parse(request *http.Request) (Params, error) {
 	var err error
 	params := make(Params)
 

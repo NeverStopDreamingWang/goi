@@ -1,4 +1,4 @@
-package parse
+package parser
 
 import (
 	"net/http"
@@ -8,15 +8,15 @@ import (
 
 const MIME_YAML = "application/x-yaml"
 
-var YAML yamlParsing
+var YAML yamlParser
 
-type yamlParsing struct{}
+type yamlParser struct{}
 
-func (yamlParsing) Name() string {
+func (yamlParser) Name() string {
 	return "yaml"
 }
 
-func (yamlParsing) Parse(request *http.Request) (Params, error) {
+func (yamlParser) Parse(request *http.Request) (Params, error) {
 	var err error
 	params := make(Params)
 
