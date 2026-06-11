@@ -20,31 +20,31 @@ import (
 var Settings = newSettings()
 var Cache = newCache()
 var Log *Logger
-var Validator = newValidator()
+var Validation = newValidation()
 
 var serverChan = make(chan os.Signal, 1)
 
 // Engine 实现 ServeHTTP 接口
 type Engine struct {
-	startTime *time.Time  // 启动时间
-	server    http.Server // net/http 服务
-	Router    *Router     // 路由
-	Settings  *settings   // 设置
-	Cache     *cache      // 缓存
-	Log       *Logger     // 日志
-	Validator *validator  // 验证器
+	startTime  *time.Time  // 启动时间
+	server     http.Server // net/http 服务
+	Router     *Router     // 路由
+	Settings   *settings   // 设置
+	Cache      *cache      // 缓存
+	Log        *Logger     // 日志
+	Validation *validation // 验证管理器
 }
 
 // 创建一个 Http 服务
 func NewHttpServer() *Engine {
 	return &Engine{
-		startTime: nil,
-		server:    http.Server{},
-		Router:    newRouter(),
-		Settings:  Settings,
-		Cache:     Cache,
-		Log:       Log,
-		Validator: Validator,
+		startTime:  nil,
+		server:     http.Server{},
+		Router:     newRouter(),
+		Settings:   Settings,
+		Cache:      Cache,
+		Log:        Log,
+		Validation: Validation,
 	}
 }
 

@@ -141,7 +141,7 @@ func (values Params) ParseParams(paramsDest any) ValidationError {
 		}
 
 		// 获取验证器
-		validate, ok := GetValidate(validator_name)
+		validate, ok := GetValidator(validator_name)
 		if !ok {
 			validatorNotExistsMsg := i18n.T("validator.validator_not_exists", map[string]any{
 				"name": validator_name,

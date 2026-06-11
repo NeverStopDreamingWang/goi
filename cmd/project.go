@@ -378,7 +378,7 @@ import (
 func init() {
 	// 注册验证器
 	// 手机号
-	goi.RegisterValidate("phone", phoneValidator{})
+	goi.RegisterValidator("phone", phoneValidator{})
 }
 
 // 自定义参数验证错误
@@ -414,7 +414,7 @@ func (validationErr validationError) Response() goi.Response {
 
 type phoneValidator struct{}
 
-func (validator phoneValidator) Validate(value any) goi.ValidationError {
+func (validator phoneValidator) Validator(value any) goi.ValidationError {
 	switch typeValue := value.(type) {
 	case int:
 		valueStr := strconv.Itoa(typeValue)
