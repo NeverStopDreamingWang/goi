@@ -8,15 +8,15 @@ import (
 
 // 常量定义
 const (
-	// CHARSET 定义了用于生成随机字符串的字符集
+	// Charset 定义了用于生成随机字符串的字符集
 	// 包含小写字母、数字和特殊字符
-	CHARSET = "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)"
+	Charset = "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)"
 
-	// SECRET_KEY_INSECURE_PREFIX 定义密钥的前缀标识
-	SECRET_KEY_INSECURE_PREFIX = "goi-insecure-"
+	// SecretKeyInsecurePrefix 定义密钥的前缀标识
+	SecretKeyInsecurePrefix = "goi-insecure-"
 
-	// SECRET_KEY_MIN_LENGTH 定义了密钥的最小长度要求
-	SECRET_KEY_MIN_LENGTH = 50
+	// SecretKeyMinLength 定义了密钥的最小长度要求
+	SecretKeyMinLength = 50
 )
 
 // GenerateRandomString 生成指定长度的随机字符串
@@ -62,15 +62,15 @@ func GenerateRandomString(length int, allowedChars string) (string, error) {
 //   - error: 生成过程中的错误
 //
 // 生成过程:
-//  1. 使用 CHARSET 字符集生成随机字符串
+//  1. 使用 Charset 字符集生成随机字符串
 //  2. 添加不安全前缀标识
 //  3. 确保密钥长度符合最小长度要求
 func GenerateRandomSecretKey() (string, error) {
-	randomStr, err := GenerateRandomString(SECRET_KEY_MIN_LENGTH, CHARSET)
+	randomStr, err := GenerateRandomString(SecretKeyMinLength, Charset)
 	if err != nil {
 		return "", err
 	}
-	return SECRET_KEY_INSECURE_PREFIX + randomStr, nil
+	return SecretKeyInsecurePrefix + randomStr, nil
 }
 
 // GenerateRead 生成随机字节序列

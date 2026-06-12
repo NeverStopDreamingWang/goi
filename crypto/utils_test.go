@@ -7,7 +7,7 @@ import (
 )
 
 func ExampleGenerateRandomString() {
-	randomStr, err := crypto.GenerateRandomString(16, crypto.CHARSET)
+	randomStr, err := crypto.GenerateRandomString(16, crypto.Charset)
 	if err != nil {
 		fmt.Println("error:", err)
 		return
