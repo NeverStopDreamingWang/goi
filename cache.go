@@ -21,25 +21,25 @@ type ExpirationPolicy uint8
 
 // 缓存淘汰策略
 const (
-	NOEVICTION      EvictPolicy = iota // 直接抛出错误，不淘汰任何已经存在的键
-	ALLKEYS_RANDOM                     // 所有的键 随机移除 key
-	ALLKEYS_LRU                        // 所有的键 移除最近最少使用的 key
-	ALLKEYS_LFU                        // 所有的键 移除最近最不频繁使用的 key
-	VOLATILE_RANDOM                    // 所有设置了过期时间的键 随机移除 key
-	VOLATILE_LRU                       // 所有设置了过期时间的键 移除最近最少使用的 key
-	VOLATILE_LFU                       // 所有设置了过期时间的键 移除最近最不频繁使用的 key
-	VOLATILE_TTL                       // 所有设置了过期时间的键 移除快过期的 key
+	NoEviction     EvictPolicy = iota // 直接抛出错误，不淘汰任何已经存在的键
+	AllKeysRandom                     // 所有的键 随机移除 key
+	AllKeysLRU                        // 所有的键 移除最近最少使用的 key
+	AllKeysLFU                        // 所有的键 移除最近最不频繁使用的 key
+	VolatileRandom                    // 所有设置了过期时间的键 随机移除 key
+	VolatileLRU                       // 所有设置了过期时间的键 移除最近最少使用的 key
+	VolatileLFU                       // 所有设置了过期时间的键 移除最近最不频繁使用的 key
+	VolatileTTL                       // 所有设置了过期时间的键 移除快过期的 key
 )
 
 var evictPolicyNames = map[EvictPolicy]string{
-	NOEVICTION:      "NOEVICTION",
-	ALLKEYS_RANDOM:  "ALLKEYS_RANDOM",
-	ALLKEYS_LRU:     "ALLKEYS_LRU",
-	ALLKEYS_LFU:     "ALLKEYS_LFU",
-	VOLATILE_RANDOM: "VOLATILE_RANDOM",
-	VOLATILE_LRU:    "VOLATILE_LRU",
-	VOLATILE_LFU:    "VOLATILE_LFU",
-	VOLATILE_TTL:    "VOLATILE_TTL",
+	NoEviction:     "NoEviction",
+	AllKeysRandom:  "AllKeysRandom",
+	AllKeysLRU:     "AllKeysLRU",
+	AllKeysLFU:     "AllKeysLFU",
+	VolatileRandom: "VolatileRandom",
+	VolatileLRU:    "VolatileLRU",
+	VolatileLFU:    "VolatileLFU",
+	VolatileTTL:    "VolatileTTL",
 }
 
 // 过期策略
@@ -47,34 +47,34 @@ const (
 	// 默认惰性删除: 在获取某个 key 的时候，检查这个 key 如果设置了过期时间并且过期了，是的话就删除。
 	// 定期删除: 默认每隔 1s 就随机抽取一些设置了过期时间的 key，检查其是否过期，如果有过期就删除。
 	// 定时删除: 某个设置了过期时间的 key，到期后立即删除。
-	PERIODIC  ExpirationPolicy = iota // 定期删除
-	SCHEDULED                         // 定时删除
+	Periodic  ExpirationPolicy = iota // 定期删除
+	Scheduled                         // 定时删除
 
 )
 
 var expirationPolicyNames = map[ExpirationPolicy]string{
-	PERIODIC:  "PERIODIC",
-	SCHEDULED: "SCHEDULED",
+	Periodic:  "Periodic",
+	Scheduled: "Scheduled",
 }
 
 // cache 缓存管理器
 //
 // 字段:
-//   - EVICT_POLICY EvictPolicy: 缓存淘汰策略
-//   - EXPIRATION_POLICY ExpirationPolicy: 过期策略
-//   - MAX_SIZE int64: 缓存最大容量(字节)
-//   - used_size int64: 当前已使用容量
+//   - EvictPolicy EvictPolicy: 缓存淘汰策略
+//   - ExpirationPolicy ExpirationPolicy: 过期策略
+//   - MaxSize int64: 缓存最大容量(字节)
+//   - usedSize int64: 当前已使用容量
 //   - list *list.List: 缓存项双向链表
 //   - dict map[string]*list.Element: 缓存键值映射
 //   - lock sync.RWMutex: 读写锁
 type cache struct {
-	EVICT_POLICY      EvictPolicy
-	EXPIRATION_POLICY ExpirationPolicy
-	MAX_SIZE          int64
-	used_size         int64
-	list              *list.List
-	dict              map[string]*list.Element
-	lock              sync.RWMutex
+	EvictPolicy      EvictPolicy
+	ExpirationPolicy ExpirationPolicy
+	MaxSize          int64
+	usedSize         int64
+	list             *list.List
+	dict             map[string]*list.Element
+	lock             sync.RWMutex
 }
 
 // cacheItems 缓存项
@@ -103,13 +103,13 @@ type cacheItems struct {
 //   - *cache: 新创建的缓存管理器实例
 func newCache() *cache {
 	cache := &cache{
-		EVICT_POLICY:      NOEVICTION,
-		EXPIRATION_POLICY: PERIODIC,
-		MAX_SIZE:          0,
-		used_size:         0,
-		list:              list.New(),
-		dict:              make(map[string]*list.Element),
-		lock:              sync.RWMutex{},
+		EvictPolicy:      NoEviction,
+		ExpirationPolicy: Periodic,
+		MaxSize:          0,
+		usedSize:         0,
+		list:             list.New(),
+		dict:             make(map[string]*list.Element),
+		lock:             sync.RWMutex{},
 	}
 	return cache
 }
@@ -117,18 +117,18 @@ func newCache() *cache {
 // initCache 初始化缓存配置
 func (self *cache) initCache() {
 	MaxSizeMsg := i18n.T("server.cache.max_size", map[string]any{
-		"max_size": FormatBytes(self.MAX_SIZE),
+		"max_size": FormatBytes(self.MaxSize),
 	})
 	Log.Log(meta, MaxSizeMsg)
 	EvictPolicyMsg := i18n.T("server.cache.evict_policy", map[string]any{
-		"evict_policy": evictPolicyNames[self.EVICT_POLICY],
+		"evict_policy": evictPolicyNames[self.EvictPolicy],
 	})
 	Log.Log(meta, EvictPolicyMsg)
 	ExpirationPolicyMsg := i18n.T("server.cache.expiration_policy", map[string]any{
-		"expiration_policy": expirationPolicyNames[self.EXPIRATION_POLICY],
+		"expiration_policy": expirationPolicyNames[self.ExpirationPolicy],
 	})
 	Log.Log(meta, ExpirationPolicyMsg)
-	if self.EXPIRATION_POLICY == PERIODIC {
+	if self.ExpirationPolicy == Periodic {
 		RegisterOnStartup(self)
 	}
 }
@@ -156,7 +156,7 @@ func (self *cache) set(cacheItem *cacheItems) {
 	self.lock.Lock()
 	element := self.list.PushFront(cacheItem)
 	self.dict[cacheItem.key] = element
-	self.used_size += int64(len(cacheItem.key) + len(cacheItem.bytes))
+	self.usedSize += int64(len(cacheItem.key) + len(cacheItem.bytes))
 	self.lock.Unlock()
 }
 
@@ -169,7 +169,7 @@ func (self *cache) del(element *list.Element) {
 	self.lock.Lock()
 	self.list.Remove(element)
 	delete(self.dict, cacheItem.key)
-	self.used_size -= int64(len(cacheItem.key) + len(cacheItem.bytes))
+	self.usedSize -= int64(len(cacheItem.key) + len(cacheItem.bytes))
 	self.lock.Unlock()
 }
 
@@ -241,14 +241,14 @@ func (self *cache) Set(key string, value any, expires int) error {
 	var expiresTime time.Time
 	if expires > 0 {
 		expiresTime = GetTime().Add(time.Second * time.Duration(expires)) // 获取过期时间
-		if self.EXPIRATION_POLICY == SCHEDULED {                          // 定时删除
+		if self.ExpirationPolicy == Scheduled {                           // 定时删除
 			time.AfterFunc(time.Duration(expires), func() { self.DelExp(key) })
 		}
 	}
 	if element, ok := self.get(key); ok {
 		cacheItem := element.Value.(*cacheItems)
 		cacheItem.mutex.Lock()
-		self.used_size += int64(buffer.Len() - len(cacheItem.bytes))
+		self.usedSize += int64(buffer.Len() - len(cacheItem.bytes))
 		cacheItem.valueType = reflect.TypeOf(value)
 		cacheItem.bytes = buffer.Bytes()
 		cacheItem.expires = expiresTime
@@ -266,7 +266,7 @@ func (self *cache) Set(key string, value any, expires int) error {
 		self.set(cacheItem)
 	}
 
-	for self.MAX_SIZE != 0 && self.MAX_SIZE < self.used_size {
+	for self.MaxSize != 0 && self.MaxSize < self.usedSize {
 		self.cacheEvict()
 	}
 	return nil
@@ -308,18 +308,18 @@ func (self *cache) cacheEvict() {
 		return
 	}
 
-	switch self.EVICT_POLICY {
-	case NOEVICTION: // 直接返回错误，不淘汰任何已经存在的键
+	switch self.EvictPolicy {
+	case NoEviction: // 直接返回错误，不淘汰任何已经存在的键
 		NoEvictionMsg := i18n.T("server.cache.noeviction", map[string]any{
-			"max_size": FormatBytes(self.MAX_SIZE),
+			"max_size": FormatBytes(self.MaxSize),
 		})
 		Log.Error(NoEvictionMsg)
 		panic(NoEvictionMsg)
-	case ALLKEYS_RANDOM: // 所有的键 随机移除 key
+	case AllKeysRandom: // 所有的键 随机移除 key
 		var elementRemove []*list.Element
 		self.lock.RLock()
 		for _, element := range self.dict {
-			if self.MAX_SIZE > self.used_size {
+			if self.MaxSize > self.usedSize {
 				break
 			}
 			elementRemove = append(elementRemove, element)
@@ -328,10 +328,10 @@ func (self *cache) cacheEvict() {
 		for _, element := range elementRemove {
 			self.del(element)
 		}
-	case ALLKEYS_LRU: // 所有的键 移除最近最少使用的 key
+	case AllKeysLRU: // 所有的键 移除最近最少使用的 key
 		var averageUnix int64
 		var num int64 = 100
-		for self.MAX_SIZE < self.used_size {
+		for self.MaxSize < self.usedSize {
 			var totalUnix int64
 			var i int64 = 0
 
@@ -353,7 +353,7 @@ func (self *cache) cacheEvict() {
 			i = 0
 			var elementRemove []*list.Element
 			for _, element := range self.dict {
-				if self.MAX_SIZE > self.used_size {
+				if self.MaxSize > self.usedSize {
 					break
 				}
 				cacheItem := element.Value.(*cacheItems)
@@ -372,10 +372,10 @@ func (self *cache) cacheEvict() {
 			}
 		}
 
-	case ALLKEYS_LFU: // 所有的键 移除最近最不频繁使用的 key
+	case AllKeysLFU: // 所有的键 移除最近最不频繁使用的 key
 		var averageCounter uint8
 		var num int64 = 100
-		for self.MAX_SIZE < self.used_size {
+		for self.MaxSize < self.usedSize {
 			var totalCounter int64
 			var i int64 = 0
 
@@ -397,7 +397,7 @@ func (self *cache) cacheEvict() {
 			i = 0
 			var elementRemove []*list.Element
 			for _, element := range self.dict {
-				if self.MAX_SIZE > self.used_size {
+				if self.MaxSize > self.usedSize {
 					break
 				}
 				cacheItem := element.Value.(*cacheItems)
@@ -415,11 +415,11 @@ func (self *cache) cacheEvict() {
 				self.del(element)
 			}
 		}
-	case VOLATILE_RANDOM: // 所有设置了过期时间的键 随机移除 key
+	case VolatileRandom: // 所有设置了过期时间的键 随机移除 key
 		var elementRemove []*list.Element
 		self.lock.RLock()
 		for _, element := range self.dict {
-			if self.MAX_SIZE > self.used_size {
+			if self.MaxSize > self.usedSize {
 				break
 			}
 			cacheItem := element.Value.(*cacheItems)
@@ -432,10 +432,10 @@ func (self *cache) cacheEvict() {
 		for _, element := range elementRemove {
 			self.del(element)
 		}
-	case VOLATILE_LRU: // 所有设置了过期时间的键 移除最近最少使用的 key
+	case VolatileLRU: // 所有设置了过期时间的键 移除最近最少使用的 key
 		var averageUnix int64
 		var num int64 = 100
-		for self.MAX_SIZE < self.used_size {
+		for self.MaxSize < self.usedSize {
 			var totalUnix int64
 			var i int64 = 0
 
@@ -460,7 +460,7 @@ func (self *cache) cacheEvict() {
 			i = 0
 			var elementRemove []*list.Element
 			for _, element := range self.dict {
-				if self.MAX_SIZE > self.used_size {
+				if self.MaxSize > self.usedSize {
 					break
 				}
 				cacheItem := element.Value.(*cacheItems)
@@ -481,10 +481,10 @@ func (self *cache) cacheEvict() {
 				self.del(element)
 			}
 		}
-	case VOLATILE_LFU: // 所有设置了过期时间的键 移除最近最不频繁使用的 key
+	case VolatileLFU: // 所有设置了过期时间的键 移除最近最不频繁使用的 key
 		var averageCounter uint8
 		var num int64 = 100
-		for self.MAX_SIZE < self.used_size {
+		for self.MaxSize < self.usedSize {
 			var totalCounter int64
 			var i int64 = 0
 
@@ -509,7 +509,7 @@ func (self *cache) cacheEvict() {
 			i = 0
 			var elementRemove []*list.Element
 			for _, element := range self.dict {
-				if self.MAX_SIZE > self.used_size {
+				if self.MaxSize > self.usedSize {
 					break
 				}
 				cacheItem := element.Value.(*cacheItems)
@@ -530,10 +530,10 @@ func (self *cache) cacheEvict() {
 				self.del(element)
 			}
 		}
-	case VOLATILE_TTL: // 所有设置了过期时间的键 移除快过期的 key
+	case VolatileTTL: // 所有设置了过期时间的键 移除快过期的 key
 		var averageUnix int64
 		var num int64 = 200
-		for self.MAX_SIZE < self.used_size {
+		for self.MaxSize < self.usedSize {
 			var totalUnix int64
 			var i int64 = 0
 
@@ -558,7 +558,7 @@ func (self *cache) cacheEvict() {
 			i = 0
 			var elementRemove []*list.Element
 			for _, element := range self.dict {
-				if self.MAX_SIZE > self.used_size {
+				if self.MaxSize > self.usedSize {
 					break
 				}
 				cacheItem := element.Value.(*cacheItems)
@@ -584,7 +584,7 @@ func (self *cache) cacheEvict() {
 
 // cachePeriodicDeleteExpires 定期删除过期缓存项
 func (self *cache) cachePeriodicDeleteExpires() {
-	if self.EXPIRATION_POLICY != PERIODIC {
+	if self.ExpirationPolicy != Periodic {
 		return
 	}
 	self.lock.RLock()
