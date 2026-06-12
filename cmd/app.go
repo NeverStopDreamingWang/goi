@@ -92,7 +92,7 @@ func (self MyModel) ModelSet() *sqlite3.Settings {
 			AfterHandler:  nil, // 迁移之后处理函数
 		},
 
-		TABLE_NAME: "user_tb", // 设置表名
+		TableName: "user_tb", // 设置表名
 
 		Settings: goi.Params{},
 	}
