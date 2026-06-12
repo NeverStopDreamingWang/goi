@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 // HandlerFunc 定义 goi 使用的请求处理程序

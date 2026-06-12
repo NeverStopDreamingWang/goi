@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"runtime"
 
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/crypto"
-	"github.com/NeverStopDreamingWang/goi/crypto/rsa"
+	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v2/crypto"
+	"github.com/NeverStopDreamingWang/goi/v2/crypto/rsa"
 	"github.com/spf13/cobra"
 )
 
@@ -120,7 +120,7 @@ var goMod = InitFile{
 
 go %s
 
-require github.com/NeverStopDreamingWang/goi %s
+require github.com/NeverStopDreamingWang/goi/v2 %s
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -160,10 +160,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/middleware/clickjacking"
-	"github.com/NeverStopDreamingWang/goi/middleware/common"
-	"github.com/NeverStopDreamingWang/goi/middleware/security"
+	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v2/middleware/clickjacking"
+	"github.com/NeverStopDreamingWang/goi/v2/middleware/common"
+	"github.com/NeverStopDreamingWang/goi/v2/middleware/security"
 )
 
 // Http 服务
@@ -336,7 +336,7 @@ var converter = InitFile{
 		content := `package %s
 
 import (
-	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
 func init() {
@@ -371,8 +371,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/response"
+	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v2/response"
 )
 
 func init() {
@@ -472,7 +472,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
 // 默认日志
@@ -569,7 +569,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
 // 检查生成自签证书

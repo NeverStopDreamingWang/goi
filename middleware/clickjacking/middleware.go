@@ -3,7 +3,7 @@ package clickjacking
 import (
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
 // Default 返回带默认配置的点击劫持防护中间件实例

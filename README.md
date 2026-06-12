@@ -63,13 +63,13 @@ Goi 需要 Go 1.24 或更高版本。
 通过 Go 的模块支持，当你在代码中添加导入时，`go [build|run|test]` 会自动获取必要的依赖：
 
 ```go
-import "github.com/NeverStopDreamingWang/goi"
+import "github.com/NeverStopDreamingWang/goi/v2"
 ```
 
 或者，使用 `go get`：
 
 ```bash
-go get -u github.com/NeverStopDreamingWang/goi
+go get -u github.com/NeverStopDreamingWang/goi/v2
 ```
 
 ### 运行 Goi
@@ -82,8 +82,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/response"
+	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v2/response"
 )
 
 func Ping(request *goi.Request) any {

@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
 // Default 返回带默认配置的安全中间件实例

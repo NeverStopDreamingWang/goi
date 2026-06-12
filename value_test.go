@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
 type testStruct struct {

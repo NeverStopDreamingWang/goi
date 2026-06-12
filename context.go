@@ -11,8 +11,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
-	"github.com/NeverStopDreamingWang/goi/parser"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/parser"
 )
 
 const ContentType = "Content-Type"

@@ -3,7 +3,7 @@ package aes_test
 import (
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/crypto/aes"
+	"github.com/NeverStopDreamingWang/goi/v2/crypto/aes"
 )
 
 func ExampleEncrypt() {

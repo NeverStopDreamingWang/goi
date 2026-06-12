@@ -9,7 +9,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 // adjustKeyLength 调整密钥到有效的 AES 密钥长度（16、24 或 32 字节）

@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
 // 迁移处理函数

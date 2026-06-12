@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/db/sqlserver"
+	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v2/db"
+	"github.com/NeverStopDreamingWang/goi/v2/db/sqlserver"
 )
 
 // 注意: 要运行这些示例测试，需要本地已配置好 SQL Server 数据库，并修改 DSN 与权限

@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 type Language string
