@@ -173,39 +173,39 @@ func init() {
 	var err error
 
 	// 创建 http 服务
-	Server = goi.NewHttpServer()
+	Server = goi.NewHTTPServer()
 
 	// version := goi.Version() // 获取版本信息
 	// fmt.Println("goi 版本", version)
 
 	// 项目路径
-	Server.Settings.BASE_DIR, _ = os.Getwd()
-	// DEBUG
-	Server.Settings.DEBUG = true
+	Server.Settings.BaseDir, _ = os.Getwd()
+	// Debug
+	Server.Settings.Debug = true
 	// 网络协议
-	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
+	Server.Settings.Network = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
 	// 监听地址
-	Server.Settings.BIND_ADDRESS = "0.0.0.0" // 默认 0.0.0.0
+	Server.Settings.BindAddress = "0.0.0.0" // 默认 0.0.0.0
 	// 端口
-	Server.Settings.PORT = 8080
+	Server.Settings.Port = 8080
 	// 域名
-	Server.Settings.BIND_DOMAIN = ""
+	Server.Settings.BindDomain = ""
 
 	// 密钥
-	Server.Settings.SECRET_KEY = "%s"
+	Server.Settings.SecretKey = "%s"
 
 	// RSA 私钥
-	Server.Settings.PRIVATE_KEY = ` + "`%s`" + `
+	Server.Settings.PrivateKey = ` + "`%s`" + `
 
 	// RSA 公钥
-	Server.Settings.PUBLIC_KEY = ` + "`%s`" + `
+	Server.Settings.PublicKey = ` + "`%s`" + `
 
 	// 设置 SSL
 	Server.Settings.SSL = goi.SSL{
-		STATUS:    false,  // SSL 开关
-		TYPE:      "自签证书", // 证书类型
-		CERT_PATH: filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.crt"),
-		KEY_PATH:  filepath.Join(Server.Settings.BASE_DIR, "ssl", "%s.key"),
+		Enabled:    false,  // SSL 开关
+		Type:      "自签证书", // 证书类型
+		CertPath: filepath.Join(Server.Settings.BaseDir, "ssl", "%s.crt"),
+		KeyPath:  filepath.Join(Server.Settings.BaseDir, "ssl", "%s.key"),
 	}
 
 	// 注册中间件（根路由）
@@ -217,11 +217,11 @@ func init() {
 	)
 
 	// 数据库配置
-	Server.Settings.DATABASES["default"] = &goi.DataBase{
-		ENGINE: "mysql",
-		Connect: func(ENGINE string) *sql.DB {
+	Server.Settings.Databases["default"] = &goi.Database{
+		Engine: "mysql",
+		Connect: func(Engine string) *sql.DB {
 			DataSourceName := "root:123@tcp(127.0.0.1:3306)/%s"
-			mysqlDB, err := sql.Open(ENGINE, DataSourceName)
+			mysqlDB, err := sql.Open(Engine, DataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
@@ -233,11 +233,11 @@ func init() {
 			return mysqlDB
 		},
 	}
-	Server.Settings.DATABASES["sqlite"] = &goi.DataBase{
-		ENGINE: "sqlite3",
-		Connect: func(ENGINE string) *sql.DB {
-			DataSourceName := filepath.Join(Server.Settings.BASE_DIR, "data", "%s.db")
-			sqliteDB, err := sql.Open(ENGINE, DataSourceName)
+	Server.Settings.Databases["sqlite"] = &goi.Database{
+		Engine: "sqlite3",
+		Connect: func(Engine string) *sql.DB {
+			DataSourceName := filepath.Join(Server.Settings.BaseDir, "data", "%s.db")
+			sqliteDB, err := sql.Open(Engine, DataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
@@ -246,7 +246,7 @@ func init() {
 		},
 	}
 
-	Server.Settings.USE_TZ = true
+	Server.Settings.UseTZ = true
 	// 设置时区
 	err = Server.Settings.SetTimeZone("Asia/Shanghai") // 默认为空字符串 ''，本地时间
 	if err != nil {
@@ -256,12 +256,12 @@ func init() {
 	//  goi.GetTime() 获取当前时区的时间
 
 	// 设置框架语言
-	Server.Settings.SetLanguage(goi.ZH_CN) // 默认 ZH_CN
+	Server.Settings.SetLanguage(goi.ZhCN) // 默认 ZhCN
 
 	// 设置最大缓存大小
-	Server.Cache.EVICT_POLICY = goi.ALLKEYS_LRU   // 缓存淘汰策略
-	Server.Cache.EXPIRATION_POLICY = goi.PERIODIC // 过期策略
-	Server.Cache.MAX_SIZE = 0                     // 单位为字节，0 为不限制使用
+	Server.Cache.EvictPolicy = goi.AllKeysLRU   // 缓存淘汰策略
+	Server.Cache.ExpirationPolicy = goi.Periodic // 过期策略
+	Server.Cache.MaxSize = 0                     // 单位为字节，0 为不限制使用
 
 	// 创建日志，或者修改全局日志配置
 	Server.Log = newDefaultLog() // 默认日志
@@ -478,11 +478,11 @@ import (
 // 默认日志
 func newDefaultLog() *goi.Logger {
 	// 使用默认
-	// return goi.NewLogger(filepath.Join(Server.Settings.BASE_DIR, "logs", "server.log"))
+	// return goi.NewLogger(filepath.Join(Server.Settings.BaseDir, "logs", "server.log"))
 
 	var err error
 
-	LogDir := filepath.Join(Server.Settings.BASE_DIR, "logs") // 检查目录
+	LogDir := filepath.Join(Server.Settings.BaseDir, "logs") // 检查目录
 	err = os.MkdirAll(LogDir, 0644)
 	if err != nil {
 		panic(fmt.Sprintf("创建日志目录错误: %%v", err))
@@ -574,13 +574,13 @@ import (
 
 // 检查生成自签证书
 func init() {
-	SSLPath := filepath.Join(Server.Settings.BASE_DIR, "ssl")
-	if Server.Settings.SSL.STATUS == false {
+	SSLPath := filepath.Join(Server.Settings.BaseDir, "ssl")
+	if Server.Settings.SSL.Enabled == false {
 		return
 	}
 
-	_, certErr := os.Stat(Server.Settings.SSL.CERT_PATH)
-	_, keyErr := os.Stat(Server.Settings.SSL.KEY_PATH)
+	_, certErr := os.Stat(Server.Settings.SSL.CertPath)
+	_, keyErr := os.Stat(Server.Settings.SSL.KeyPath)
 	if os.IsNotExist(certErr) || os.IsNotExist(keyErr) {
 		generateCertificate(SSLPath)
 	}
