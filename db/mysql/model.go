@@ -14,8 +14,8 @@ type MigrationsHandler struct {
 type Settings struct {
 	MigrationsHandler // 迁移处理函数
 
-	TABLE_NAME      string // 设置表名
-	ENGINE          string // 设置存储引擎，默认: InnoDB
+	TableName       string // 设置表名
+	Engine          string // 设置存储引擎，默认: InnoDB
 	AUTO_INCREMENT  int    // 设置自增长起始值
 	DEFAULT_CHARSET string // 设置默认字符集，如: utf8mb4
 	COLLATE         string // 设置校对规则，如 utf8mb4_0900_ai_ci;

@@ -20,7 +20,7 @@ type Engine interface {
 	Query(query string, args ...any) (*sql.Rows, error)
 }
 
-type ConnectFunc func(UseDataBases string, database *goi.DataBase) Engine
+type ConnectFunc func(UseDatabases string, database *goi.Database) Engine
 
 // engineMu 保护 engines
 var engineMu sync.RWMutex
@@ -69,51 +69,51 @@ func GetConnectFunc(name string) (ConnectFunc, bool) {
 // Connect 连接 ORM 数据库引擎（泛型）
 //
 // 参数:
-//   - UseDataBases: string 数据库配置名称
+//   - UseDatabases: string 数据库配置名称
 //
 // 返回:
 //   - T: 调用方期望的具体引擎类型（例如 *mysql.Engine、*sqlite3.Engine）
 //
 // 说明:
 //   - 从全局配置中获取数据库连接信息
-//   - 根据 DataBase.Engine（应为驱动名字符串）查找注册的引擎工厂
+//   - 根据 Database.Engine（应为驱动名字符串）查找注册的引擎工厂
 //   - 使用工厂基于已建立的 *sql.DB 构造具体引擎实例
 //   - 将具体实例断言为 T；若类型不匹配则 panic
-func Connect[T Engine](UseDataBases string) T {
-	database, ok := goi.Settings.DATABASES[UseDataBases]
+func Connect[T Engine](UseDatabases string) T {
+	database, ok := goi.Settings.Databases[UseDatabases]
 	if !ok {
 		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]any{
-			"name": UseDataBases,
+			"name": UseDatabases,
 		})
 		panic(fmt.Errorf(databasesNotErrorMsg))
 	}
-	return ConnectDatabase[T](UseDataBases, database)
+	return ConnectDatabase[T](UseDatabases, database)
 }
 
 // ConnectDatabase 连接 ORM 数据库引擎（泛型）
 //
 // 参数:
-//   - UseDataBases: string 数据库配置名称
-//   - database: *goi.DataBase 数据库连接管理器
+//   - UseDatabases: string 数据库配置名称
+//   - database: *goi.Database 数据库连接管理器
 //
 // 返回:
 //   - T: 调用方期望的具体引擎类型（例如 *mysql.Engine、*sqlite3.Engine）
 //
 // 说明:
-//   - 根据 DataBase.Engine（应为驱动名字符串）查找注册的引擎工厂
+//   - 根据 Database.Engine（应为驱动名字符串）查找注册的引擎工厂
 //   - 使用工厂基于已建立的 *sql.DB 构造具体引擎实例
 //   - 将具体实例断言为 T；若类型不匹配则 panic
-func ConnectDatabase[T Engine](UseDataBases string, database *goi.DataBase) T {
-	connect, ok := GetConnectFunc(database.ENGINE)
+func ConnectDatabase[T Engine](UseDatabases string, database *goi.Database) T {
+	connect, ok := GetConnectFunc(database.Engine)
 	if !ok {
 		engineNotRegisteredMsg := i18n.T("db.engine_not_registered", map[string]any{
-			"engine": database.ENGINE,
+			"engine": database.Engine,
 		})
 		panic(fmt.Errorf(engineNotRegisteredMsg))
 	}
 
 	// 构造具体引擎实例
-	engine := connect(UseDataBases, database)
+	engine := connect(UseDatabases, database)
 
 	// 泛型断言为调用方期望的类型 T
 	v, ok := any(engine).(T)

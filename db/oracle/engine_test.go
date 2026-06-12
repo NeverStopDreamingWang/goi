@@ -12,16 +12,16 @@ import (
 
 // 注意: 要运行这些示例测试，需要本地已配置好 Oracle 数据库和监听，并修改 DSN 与权限
 func init() {
-	goi.Settings.DATABASES["oracle_default"] = &goi.DataBase{
-		ENGINE: "oracle",
-		Connect: func(ENGINE string) *sql.DB {
+	goi.Settings.Databases["oracle_default"] = &goi.Database{
+		Engine: "oracle",
+		Connect: func(Engine string) *sql.DB {
 			var DB *sql.DB
 			var err error
 			// 示例 DSN，请根据实际环境修改，例如:
 			// user="scott" password="tiger" connectString="127.0.0.1:1521/orclpdb1"
 			// 具体格式请参考 godror 文档
 			dataSourceName := "user=scott password=tiger connectString=127.0.0.1:1521/orclpdb1"
-			DB, err = sql.Open(ENGINE, dataSourceName)
+			DB, err = sql.Open(Engine, dataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
@@ -77,7 +77,7 @@ func (userModel UserModel) ModelSet() *oracle.Settings {
 			BeforeHandler: nil,
 			AfterHandler:  nil,
 		},
-		TABLE_NAME: "USER_TB",
+		TableName: "USER_TB",
 		Settings: goi.Params{
 			"encrypt_fields": encryptFields,
 		},

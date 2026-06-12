@@ -12,7 +12,7 @@ type MigrationsHandler struct {
 type Settings struct {
 	MigrationsHandler // 迁移处理函数
 
-	TABLE_NAME string // 表名
+	TableName string // 表名
 
 	// 自定义配置
 	Settings goi.Params

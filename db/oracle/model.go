@@ -11,13 +11,13 @@ type MigrationsHandler struct {
 // Oracle 模型设置
 // 尽量与 mysql/sqlite3/postgresql 的 Settings 保持结构风格一致
 //
-// - TABLE_NAME: 表名
+// - TableName: 表名
 // - SCHEMA: 可选 schema 名（如果留空则由具体引擎决定是否使用默认）
 // - Settings: 自定义扩展配置（例如 encrypt_fields 等）
 type Settings struct {
 	MigrationsHandler // 迁移处理函数
 
-	TABLE_NAME string // 表名
+	TableName string // 表名
 
 	// 自定义配置
 	Settings goi.Params

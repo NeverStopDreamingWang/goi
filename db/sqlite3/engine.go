@@ -21,66 +21,66 @@ func init() {
 }
 
 // factory 是 db.Engine 的工厂函数
-func factory(UseDataBases string, database *goi.DataBase) db.Engine {
-	return ConnectDatabase(UseDataBases, database)
+func factory(UseDatabases string, database *goi.Database) db.Engine {
+	return ConnectDatabase(UseDatabases, database)
 }
 
 // ConnectDatabase 连接 SQLite3 数据库
 //
 // 参数:
-//   - UseDataBases: string 数据库配置名称
-//   - database: *goi.DataBase 数据库连接管理器
+//   - UseDatabases: string 数据库配置名称
+//   - database: *goi.Database 数据库连接管理器
 //
 // 返回:
 //   - *Engine: SQLite3 数据库操作实例
 //
 // 说明:
-//   - 如果 ENGINE 不匹配则 panic
+//   - 如果 Engine 不匹配则 panic
 //   - 需要手动添加 _ "github.com/mattn/go-sqlite3" 包
-func ConnectDatabase(UseDataBases string, database *goi.DataBase) *Engine {
-	if database.ENGINE != driverName {
+func ConnectDatabase(UseDatabases string, database *goi.Database) *Engine {
+	if database.Engine != driverName {
 		engineNotMatchErrorMsg := i18n.T("db.engine_type_is_not_match", map[string]any{
 			"want_type": driverName,
-			"got_type":  database.ENGINE,
+			"got_type":  database.Engine,
 		})
 		panic(engineNotMatchErrorMsg)
 	}
 	return &Engine{
-		name:      UseDataBases,
-		DB:        database.DB(),
-		model:     nil,
-		fields:    nil,
-		field_sql: nil,
-		where_sql: nil,
-		limit_sql: "",
-		group_sql: "",
-		order_sql: "",
-		sql:       "",
-		args:      nil,
+		name:     UseDatabases,
+		DB:       database.DB(),
+		model:    nil,
+		fields:   nil,
+		fieldSQL: nil,
+		whereSQL: nil,
+		limitSQL: "",
+		groupSQL: "",
+		orderSQL: "",
+		sql:      "",
+		args:     nil,
 	}
 }
 
 // Connect 连接 SQLite3 数据库
 //
 // 参数:
-//   - UseDataBases: string 数据库配置名称
+//   - UseDatabases: string 数据库配置名称
 //
 // 返回:
 //   - *Engine: SQLite3 数据库操作实例
 //
 // 说明:
 //   - 从全局配置中获取数据库连接信息
-//   - 如果 ENGINE 不匹配则 panic
+//   - 如果 Engine 不匹配则 panic
 //   - 需要手动添加 _ "github.com/mattn/go-sqlite3" 包
-func Connect(UseDataBases string) *Engine {
-	database, ok := goi.Settings.DATABASES[UseDataBases]
+func Connect(UseDatabases string) *Engine {
+	database, ok := goi.Settings.Databases[UseDatabases]
 	if !ok {
 		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]any{
-			"name": UseDataBases,
+			"name": UseDatabases,
 		})
 		panic(databasesNotErrorMsg)
 	}
-	return ConnectDatabase(UseDataBases, database)
+	return ConnectDatabase(UseDatabases, database)
 }
 
 // Engine 结构体用于管理 SQLite3 数据库连接和操作
@@ -90,11 +90,11 @@ type Engine struct {
 	transaction *sql.Tx  // 当前事务对象
 	model       Model    // 当前操作的数据模型
 	fields      []string // 模型结构体字段名
-	field_sql   []string // 数据库表字段名
-	where_sql   []string // WHERE 条件语句
-	limit_sql   string   // LIMIT 分页语句
-	group_sql   string   // GROUP BY 分组语句
-	order_sql   string   // ORDER BY 排序语句
+	fieldSQL    []string // 数据库表字段名
+	whereSQL    []string // WHERE 条件语句
+	limitSQL    string   // LIMIT 分页语句
+	groupSQL    string   // GROUP BY 分组语句
+	orderSQL    string   // ORDER BY 排序语句
 	sql         string   // 最终执行的 SQL 语句
 	args        []any    // SQL 语句的参数值
 }
@@ -238,7 +238,7 @@ func (engine *Engine) Migrate(model Model) {
 	var err error
 	settings := model.ModelSet()
 
-	row := engine.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?;", settings.TABLE_NAME)
+	row := engine.QueryRow("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?;", settings.TableName)
 
 	var exists int
 	err = row.Scan(&exists)
@@ -280,7 +280,7 @@ func (engine *Engine) Migrate(model Model) {
 	columnsSQL := strings.Join(columns, ",\n")
 	createSQL := fmt.Sprintf(`CREATE TABLE "%v" (
 %v
-)`, settings.TABLE_NAME, columnsSQL)
+)`, settings.TableName, columnsSQL)
 	if settings.MigrationsHandler.BeforeHandler != nil { // 迁移之前处理
 		beforeMigrationMsg := i18n.T("db.before_migration")
 		goi.Log.Info(beforeMigrationMsg)
@@ -295,7 +295,7 @@ func (engine *Engine) Migrate(model Model) {
 	migrationModelMsg := i18n.T("db.migration.sqlite3", map[string]any{
 		"engine":  driverName,
 		"name":    engine.name,
-		"tb_name": settings.TABLE_NAME,
+		"tb_name": settings.TableName,
 	})
 	goi.Log.Info(migrationModelMsg)
 	_, err = engine.Execute(createSQL)
@@ -345,11 +345,11 @@ func (engine *Engine) SetModel(model Model) *Engine {
 	engine.model = model
 	// 获取字段
 	engine.fields = nil
-	engine.field_sql = nil
-	engine.where_sql = nil
-	engine.limit_sql = ""
-	engine.group_sql = ""
-	engine.order_sql = ""
+	engine.fieldSQL = nil
+	engine.whereSQL = nil
+	engine.limitSQL = ""
+	engine.groupSQL = ""
+	engine.orderSQL = ""
 	engine.sql = ""
 	engine.args = nil
 
@@ -368,7 +368,7 @@ func (engine *Engine) SetModel(model Model) *Engine {
 		if !ok {
 			fieldName = strings.ToLower(field.Name)
 		}
-		engine.field_sql = append(engine.field_sql, fieldName)
+		engine.fieldSQL = append(engine.fieldSQL, fieldName)
 	}
 	return engine
 }
@@ -394,7 +394,7 @@ func (engine Engine) Fields(fields ...string) *Engine {
 	}
 	// 获取字段
 	engine.fields = nil
-	engine.field_sql = nil
+	engine.fieldSQL = nil
 
 	for _, fieldName := range fields {
 		field, ok := modelType.FieldByName(fieldName)
@@ -415,7 +415,7 @@ func (engine Engine) Fields(fields ...string) *Engine {
 		if !ok {
 			columnName = strings.ToLower(field.Name)
 		}
-		engine.field_sql = append(engine.field_sql, columnName)
+		engine.fieldSQL = append(engine.fieldSQL, columnName)
 	}
 	return &engine
 }
@@ -436,7 +436,7 @@ func (engine Engine) Fields(fields ...string) *Engine {
 func (engine *Engine) Insert(model Model) (sql.Result, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TableName
 
 	modelValue := reflect.ValueOf(model)
 	if modelValue.Kind() == reflect.Ptr {
@@ -457,7 +457,7 @@ func (engine *Engine) Insert(model Model) (sql.Result, error) {
 		}
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, `","`)
+	fieldsSQL := strings.Join(engine.fieldSQL, `","`)
 	valuesSQL := strings.TrimRight(strings.Repeat("?,", len(engine.fields)), ",")
 
 	engine.sql = fmt.Sprintf(`INSERT INTO "%v" ("%v") VALUES (%v)`, TableName, fieldsSQL, valuesSQL)
@@ -510,7 +510,7 @@ func (engine Engine) Where(query string, args ...any) *Engine {
 		// 添加切割后的下一部分
 		queryBuilder.WriteString(queryParts[i+1])
 	}
-	engine.where_sql = append(engine.where_sql, queryBuilder.String())
+	engine.whereSQL = append(engine.whereSQL, queryBuilder.String())
 	return &engine
 }
 
@@ -537,9 +537,9 @@ func (engine Engine) GroupBy(groups ...string) *Engine {
 		groupFields = append(groupFields, fmt.Sprintf(`"%s"`, field))
 	}
 	if len(groupFields) > 0 {
-		engine.group_sql = fmt.Sprintf(" GROUP BY %s", strings.Join(groupFields, ", "))
+		engine.groupSQL = fmt.Sprintf(" GROUP BY %s", strings.Join(groupFields, ", "))
 	} else {
-		engine.group_sql = ""
+		engine.groupSQL = ""
 	}
 	return &engine
 }
@@ -579,9 +579,9 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 		orderFields = append(orderFields, fmt.Sprintf(`"%s" %s`, fieldName, sequence))
 	}
 	if len(orderFields) > 0 {
-		engine.order_sql = fmt.Sprintf(" ORDER BY %s", strings.Join(orderFields, ", "))
+		engine.orderSQL = fmt.Sprintf(" ORDER BY %s", strings.Join(orderFields, ", "))
 	} else {
-		engine.order_sql = ""
+		engine.orderSQL = ""
 	}
 	return &engine
 }
@@ -611,7 +611,7 @@ func (engine *Engine) Page(page int64, pageSize int64) (int64, int64, error) {
 		pageSize = 10 // 默认分页大小
 	}
 	offset := (page - 1) * pageSize
-	engine.limit_sql = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+	engine.limitSQL = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
 	total, err := engine.Count()
 	totalPages := int64(math.Ceil(float64(total) / float64(pageSize)))
 	return total, totalPages, err
@@ -633,7 +633,7 @@ func (engine *Engine) Page(page int64, pageSize int64) (int64, int64, error) {
 func (engine *Engine) Select(queryResult any) error {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TableName
 
 	var (
 		isPtr    bool
@@ -662,19 +662,19 @@ func (engine *Engine) Select(queryResult any) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, `","`)
+	fieldsSQL := strings.Join(engine.fieldSQL, `","`)
 	engine.sql = fmt.Sprintf(`SELECT "%v" FROM "%v"`, fieldsSQL, TableName)
-	if len(engine.where_sql) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
+	if len(engine.whereSQL) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
-	if engine.group_sql != "" {
-		engine.sql += engine.group_sql
+	if engine.groupSQL != "" {
+		engine.sql += engine.groupSQL
 	}
-	if engine.order_sql != "" {
-		engine.sql += engine.order_sql
+	if engine.orderSQL != "" {
+		engine.sql += engine.orderSQL
 	}
-	if engine.limit_sql != "" {
-		engine.sql += engine.limit_sql
+	if engine.limitSQL != "" {
+		engine.sql += engine.limitSQL
 	}
 
 	rows, err := engine.Query(engine.sql, engine.args...)
@@ -718,7 +718,7 @@ func (engine *Engine) Select(queryResult any) error {
 		// 设置 map 值
 		if ItemType.Kind() == reflect.Map {
 			item = reflect.MakeMap(ItemType)
-			for i, fieldName := range engine.field_sql {
+			for i, fieldName := range engine.fieldSQL {
 				val := reflect.ValueOf(values[i])
 				item.SetMapIndex(reflect.ValueOf(fieldName), val.Elem())
 			}
@@ -749,7 +749,7 @@ func (engine *Engine) Select(queryResult any) error {
 func (engine *Engine) First(queryResult any) error {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TableName
 
 	result := reflect.ValueOf(queryResult)
 	if result.Kind() != reflect.Map {
@@ -764,19 +764,19 @@ func (engine *Engine) First(queryResult any) error {
 		return errors.New(isNotStructPtrErrorMsg)
 	}
 
-	fieldsSQL := strings.Join(engine.field_sql, `","`)
+	fieldsSQL := strings.Join(engine.fieldSQL, `","`)
 	engine.sql = fmt.Sprintf(`SELECT "%v" FROM "%v"`, fieldsSQL, TableName)
-	if len(engine.where_sql) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
+	if len(engine.whereSQL) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
-	if engine.group_sql != "" {
-		engine.sql += engine.group_sql
+	if engine.groupSQL != "" {
+		engine.sql += engine.groupSQL
 	}
-	if engine.order_sql != "" {
-		engine.sql += engine.order_sql
+	if engine.orderSQL != "" {
+		engine.sql += engine.orderSQL
 	}
-	if engine.limit_sql != "" {
-		engine.sql += engine.limit_sql
+	if engine.limitSQL != "" {
+		engine.sql += engine.limitSQL
 	}
 
 	row := engine.QueryRow(engine.sql, engine.args...)
@@ -812,7 +812,7 @@ func (engine *Engine) First(queryResult any) error {
 
 	// 更新实际扫描到的值
 	if result.Kind() == reflect.Map {
-		for i, fieldName := range engine.field_sql {
+		for i, fieldName := range engine.fieldSQL {
 			val := reflect.ValueOf(values[i])
 			result.SetMapIndex(reflect.ValueOf(fieldName), val.Elem())
 		}
@@ -834,11 +834,11 @@ func (engine *Engine) First(queryResult any) error {
 func (engine *Engine) Count() (int64, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TableName
 
 	engine.sql = fmt.Sprintf(`SELECT count(*) FROM "%v"`, TableName)
-	if len(engine.where_sql) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
+	if len(engine.whereSQL) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
 
 	row := engine.QueryRow(engine.sql, engine.args...)
@@ -867,11 +867,11 @@ func (engine *Engine) Count() (int64, error) {
 func (engine *Engine) Exists() (bool, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TableName
 
 	engine.sql = fmt.Sprintf(`SELECT 1 FROM "%v"`, TableName)
-	if len(engine.where_sql) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
+	if len(engine.whereSQL) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
 
 	row := engine.QueryRow(engine.sql, engine.args...)
@@ -906,7 +906,7 @@ func (engine *Engine) Exists() (bool, error) {
 func (engine *Engine) Update(model Model) (sql.Result, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TableName
 
 	modelValue := reflect.ValueOf(model)
 	if modelValue.Kind() == reflect.Ptr {
@@ -917,7 +917,7 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 	updateFields := make([]string, 0)
 	// 值
 	updateValues := make([]any, 0)
-	utils.Zip(engine.fields, engine.field_sql, func(fieldName, fieldSQL string) {
+	utils.Zip(engine.fields, engine.fieldSQL, func(fieldName, fieldSQL string) {
 		field := modelValue.FieldByName(fieldName)
 		if field.Kind() == reflect.Ptr {
 			if field.IsNil() {
@@ -933,8 +933,8 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 	fieldsSQL := strings.Join(updateFields, ",")
 
 	engine.sql = fmt.Sprintf(`UPDATE "%v" SET %v`, TableName, fieldsSQL)
-	if len(engine.where_sql) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
+	if len(engine.whereSQL) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 		updateValues = append(updateValues, engine.args...)
 	}
 	return engine.Execute(engine.sql, updateValues...)
@@ -953,10 +953,10 @@ func (engine *Engine) Update(model Model) (sql.Result, error) {
 func (engine *Engine) Delete() (sql.Result, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TABLE_NAME
+	TableName := engine.model.ModelSet().TableName
 	engine.sql = fmt.Sprintf(`DELETE FROM "%v"`, TableName)
-	if len(engine.where_sql) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.where_sql, " AND "))
+	if len(engine.whereSQL) > 0 {
+		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
 	return engine.Execute(engine.sql, engine.args...)
 }

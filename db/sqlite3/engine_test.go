@@ -12,13 +12,13 @@ import (
 )
 
 func init() {
-	goi.Settings.DATABASES["default"] = &goi.DataBase{
-		ENGINE: "sqlite3",
-		Connect: func(ENGINE string) *sql.DB {
+	goi.Settings.Databases["default"] = &goi.Database{
+		Engine: "sqlite3",
+		Connect: func(Engine string) *sql.DB {
 			var DB *sql.DB
 			var err error
-			DataSourceName := filepath.Join(goi.Settings.BASE_DIR, "sqlite3.db")
-			DB, err = sql.Open(ENGINE, DataSourceName)
+			DataSourceName := filepath.Join(goi.Settings.BaseDir, "sqlite3.db")
+			DB, err = sql.Open(Engine, DataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
@@ -83,7 +83,7 @@ func (userModel UserModel) ModelSet() *sqlite3.Settings {
 			AfterHandler:  InitUser, // 迁移之后处理函数
 		},
 
-		TABLE_NAME: "user_tb", // 设置表名
+		TableName: "user_tb", // 设置表名
 
 		// 自定义配置
 		Settings: goi.Params{
