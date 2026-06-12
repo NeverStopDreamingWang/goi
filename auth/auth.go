@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 	"errors"
 
-	"github.com/NeverStopDreamingWang/goi/crypto/pbkdf2_sha256"
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/crypto/pbkdf2_sha256"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 // MakePassword 使用 PBKDF2-SHA256 算法对密码进行加密

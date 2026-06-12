@@ -1,6 +1,6 @@
 package postgres
 
-import "github.com/NeverStopDreamingWang/goi"
+import "github.com/NeverStopDreamingWang/goi/v2"
 
 // 迁移处理函数
 type MigrationsHandler struct {

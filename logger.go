@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 // NewLogger 创建新的日志器

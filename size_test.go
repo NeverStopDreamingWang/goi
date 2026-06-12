@@ -3,7 +3,7 @@ package goi_test
 import (
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi"
+	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
 // ExampleFormatBytes 展示如何使用 FormatBytes 函数格式化不同大小的字节数

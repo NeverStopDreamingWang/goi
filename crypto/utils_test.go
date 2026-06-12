@@ -3,7 +3,7 @@ package crypto_test
 import (
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/crypto"
+	"github.com/NeverStopDreamingWang/goi/v2/crypto"
 )
 
 func ExampleGenerateRandomString() {

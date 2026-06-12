@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/db"
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
-	"github.com/NeverStopDreamingWang/goi/utils"
+	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v2/db"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/utils"
 )
 
 const driverName = "sqlite3"

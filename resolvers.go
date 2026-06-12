@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 // ParamInfo 路由参数信息

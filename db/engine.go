@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/NeverStopDreamingWang/goi"
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 type TransactionFunc func(engine Engine, args ...any) error

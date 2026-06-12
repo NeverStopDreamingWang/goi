@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 // EvictPolicy 缓存淘汰策略类型

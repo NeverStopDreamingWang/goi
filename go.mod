@@ -1,4 +1,4 @@
-module github.com/NeverStopDreamingWang/goi
+module github.com/NeverStopDreamingWang/goi/v2
 
 go 1.24.0
 

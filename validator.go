@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
 // ValidationError 参数验证错误处理器接口
