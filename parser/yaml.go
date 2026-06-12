@@ -6,7 +6,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const MIME_YAML = "application/x-yaml"
+const MIMEYAML = "application/x-yaml"
 
 var YAML yamlParser
 

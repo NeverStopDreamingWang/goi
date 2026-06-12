@@ -20,11 +20,11 @@ var parserMu sync.RWMutex
 
 // parsers MIME 类型到解析器的映射
 var parsers = map[string]Parser{
-	MIME_JSON:              JSON,
-	MIME_XML:               XML,
-	MIME_XML2:              XML,
-	MIME_YAML:              YAML,
-	MIME_MultipartPOSTForm: FormMultipart,
+	MIMEJSON:              JSON,
+	MIMEXML:               XML,
+	MIMETextXML:           XML,
+	MIMEYAML:              YAML,
+	MIMEMultipartPostForm: FormMultipart,
 }
 
 // RegisterParser 注册自定义解析器

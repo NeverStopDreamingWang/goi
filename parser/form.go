@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-const MIME_MultipartPOSTForm = "multipart/form-data"
+const MIMEMultipartPostForm = "multipart/form-data"
 
 var Form formParser
 var FormPost formPostParser
