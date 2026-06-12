@@ -12,15 +12,15 @@ import (
 
 // 注意: 要运行这些示例测试，需要本地已启动 PostgreSQL，且修改 DSN 与权限
 func init() {
-	goi.Settings.DATABASES["default"] = &goi.DataBase{
-		ENGINE: "postgres",
-		Connect: func(ENGINE string) *sql.DB {
+	goi.Settings.Databases["default"] = &goi.Database{
+		Engine: "postgres",
+		Connect: func(Engine string) *sql.DB {
 			var DB *sql.DB
 			var err error
 			// 示例 DSN，请根据实际环境修改:
 			// host=127.0.0.1 port=5432 user=postgres password=xxx dbname=test_goi sslmode=disable
 			dataSourceName := "host=127.0.0.1 port=5432 user=postgres password=xxx dbname=test_goi sslmode=disable"
-			DB, err = sql.Open(ENGINE, dataSourceName)
+			DB, err = sql.Open(Engine, dataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
@@ -79,7 +79,7 @@ func (userModel UserModel) ModelSet() *postgres.Settings {
 			BeforeHandler: nil,
 			AfterHandler:  nil,
 		},
-		TABLE_NAME: "user_tb",
+		TableName: "user_tb",
 		Settings: goi.Params{
 			"encrypt_fields": encryptFields,
 		},

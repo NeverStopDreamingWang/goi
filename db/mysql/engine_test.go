@@ -11,13 +11,13 @@ import (
 )
 
 func init() {
-	goi.Settings.DATABASES["default"] = &goi.DataBase{
-		ENGINE: "mysql",
-		Connect: func(ENGINE string) *sql.DB {
+	goi.Settings.Databases["default"] = &goi.Database{
+		Engine: "mysql",
+		Connect: func(Engine string) *sql.DB {
 			var DB *sql.DB
 			var err error
 			DataSourceName := "root:xxx@tcp(127.0.0.1:3306)/test_goi"
-			DB, err = sql.Open(ENGINE, DataSourceName)
+			DB, err = sql.Open(Engine, DataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
@@ -82,8 +82,8 @@ func (userModel UserModel) ModelSet() *mysql.Settings {
 			AfterHandler:  InitUser, // 迁移之后处理函数
 		},
 
-		TABLE_NAME:      "user_tb",            // 设置表名
-		ENGINE:          "InnoDB",             // 设置存储引擎，默认: InnoDB
+		TableName:       "user_tb",            // 设置表名
+		Engine:          "InnoDB",             // 设置存储引擎，默认: InnoDB
 		AUTO_INCREMENT:  1,                    // 设置自增长起始值
 		DEFAULT_CHARSET: "utf8mb4",            // 设置默认字符集，如: utf8mb4
 		COLLATE:         "utf8mb4_0900_ai_ci", // 设置校对规则，如 utf8mb4_0900_ai_ci;

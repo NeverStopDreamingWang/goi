@@ -12,15 +12,15 @@ import (
 
 // 注意: 要运行这些示例测试，需要本地已配置好 SQL Server 数据库，并修改 DSN 与权限
 func init() {
-	goi.Settings.DATABASES["sqlserver_default"] = &goi.DataBase{
-		ENGINE: "sqlserver",
-		Connect: func(ENGINE string) *sql.DB {
+	goi.Settings.Databases["sqlserver_default"] = &goi.Database{
+		Engine: "sqlserver",
+		Connect: func(Engine string) *sql.DB {
 			var DB *sql.DB
 			var err error
 			// 示例 DSN，请根据实际环境修改，例如:
 			// sqlserver://username:password@localhost:1433?database=TestDB
 			dataSourceName := "sqlserver://sa:yourStrong(!)Password@localhost:1433?database=TestDB"
-			DB, err = sql.Open(ENGINE, dataSourceName)
+			DB, err = sql.Open(Engine, dataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
 				panic(err)
@@ -74,7 +74,7 @@ func (userModel UserModel) ModelSet() *sqlserver.Settings {
 			BeforeHandler: nil,
 			AfterHandler:  nil,
 		},
-		TABLE_NAME: "user_tb",
+		TableName: "user_tb",
 		Settings: goi.Params{
 			"encrypt_fields": encryptFields,
 		},
