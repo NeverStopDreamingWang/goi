@@ -11,17 +11,17 @@ import (
 type getResponseFunc func(request *Request) (response *Response)
 
 // 中间件
-// MiddleWare 定义中间件接口：
+// Middleware 定义中间件接口：
 // - ProcessRequest：请求阶段（顺序执行）；返回 nil 则继续执行，否则直接写入响应返回，内层不再进入
 // - ProcessException：异常阶段（逆序执行）；
 // - ProcessResponse：响应阶段（逆序执行）；常用于追加/修改响应头
-type MiddleWare interface {
+type Middleware interface {
 	ProcessRequest(request *Request) any                  // 请求中间件
 	ProcessException(request *Request, exception any) any // 异常中间件
 	ProcessResponse(request *Request, response *Response) // 响应中间件
 }
 
-type MiddleWares []MiddleWare
+type Middlewares []Middleware
 
 // loadMiddleware 构建“洋葱模型”中间件链，返回对 handlerFunc 的包装函数。
 //
@@ -30,7 +30,7 @@ type MiddleWares []MiddleWare
 //
 // 返回:
 //   - getResponseFunc: 包装后的函数
-func (middlewares MiddleWares) loadMiddleware(handlerFunc HandlerFunc) getResponseFunc {
+func (middlewares Middlewares) loadMiddleware(handlerFunc HandlerFunc) getResponseFunc {
 	getResponse := func(request *Request) (response *Response) {
 		defer func() {
 			// 异常捕获
@@ -65,12 +65,12 @@ func (middlewares MiddleWares) loadMiddleware(handlerFunc HandlerFunc) getRespon
 // wrapMiddleware 包装单个中间件，返回对 getResponse 的包装函数。
 //
 // 参数:
-//   - middleware MiddleWare: 单个中间件实例
+//   - middleware Middleware: 单个中间件实例
 //   - getResponse getResponseFunc: 内层的“获取响应”函数
 //
 // 返回:
 //   - getResponseFunc: 包装后的函数
-func wrapMiddleware(middleware MiddleWare, getResponse getResponseFunc) getResponseFunc {
+func wrapMiddleware(middleware Middleware, getResponse getResponseFunc) getResponseFunc {
 	return func(request *Request) (response *Response) {
 		defer func() {
 			err := recover()
@@ -99,7 +99,7 @@ func wrapMiddleware(middleware MiddleWare, getResponse getResponseFunc) getRespo
 
 // convertExceptionToResponse 将 panic 的错误转换为 Response（最常用映射）。
 // - 已知 HttpError：按 Status 返回
-// - 其它：统一 500 Internal Server Error（生产可扩展为 DEBUG 模式返回详细页）
+// - 其它：统一 500 Internal Server Error（生产可扩展为 Debug 模式返回详细页）
 func convertExceptionToResponse(request *Request, exc interface{}) *Response {
 	switch err := exc.(type) {
 	case error:

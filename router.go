@@ -17,7 +17,7 @@ type Router struct {
 	viewSet     ViewSet     // 视图方法
 	noRoute     *ViewSet    // 无路由视图
 	include     []*Router   // 子路由
-	middlewares MiddleWares // 路由中间件
+	middlewares Middlewares // 路由中间件
 
 	// 预编译
 	pattern    string         // 路由正则表达式
@@ -33,7 +33,7 @@ func newRouter() *Router {
 		viewSet:     ViewSet{},
 		noRoute:     nil,
 		include:     make([]*Router, 0),
-		middlewares: make(MiddleWares, 0),
+		middlewares: make(Middlewares, 0),
 
 		// 预编译
 		pattern:    "/",
@@ -94,11 +94,11 @@ func (router *Router) Include(path string, desc string) *Router {
 // Use 注册路由中间件
 //
 // 参数:
-//   - middleware ...MiddleWare: 中间件函数
+//   - middleware ...Middleware: 中间件函数
 //
 // 返回:
 //   - *Router: 当前路由实例
-func (router *Router) Use(middleware ...MiddleWare) *Router {
+func (router *Router) Use(middleware ...Middleware) *Router {
 	router.middlewares = append(router.middlewares, middleware...)
 	return router
 }
@@ -259,7 +259,7 @@ type Route struct {
 	ViewSet  ViewSet     // 视图方法
 	NoRoute  *ViewSet    // 无路由视图
 	Include  []Route     // 子路由
-	Handlers MiddleWares // 路由中间件
+	Handlers Middlewares // 路由中间件
 
 	// 预编译
 	Pattern    string         // 路由正则表达式
