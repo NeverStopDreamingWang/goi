@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-const MIME_JSON = "application/json"
+const MIMEJSON = "application/json"
 
 // EnableDecoderUseNumber is used to call the UseNumber method on the JSON
 // Decoder instance. UseNumber causes the Decoder to unmarshal a number into an

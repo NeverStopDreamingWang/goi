@@ -5,8 +5,8 @@ import (
 	"net/http"
 )
 
-const MIME_XML = "application/xml"
-const MIME_XML2 = "text/xml"
+const MIMEXML = "application/xml"
+const MIMETextXML = "text/xml"
 
 var XML xmlParser
 
