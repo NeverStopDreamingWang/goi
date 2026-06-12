@@ -80,9 +80,9 @@ func (router *Router) compilePattern() {
 //   - params Params: 匹配的参数映射
 //
 // 返回:
-//   - MiddleWares: 匹配的路由中间件
+//   - Middlewares: 匹配的路由中间件
 //   - bool: 是否匹配成功
-func (router Router) match(path string, params Params) (MiddleWares, bool) {
+func (router Router) match(path string, params Params) (Middlewares, bool) {
 	// 保护：确保已编译正则，避免空指针
 	if router.regex == nil {
 		(&router).compilePattern()
@@ -116,9 +116,9 @@ func (router Router) match(path string, params Params) (MiddleWares, bool) {
 //
 // 返回:
 //   - *ViewSet: 匹配的视图集
-//   - MiddleWares: 匹配的路由中间件
+//   - Middlewares: 匹配的路由中间件
 //   - bool: 是否匹配成功
-func (router Router) resolve(Path string, params Params) (*ViewSet, MiddleWares, bool) {
+func (router Router) resolve(Path string, params Params) (*ViewSet, Middlewares, bool) {
 	middlewares, ok := router.match(Path, params)
 	if ok == false {
 		return nil, nil, false
