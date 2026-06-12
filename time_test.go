@@ -27,10 +27,10 @@ func TestGetLocation_Default(t *testing.T) {
 		now.Unix(), now.Format(time.RFC3339), now.Location().String(), zone, offset)
 }
 
-// TestGetTime_USE_TZ 验证 USE_TZ 对 GetTime 的影响
-// - USE_TZ=true：返回当前配置时区的“有感知”时间（Location=GetLocation）
-// - USE_TZ=false：返回“无感知”时间（Location=UTC），墙钟等于配置时区的当前墙钟
-func TestGetTime_USE_TZ(t *testing.T) {
+// TestGetTime_UseTZ 验证 UseTZ 对 GetTime 的影响
+// - UseTZ=true：返回当前配置时区的“有感知”时间（Location=GetLocation）
+// - UseTZ=false：返回“无感知”时间（Location=UTC），墙钟等于配置时区的当前墙钟
+func TestGetTime_UseTZ(t *testing.T) {
 	prev := Settings
 	defer func() { Settings = prev }()
 
@@ -42,8 +42,8 @@ func TestGetTime_USE_TZ(t *testing.T) {
 	t.Logf("[now] unix=%d time=%s loc=%s zone=%s offset=%d",
 		tNow.Unix(), tNow.Format(time.RFC3339), tNow.Location().String(), zone, offset)
 
-	// 1) USE_TZ=true -> aware 本地时间（带 +08:00）
-	Settings.USE_TZ = true
+	// 1) UseTZ=true -> aware 本地时间（带 +08:00）
+	Settings.UseTZ = true
 	tAware := GetTime()
 	if tAware.Location().String() != "Asia/Shanghai" {
 		t.Fatalf("expected Asia/Shanghai, got %s", tAware.Location())
@@ -51,8 +51,8 @@ func TestGetTime_USE_TZ(t *testing.T) {
 	if _, off := tAware.Zone(); off != 8*3600 {
 		t.Fatalf("expected +08:00 offset, got %d", off)
 	}
-	// 2) USE_TZ=false -> naive（Location=UTC），墙钟应等于 Asia/Shanghai 当前墙钟
-	Settings.USE_TZ = false
+	// 2) UseTZ=false -> naive（Location=UTC），墙钟应等于 Asia/Shanghai 当前墙钟
+	Settings.UseTZ = false
 	tNaive := GetTime()
 	if tNaive.Location().String() != "UTC" {
 		t.Fatalf("expected UTC location for naive, got %s", tNaive.Location())

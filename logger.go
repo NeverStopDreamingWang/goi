@@ -58,7 +58,7 @@ type Level string
 // 日志等级
 const (
 	meta    Level = "" // 框架日志
-	DEBUG   Level = "DEBUG"
+	Debug   Level = "DEBUG"
 	INFO    Level = "INFO"
 	WARNING Level = "WARNING"
 	ERROR   Level = "ERROR"
@@ -96,7 +96,7 @@ func (self *Logger) DebugF(format string, logs ...any) {
 // 参数:
 //   - logs ...any: 日志内容
 func (self *Logger) Debug(logs ...any) {
-	self.Log(DEBUG, logs...)
+	self.Log(Debug, logs...)
 }
 
 // InfoF 记录信息级别日志
@@ -166,8 +166,8 @@ func (self *Logger) LogF(level Level, format string, logs ...any) {
 //   - level Level: 日志级别
 //   - logs ...any: 日志内容
 func (self *Logger) Log(level Level, logs ...any) {
-	// DEBUG 模式下所有日志都输出到控制台
-	if Settings.DEBUG == true {
+	// Debug 模式下所有日志都输出到控制台
+	if Settings.Debug == true {
 		// 初始化控制台日志
 		consoleLogger = getConsoleLogger()
 		consoleLogger.lock.Lock()
@@ -175,8 +175,8 @@ func (self *Logger) Log(level Level, logs ...any) {
 		consoleLogger.lock.Unlock()
 	} else {
 		consoleLogger = nil
-		// DEBUG 模式关闭时，跳过 DEBUG 级别日志
-		if level == DEBUG {
+		// Debug 模式关闭时，跳过 Debug 级别日志
+		if level == Debug {
 			return
 		}
 	}

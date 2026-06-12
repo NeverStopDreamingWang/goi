@@ -21,7 +21,7 @@ type ViewSet struct {
 	PATCH    HandlerFunc // 部分更新
 	DELETE   HandlerFunc // 删除资源
 	CONNECT  HandlerFunc // 建立隧道
-	OPTIONS  HandlerFunc // 查询支持的方法
+	Options  HandlerFunc // 查询支持的方法
 	TRACE    HandlerFunc // 回显请求
 	NoMethod HandlerFunc // 未注册或不支持的HTTP方法时的处理函数，默认返回 405
 }
@@ -57,8 +57,8 @@ func (viewSet ViewSet) GetHandlerFunc(method string) (HandlerFunc, error) {
 	case http.MethodConnect:
 		handlerFunc = viewSet.CONNECT
 	case http.MethodOptions:
-		handlerFunc = viewSet.OPTIONS
-		// OPTIONS 未定义时，使用默认处理函数
+		handlerFunc = viewSet.Options
+		// Options 未定义时，使用默认处理函数
 		if handlerFunc == nil {
 			handlerFunc = defaultOptionsHandler
 		}
@@ -114,9 +114,9 @@ func (viewSet ViewSet) GetMethods() []string {
 	return methods
 }
 
-// defaultOptionsHandler 默认的 OPTIONS 请求处理函数
+// defaultOptionsHandler 默认的 Options 请求处理函数
 //
-// 当用户未自定义 OPTIONS 处理函数时，自动调用此方法
+// 当用户未自定义 Options 处理函数时，自动调用此方法
 // 返回 200 状态码，并设置 Content-Length 响应头
 // Allow 响应头由框架自动设置
 //

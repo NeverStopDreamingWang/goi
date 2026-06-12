@@ -36,7 +36,7 @@ type Engine struct {
 }
 
 // 创建一个 Http 服务
-func NewHttpServer() *Engine {
+func NewHTTPServer() *Engine {
 	return &Engine{
 		startTime:  nil,
 		server:     http.Server{},
@@ -67,8 +67,8 @@ func (engine *Engine) RunServer() {
 	})
 	engine.Log.Log(meta, startTimeMsg)
 
-	// DEBUG
-	engine.Log.Log(meta, fmt.Sprintf("DEBUG: %v", engine.Settings.DEBUG))
+	// Debug
+	engine.Log.Log(meta, fmt.Sprintf("Debug: %v", engine.Settings.Debug))
 
 	// 时区
 	if engine.Settings.GetTimeZone() != "" {
@@ -121,21 +121,21 @@ func (engine *Engine) RunServer() {
 	}()
 
 	engine.server = http.Server{
-		Addr:    fmt.Sprintf("%v:%v", engine.Settings.BIND_ADDRESS, engine.Settings.PORT),
+		Addr:    fmt.Sprintf("%v:%v", engine.Settings.BindAddress, engine.Settings.Port),
 		Handler: engine,
 	}
-	ln, err := net.Listen(engine.Settings.NET_WORK, engine.server.Addr)
+	ln, err := net.Listen(engine.Settings.Network, engine.server.Addr)
 	if err != nil {
 		engine.Log.Error(err)
 		panic(err)
 	}
-	if engine.Settings.SSL.STATUS == true {
-		certificate, err := os.ReadFile(engine.Settings.SSL.CERT_PATH)
+	if engine.Settings.SSL.Enabled == true {
+		certificate, err := os.ReadFile(engine.Settings.SSL.CertPath)
 		if err != nil {
 			engine.Log.Error(err)
 			panic(err)
 		}
-		key, err := os.ReadFile(engine.Settings.SSL.KEY_PATH)
+		key, err := os.ReadFile(engine.Settings.SSL.KeyPath)
 		if err != nil {
 			engine.Log.Error(err)
 			panic(err)
@@ -150,24 +150,24 @@ func (engine *Engine) RunServer() {
 		}
 
 		listenAddressMsg := i18n.T("server.listen_address", map[string]any{
-			"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
+			"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BindAddress, engine.Settings.Port, engine.Settings.Network),
 		})
 		engine.Log.Log(meta, listenAddressMsg)
-		if engine.Settings.BIND_DOMAIN != "" {
+		if engine.Settings.BindDomain != "" {
 			listenDomainMsg := i18n.T("server.listen_address", map[string]any{
-				"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
+				"bind_address": fmt.Sprintf("https://%v:%v [%v]", engine.Settings.BindDomain, engine.Settings.Port, engine.Settings.Network),
 			})
 			engine.Log.Log(meta, listenDomainMsg)
 		}
-		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CERT_PATH, engine.Settings.SSL.KEY_PATH)
+		err = engine.server.ServeTLS(ln, engine.Settings.SSL.CertPath, engine.Settings.SSL.KeyPath)
 	} else {
 		listenAddressMsg := i18n.T("server.listen_address", map[string]any{
-			"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_ADDRESS, engine.Settings.PORT, engine.Settings.NET_WORK),
+			"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BindAddress, engine.Settings.Port, engine.Settings.Network),
 		})
 		engine.Log.Log(meta, listenAddressMsg)
-		if engine.Settings.BIND_DOMAIN != "" {
+		if engine.Settings.BindDomain != "" {
 			listenDomainMsg := i18n.T("server.listen_address", map[string]any{
-				"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BIND_DOMAIN, engine.Settings.PORT, engine.Settings.NET_WORK),
+				"bind_address": fmt.Sprintf("http://%v:%v [%v]", engine.Settings.BindDomain, engine.Settings.Port, engine.Settings.Network),
 			})
 			engine.Log.Log(meta, listenDomainMsg)
 		}
@@ -198,15 +198,15 @@ func (engine *Engine) StopServer() (err error) {
 		}
 	}
 
-	if len(engine.Settings.DATABASES) != 0 {
+	if len(engine.Settings.Databases) != 0 {
 		closeDatabaseMsg := i18n.T("server.close_database")
 		engine.Log.Log(meta, closeDatabaseMsg)
 	}
-	for name, database := range engine.Settings.DATABASES {
+	for name, database := range engine.Settings.Databases {
 		err = database.Close()
 		if err != nil {
 			closeDatabaseErrorMsg := i18n.T("server.close_database_error", map[string]any{
-				"engine": database.ENGINE,
+				"engine": database.Engine,
 				"name":   name,
 				"err":    err,
 			})

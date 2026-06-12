@@ -11,62 +11,62 @@ type Language string
 
 // 框架语言
 const (
-	ZH_CN Language = "zh-CN" // 中文-简体
-	EN_US Language = "en-US" // 英文-美国
+	ZhCN Language = "zh-CN" // 中文-简体
+	EnUS Language = "en-US" // 英文-美国
 )
 
 // SSL
 type SSL struct {
-	STATUS    bool
-	TYPE      string
-	CERT_PATH string
-	KEY_PATH  string
+	Enabled  bool
+	Type     string
+	CertPath string
+	KeyPath  string
 }
 
 // 项目设置
 type settings struct {
-	DEBUG        bool                 // 是否开启 DEBUG 模式
-	NET_WORK     string               // 网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
-	BIND_ADDRESS string               // 监听地址
-	PORT         uint16               // 服务端口
-	BIND_DOMAIN  string               // 绑定域名
-	BASE_DIR     string               // 项目根路径
-	SECRET_KEY   string               // 项目 AES 密钥
-	PRIVATE_KEY  string               // 项目 RSA 私钥
-	PUBLIC_KEY   string               // 项目 RSA 公钥
-	SSL          SSL                  // SSL
-	DATABASES    map[string]*DataBase // 数据库配置
+	Debug       bool                 // 是否开启 Debug 模式
+	Network     string               // 网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
+	BindAddress string               // 监听地址
+	Port        uint16               // 服务端口
+	BindDomain  string               // 绑定域名
+	BaseDir     string               // 项目根路径
+	SecretKey   string               // 项目 AES 密钥
+	PrivateKey  string               // 项目 RSA 私钥
+	PublicKey   string               // 项目 RSA 公钥
+	SSL         SSL                  // SSL
+	Databases   map[string]*Database // 数据库配置
 
 	// TIMEZONE
-	USE_TZ    bool           // USE_TZ=true: 返回 GetLocation() 时区的时间 “有感知时区”；USE_TZ=false: 返回 GetLocation() 时区的时间，但时区标注为 UTC “无感知时区”，避免任何时区换算，直存直取
-	time_zone string         // 地区时区默认为空，本地时区
-	location  *time.Location // 地区时区
-	language  Language       // 项目语言
+	UseTZ    bool           // UseTZ=true: 返回 GetLocation() 时区的时间 “有感知时区”；UseTZ=false: 返回 GetLocation() 时区的时间，但时区标注为 UTC “无感知时区”，避免任何时区换算，直存直取
+	timeZone string         // 地区时区默认为空，本地时区
+	location *time.Location // 地区时区
+	language Language       // 项目语言
 
 	// 自定义设置
 	Params Params
 }
 
 func newSettings() *settings {
-	i18n.SetLocalize(string(ZH_CN))
+	i18n.SetLocalize(string(ZhCN))
 	return &settings{
-		DEBUG:        true,
-		NET_WORK:     "tcp",
-		BIND_ADDRESS: "127.0.0.1",
-		PORT:         8080,
-		BIND_DOMAIN:  "",
-		BASE_DIR:     "",
-		SECRET_KEY:   "",
-		PRIVATE_KEY:  "",
-		PUBLIC_KEY:   "",
-		SSL:          SSL{},
-		DATABASES:    make(map[string]*DataBase),
+		Debug:       true,
+		Network:     "tcp",
+		BindAddress: "127.0.0.1",
+		Port:        8080,
+		BindDomain:  "",
+		BaseDir:     "",
+		SecretKey:   "",
+		PrivateKey:  "",
+		PublicKey:   "",
+		SSL:         SSL{},
+		Databases:   make(map[string]*Database),
 
 		// TIMEZONE
-		USE_TZ:    true,
-		time_zone: "",
-		location:  time.Local,
-		language:  ZH_CN,
+		UseTZ:    true,
+		timeZone: "",
+		location: time.Local,
+		language: ZhCN,
 
 		Params: make(Params),
 	}
@@ -75,18 +75,18 @@ func newSettings() *settings {
 // 设置时区
 //
 // 参数:
-//   - time_zone string: 时区
-func (self *settings) SetTimeZone(time_zone string) error {
-	location, err := time.LoadLocation(time_zone)
+//   - timeZone string: 时区
+func (self *settings) SetTimeZone(timeZone string) error {
+	location, err := time.LoadLocation(timeZone)
 	if err != nil {
 		return err
 	}
-	self.time_zone = time_zone
+	self.timeZone = timeZone
 	self.location = location
 
-	if self.USE_TZ == true {
+	if self.UseTZ == true {
 		// 同时设置系统环境变量，确保子进程和其他组件使用相同时区
-		err = os.Setenv("TZ", self.time_zone)
+		err = os.Setenv("TZ", self.timeZone)
 		if err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func (self *settings) SetTimeZone(time_zone string) error {
 // 返回:
 //   - string: 时区
 func (self settings) GetTimeZone() string {
-	return self.time_zone
+	return self.timeZone
 }
 
 // 获取时区
@@ -118,7 +118,7 @@ func (self settings) GetLocation() *time.Location {
 // 设置代码语言
 //
 // 参数:
-//   - lang Language: 语言 ZH_CN、EN_US
+//   - lang Language: 语言 ZhCN、EnUS
 func (self settings) SetLanguage(lang Language) {
 	self.language = lang
 	i18n.SetLocalize(string(self.language))
@@ -127,7 +127,7 @@ func (self settings) SetLanguage(lang Language) {
 // 获取代码语言
 //
 // 返回:
-//   - Language: 语言 ZH_CN、EN_US
+//   - Language: 语言 ZhCN、EnUS
 func (self settings) GetLanguage() Language {
 	return self.language
 }
