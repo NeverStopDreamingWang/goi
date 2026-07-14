@@ -109,7 +109,10 @@ func (router *Router) Use(middleware ...Middleware) *Router {
 //   - path: string 路由
 //   - desc: string 描述
 //   - viewSet: ViewSet 视图方法
-func (router *Router) Path(path string, desc string, viewSet ViewSet) {
+//
+// 返回:
+//   - *Router: 注册的路由实例，仅用于调用 Use 添加中间件
+func (router *Router) Path(path string, desc string, viewSet ViewSet) *Router {
 	includeRouter := &Router{
 		path:        path,
 		desc:        desc,
@@ -121,6 +124,7 @@ func (router *Router) Path(path string, desc string, viewSet ViewSet) {
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
 	router.include = append(router.include, includeRouter)
+	return includeRouter
 }
 
 // StaticFile 注册静态文件路由
@@ -129,7 +133,10 @@ func (router *Router) Path(path string, desc string, viewSet ViewSet) {
 //   - path: string 路由
 //   - desc: string 描述
 //   - filePath: string 文件路径
-func (router *Router) StaticFile(path string, desc string, filePath string) {
+//
+// 返回:
+//   - *Router: 注册的路由实例，仅用于调用 Use 添加中间件
+func (router *Router) StaticFile(path string, desc string, filePath string) *Router {
 	view := StaticFileView(filePath)
 	includeRouter := &Router{
 		path: path,
@@ -145,6 +152,7 @@ func (router *Router) StaticFile(path string, desc string, filePath string) {
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
 	router.include = append(router.include, includeRouter)
+	return includeRouter
 }
 
 // StaticDir 注册静态目录路由
@@ -153,7 +161,10 @@ func (router *Router) StaticFile(path string, desc string, filePath string) {
 //   - path: string 路由
 //   - desc: string 描述
 //   - dirPath: http.Dir 静态映射路径
-func (router *Router) StaticDir(path string, desc string, dirPath http.Dir) {
+//
+// 返回:
+//   - *Router: 注册的路由实例，仅用于调用 Use 添加中间件
+func (router *Router) StaticDir(path string, desc string, dirPath http.Dir) *Router {
 	if dirPath == "" {
 		dirPath = "."
 	}
@@ -176,6 +187,7 @@ func (router *Router) StaticDir(path string, desc string, dirPath http.Dir) {
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
 	router.include = append(router.include, includeRouter)
+	return includeRouter
 }
 
 // StaticFileFS 注册 embed.FS 静态文件路由
@@ -185,7 +197,10 @@ func (router *Router) StaticDir(path string, desc string, dirPath http.Dir) {
 //   - desc: string 描述
 //   - fileFS: embed.FS 嵌入式文件系统
 //   - defaultPath: string 嵌入文件默认路径
-func (router *Router) StaticFileFS(path string, desc string, fileFS embed.FS, defaultPath string) {
+//
+// 返回:
+//   - *Router: 注册的路由实例，仅用于调用 Use 添加中间件
+func (router *Router) StaticFileFS(path string, desc string, fileFS embed.FS, defaultPath string) *Router {
 	view := StaticFileFSView(fileFS, defaultPath)
 	includeRouter := &Router{
 		path: path,
@@ -201,6 +216,7 @@ func (router *Router) StaticFileFS(path string, desc string, fileFS embed.FS, de
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
 	router.include = append(router.include, includeRouter)
+	return includeRouter
 }
 
 // StaticDirFS 注册 embed.FS 静态目录路由
@@ -214,7 +230,10 @@ func (router *Router) StaticFileFS(path string, desc string, fileFS embed.FS, de
 // 说明:
 //   - path 路径之后自动添加 /<path:fileName> 参数
 //   - 以 basePath 作为根锚定嵌入式文件系统，再以 fileName 查找文件
-func (router *Router) StaticDirFS(path string, desc string, dirFS embed.FS, basePath string) {
+//
+// 返回:
+//   - *Router: 注册的路由实例，仅用于调用 Use 添加中间件
+func (router *Router) StaticDirFS(path string, desc string, dirFS embed.FS, basePath string) *Router {
 	if strings.HasSuffix(path, "/") == false {
 		path = path + "/"
 	}
@@ -242,6 +261,7 @@ func (router *Router) StaticDirFS(path string, desc string, dirFS embed.FS, base
 	includeRouter.compilePattern()
 	router.hasChildRouter(includeRouter)
 	router.include = append(router.include, includeRouter)
+	return includeRouter
 }
 
 // NoRoute 注册未匹配路由时的处理视图，默认返回 404
