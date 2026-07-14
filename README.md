@@ -6,25 +6,46 @@
 
 ## goi 创建命令
 
-使用 `go env GOMODCACHE` 获取 go 软件包路径：`mypath\Go\pkg\mod` + `github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe`
+### 构建 goi 命令行工具
 
-使用 `go env GOROOT` 获取 go 安装路径 `mypath\Go` + `bin`
-将可执行文件复制到 Go\bin 目录下
+构建入口位于 `cmd/` 目录。Windows 和 Linux 分别提供对应环境的构建脚本；两个脚本都会交叉编译 Windows 与 Linux 两个系统的可执行文件。目标架构均为 `amd64`，并设置 `CGO_ENABLED=0`，因此不依赖目标系统的 C 工具链。构建命令使用 `-trimpath` 和 `-ldflags="-s -w"`，用于移除本地路径、符号表及调试信息，减小发布产物体积。
 
-**Windows**: `copy mypath\Go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe mypath\Go\bin\goi.exe`
+Windows 环境执行：
 
-编译
-
-```cmd
-go build -p=1 -o goi.exe
+```bat
+cmd\build.bat
 ```
 
-**Linux**: `cp mypath\go\pkg\mod\github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi mypath\go\bin\goi`
+Linux 环境执行：
 
-自定义编译
+```sh
+sh ./cmd/build.sh
+```
 
-```cmd
-go build -o goi
+无论使用哪个脚本，都会生成以下两个构建产物：
+
+- `windows/amd64`：`cmd/goi.exe`
+- `linux/amd64`：`cmd/goi`
+
+两个脚本都会自动切换到自身所在目录，因此也可以从其他工作目录通过脚本路径调用。
+
+### 安装 goi 命令行工具
+
+使用 `go env GOMODCACHE` 获取 go 软件包路径：`mypath\Go\pkg\mod` + `github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe`
+
+使用 `go env GOROOT` 获取 Go 安装目录，然后将对应系统的构建产物复制到其 `bin` 目录。
+
+Windows PowerShell：
+
+```powershell
+$goroot = go env GOROOT
+Copy-Item .\cmd\goi.exe "$goroot\bin\goi.exe"
+```
+
+Linux：
+
+```sh
+cp ./cmd/goi "$(go env GOROOT)/bin/goi"
 ```
 
 ### goi 命令使用
@@ -98,13 +119,13 @@ func Ping(request *goi.Request) any {
 
 func main() {
 	// 创建 Goi 服务器
-	Server := goi.NewHttpServer()
+	Server := goi.NewHTTPServer()
 	// 网络协议
-	Server.Settings.NET_WORK = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6
+	Server.Settings.Network = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6"
 	// 监听地址 0.0.0.0
-	Server.Settings.BIND_ADDRESS = "0.0.0.0" // 默认 127.0.0.1
+	Server.Settings.BindAddress = "0.0.0.0" // 默认 127.0.0.1
 	// 监听端口 8080
-	Server.Settings.PORT = 8080
+	Server.Settings.Port = 8080
 
 	// 注册路由
 	Server.Router.Path("ping", "测试接口", goi.ViewSet{GET: Ping})
