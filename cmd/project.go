@@ -271,7 +271,7 @@ func init() {
 	goi.RegisterOnStartup(goi.Log)
 
 	// 设置验证器错误，不指定则使用默认
-	Server.Validator.SetValidationError(validationError{})
+	Server.Validation.SetValidationError(validationError{})
 
 	// 设置自定义配置
 	// Server.Settings.Set(key string, value any)
