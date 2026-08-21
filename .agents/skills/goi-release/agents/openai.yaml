@@ -1,0 +1,4 @@
+interface:
+  display_name: "Goi Release"
+  short_description: "Prepare and publish versioned Goi framework releases"
+  default_prompt: "Use $goi-release to prepare the next Goi release and draft its release notes."

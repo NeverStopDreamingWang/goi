@@ -1,0 +1,4 @@
+interface:
+  display_name: "Goi Commit"
+  short_description: "Review and create focused Goi Git commits safely"
+  default_prompt: "Use $goi-commit to review my current changes and create a focused Git commit."
