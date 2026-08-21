@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
@@ -16,6 +17,12 @@ import (
 // partial 
 func Validate(attrs Model, partial bool) error {
 	validatedDataValue := reflect.ValueOf(attrs)
+	if !validatedDataValue.IsValid() || (validatedDataValue.Kind() == reflect.Ptr && validatedDataValue.IsNil()) {
+		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]any{
+			"name": "ModelSerializer.model",
+		})
+		return errors.New(isNotStructPtrErrorMsg)
+	}
 	if validatedDataValue.Kind() == reflect.Ptr {
 		validatedDataValue = validatedDataValue.Elem()
 	}
@@ -103,7 +110,7 @@ func validateFieldType(fieldType string, fieldValue reflect.Value) error {
 	switch fieldValue.Kind() {
 	case reflect.String:
 		// VARCHAR2 / NVARCHAR2 
-		err = varcharValidate(fieldType, fieldValue.Interface())
+		err = varcharValidate(fieldType, fieldValue.String())
 		if err != nil {
 			return err
 		}
@@ -137,37 +144,25 @@ func isNotNullValidate(fieldType string) bool {
 }
 
 // VARCHAR2 / NVARCHAR2 
-func varcharValidate(fieldType string, value any) error {
-	var VarcharRe = `(?i)VARCHAR2\((\d+)\)|NVARCHAR2\((\d+)\)`
+func varcharValidate(fieldType string, strValue string) error {
+	var VarcharRe = `(?i)(N?VARCHAR2)\((\d+)(?:\s+(BYTE|CHAR))?\)`
 	re := regexp.MustCompile(VarcharRe)
 	matches := re.FindStringSubmatch(fieldType)
-	if len(matches) < 2 {
+	if len(matches) < 3 {
 		return nil
 	}
 
-	// 
-	var lengthStr string
-	for i := 1; i < len(matches); i++ {
-		if matches[i] != "" {
-			lengthStr = matches[i]
-			break
-		}
-	}
-	if lengthStr == "" {
-		return nil
-	}
-	length, err := strconv.Atoi(lengthStr)
+	length, err := strconv.Atoi(matches[2])
 	if err != nil {
 		panic(err)
 	}
 
-	strValue, ok := value.(string)
-	if !ok {
-		fieldTypeErrorMsg := i18n.T("serializer.field_type_string_error")
-		return errors.New(fieldTypeErrorMsg)
+	valueLength := len(strValue)
+	if strings.EqualFold(matches[1], "NVARCHAR2") || strings.EqualFold(matches[3], "CHAR") {
+		valueLength = utf8.RuneCountInString(strValue)
 	}
 
-	if len(strValue) > length {
+	if valueLength > length {
 		varcharLenErrorMsg := i18n.T("serializer.varchar_len_error", map[string]any{
 			"length": length,
 		})
