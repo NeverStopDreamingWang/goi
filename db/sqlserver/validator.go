@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf16"
 
 	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
@@ -16,6 +17,12 @@ import (
 // partial 是否仅验证提供的非零值字段，零值字段跳过不验证必填项
 func Validate(attrs Model, partial bool) error {
 	validatedDataValue := reflect.ValueOf(attrs)
+	if !validatedDataValue.IsValid() || (validatedDataValue.Kind() == reflect.Ptr && validatedDataValue.IsNil()) {
+		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]any{
+			"name": "ModelSerializer.model",
+		})
+		return errors.New(isNotStructPtrErrorMsg)
+	}
 	if validatedDataValue.Kind() == reflect.Ptr {
 		validatedDataValue = validatedDataValue.Elem()
 	}
@@ -103,7 +110,7 @@ func validateFieldType(fieldType string, fieldValue reflect.Value) error {
 	switch fieldValue.Kind() {
 	case reflect.String:
 		// NVARCHAR/VARCHAR 长度校验
-		err = varcharValidate(fieldType, fieldValue.Interface())
+		err = varcharValidate(fieldType, fieldValue.String())
 		if err != nil {
 			return err
 		}
@@ -137,7 +144,7 @@ func isNotNullValidate(fieldType string) bool {
 }
 
 // NVARCHAR/VARCHAR 长度校验
-func varcharValidate(fieldType string, value any) error {
+func varcharValidate(fieldType string, strValue string) error {
 	var VarcharRe = `(?i)(N?VARCHAR)\((\d+)\)`
 	re := regexp.MustCompile(VarcharRe)
 	matches := re.FindStringSubmatch(fieldType)
@@ -150,13 +157,12 @@ func varcharValidate(fieldType string, value any) error {
 		panic(err)
 	}
 
-	strValue, ok := value.(string)
-	if !ok {
-		fieldTypeErrorMsg := i18n.T("serializer.field_type_string_error")
-		return errors.New(fieldTypeErrorMsg)
+	valueLength := len(strValue)
+	if strings.EqualFold(matches[1], "NVARCHAR") {
+		valueLength = len(utf16.Encode([]rune(strValue)))
 	}
 
-	if len(strValue) > length {
+	if valueLength > length {
 		varcharLenErrorMsg := i18n.T("serializer.varchar_len_error", map[string]any{
 			"length": length,
 		})

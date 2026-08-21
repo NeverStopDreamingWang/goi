@@ -15,6 +15,12 @@ import (
 // partial 是否仅验证提供的非零值字段，零值字段跳过不验证必填选
 func Validate(attrs Model, partial bool) error {
 	validatedDataValue := reflect.ValueOf(attrs)
+	if !validatedDataValue.IsValid() || (validatedDataValue.Kind() == reflect.Ptr && validatedDataValue.IsNil()) {
+		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]any{
+			"name": "ModelSerializer.model",
+		})
+		return errors.New(isNotStructPtrErrorMsg)
+	}
 	if validatedDataValue.Kind() == reflect.Ptr {
 		validatedDataValue = validatedDataValue.Elem()
 	}
