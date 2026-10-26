@@ -281,7 +281,7 @@ func init() {
 	// RunServer 内部会启动注册 goroutine 执行任务
 	// goi.RegisterOnStartup(&Task{})
 
-	// 注册关闭回调处理程序
+	// 注册关闭回调处理程序，可以在服务运行期间注册，停机开始后注册的回调不会执行
 	goi.RegisterOnShutdown(&Shutdown{})
 }
 
