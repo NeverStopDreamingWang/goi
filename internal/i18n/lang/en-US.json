@@ -2,6 +2,8 @@
   "language": "en-US",
   "server": {
     "started": "Service Started",
+    "not_running": "HTTP server is not running",
+    "already_started": "HTTP server can only be started once",
     "start_time": "Starting Time: {{ .start_time }}",
     "goi_version": "goi Version: {{ .version }}",
     "current_time_zone": "Current Time Zone: {{ .time_zone }}",
@@ -14,7 +16,6 @@
       "noeviction": "The maximum cache exceeds: {{ .max_size }}"
     },
     "startup_task": "Starting goroutine [{{ .name }}]...",
-    "invalid_operation": "{{ .name }} Invalid Operation",
     "listen_address": "Listen Address: {{ .bind_address }}",
     "shutdown_callback": "Shutdown callback [{{ .name }}]...",
     "shutdown_callback_error": "Shutdown callback error: {{ .err }}",

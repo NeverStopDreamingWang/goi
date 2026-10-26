@@ -2,6 +2,8 @@
   "language": "zh-CN",
   "server": {
     "started": "服务已启动",
+    "not_running": "HTTP 服务尚未运行",
+    "already_started": "HTTP 服务只能启动一次",
     "start_time": "启动时间: {{ .start_time }}",
     "goi_version": "goi 版本: {{ .version }}",
     "current_time_zone": "当前时区: {{ .time_zone }}",
@@ -14,7 +16,6 @@
       "noeviction": "超出设置最大缓存: {{ .max_size }}"
     },
     "startup_task": "正在启动 [{{ .name }}]...",
-    "invalid_operation": "{{ .name }} 无效操作",
     "listen_address": "监听地址: {{ .bind_address }}",
     "shutdown_callback": "正在关闭 [{{ .name }}]...",
     "shutdown_callback_error": "关闭服务处理程序错误: {{ .err }}",
