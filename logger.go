@@ -75,6 +75,8 @@ type Logger struct {
 	SplitInterval time.Duration // 日志切割检查间隔
 	CreateTime    time.Time     // 日志文件创建时间，每次日志切割时需要重置
 	lock          sync.Mutex    // 互斥锁
+	closed        bool          // 日志器是否已经关闭
+	closeErr      error         // 首次关闭文件时返回的错误
 	// 自定义方法
 	PrintFunc       func(logger *Logger, level Level, logs ...any) // 自定义日志输出格式
 	GetFileFunc     func(filePath string) (*os.File, error)        // 创建文件对象方法
@@ -170,9 +172,7 @@ func (self *Logger) Log(level Level, logs ...any) {
 	if Settings.Debug == true {
 		// 初始化控制台日志
 		consoleLogger = getConsoleLogger()
-		consoleLogger.lock.Lock()
-		consoleLogger.Print(consoleLogger, level, logs...)
-		consoleLogger.lock.Unlock()
+		consoleLogger.Print(level, logs...)
 	} else {
 		consoleLogger = nil
 		// Debug 模式关闭时，跳过 Debug 级别日志
@@ -181,19 +181,19 @@ func (self *Logger) Log(level Level, logs ...any) {
 		}
 	}
 
-	self.lock.Lock()
-	self.Print(self, level, logs...)
-	self.lock.Unlock()
+	self.Print(level, logs...)
 }
 
 // Print 默认日志打印格式化函数
 //
 // 参数:
-//   - logger *Logger: 日志器
 //   - level Level: 日志级别
 //   - logs ...any: 日志内容
-func (self *Logger) Print(logger *Logger, level Level, logs ...any) {
-	if self.Logger == nil {
+func (self *Logger) Print(level Level, logs ...any) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if self.closed || self.Logger == nil {
 		invalidObjectMsg := i18n.T("log.invalid_object")
 		panic(invalidObjectMsg)
 	}
@@ -209,7 +209,32 @@ func (self *Logger) Print(logger *Logger, level Level, logs ...any) {
 		timeStr += fmt.Sprintf(" %v", level)
 	}
 	logs = append([]any{timeStr}, logs...)
-	logger.Logger.Println(logs...)
+	self.Logger.Println(logs...)
+}
+
+// Close 关闭日志器持有的文件。
+//
+// Close 可以重复调用，后续调用返回首次关闭的结果。关闭时不会自动停止通过
+// RegisterOnStartup 注册的日志切割任务，调用方应自行安排关闭时机。
+// File 为 nil 时不会关闭 Logger 的其他输出目标，例如 os.Stdout。
+//
+// 返回:
+//   - error: 关闭日志文件时产生的错误
+func (self *Logger) Close() error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if self.closed {
+		return self.closeErr
+	}
+	self.closed = true
+	if self.File == nil {
+		return nil
+	}
+
+	self.closeErr = self.File.Close()
+	self.File = nil
+	return self.closeErr
 }
 
 // CheckSplit 检查是否需要进行日志切割
@@ -217,6 +242,12 @@ func (self *Logger) Print(logger *Logger, level Level, logs ...any) {
 // 返回:
 //   - error: 检查过程中的错误信息
 func (self *Logger) CheckSplit() error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if self.closed {
+		return nil
+	}
 	if self.File == nil {
 		invalidFileMsg := i18n.T("log.invalid_file")
 		return errors.New(invalidFileMsg)
@@ -249,8 +280,6 @@ func (self *Logger) CheckSplit() error {
 		return nil
 	}
 
-	self.lock.Lock()
-	defer self.lock.Unlock()
 	file, err := self.SplitLogger()
 	if err != nil {
 		return err
