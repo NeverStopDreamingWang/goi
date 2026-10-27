@@ -30,7 +30,7 @@ Separate pre-existing user changes from changes made for the current task. Prese
 
 Review generated files, dependency files, binaries, and secrets deliberately. In this repository:
 
-- `cmd/goi` and `cmd/goi.exe` are tracked release artifacts; exclude them from ordinary commits unless the task or release explicitly requires rebuilding them.
+- `cmd/dist/` contains ignored local build artifacts. Never stage or commit them; explicitly requested release assets are handled separately by the release workflow.
 - Include `go.sum` only when its dependency changes are understood and belong to the commit.
 - Project skills under `.agents/skills/` are normal source files when their creation or update is the requested change.
 

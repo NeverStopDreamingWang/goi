@@ -8,6 +8,9 @@
 *.so
 *.dylib
 
+# Local Goi CLI build artifacts
+cmd/dist/
+
 # Test binary, built with `go test -c`
 *.test
 

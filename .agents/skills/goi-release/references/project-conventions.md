@@ -11,19 +11,25 @@ Use this reference when preparing a version, building binaries, drafting release
 - Configured remotes commonly include `github` and `gitee`; never infer that both should be pushed.
 - Local tags may lag behind release commits and hosted Releases. Determine the previous release from multiple signals.
 
-## Release artifacts
+## Command installation and optional release artifacts
 
-The repository tracks both CLI binaries even though generic executable patterns appear in `.gitignore`:
+The CLI source entry is `cmd/goi`, and released versions are installed from source:
 
-- `cmd/goi.exe`: `windows/amd64`
-- `cmd/goi`: `linux/amd64`
+```text
+go install github.com/NeverStopDreamingWang/goi/v2/cmd/goi@vX.Y.Z
+```
+
+Source release commits do not contain prebuilt executables. When downloadable assets are explicitly requested, the local outputs are:
+
+- `cmd/dist/windows-amd64/goi.exe`: `windows/amd64`
+- `cmd/dist/linux-amd64/goi`: `linux/amd64`
 
 Use the host-specific script rather than duplicating build commands:
 
 - `cmd/build.bat` on Windows
 - `sh ./cmd/build.sh` on Linux
 
-Each script cross-compiles both targets with `CGO_ENABLED=0`, `-trimpath`, and `-ldflags="-s -w"`.
+Each script cross-compiles both targets with `CGO_ENABLED=0`, `-trimpath`, and `-ldflags="-s -w"`. The `cmd/dist/` directory is ignored; upload requested assets separately and never add them to the source commit.
 
 ## Release-note style
 
@@ -33,7 +39,7 @@ Follow the most recent applicable Release body. The established format groups ch
 - `调整-` for behavioral or API changes
 - `优化-` for improvements
 - `修复-` or `修正-` for defects and documentation corrections
-- `同步-` for generated templates, binaries, or version alignment
+- `同步-` for generated templates or version alignment
 - `重大调整-` for intentionally prominent incompatible changes
 
 Use backticks for packages, methods, fields, commands, and filenames. Describe observable changes and compatibility implications rather than repeating commit titles verbatim.
@@ -47,9 +53,9 @@ Preferred shape:
 
 优化-相关验证逻辑并补充回归测试。
 
-## github.com/NeverStopDreamingWang/goi/cmd
+## github.com/NeverStopDreamingWang/goi/cmd/goi
 
-同步-Windows 与 Linux 命令行构建产物版本为 `vX.Y.Z`。
+添加-`goi` 命令行工具支持通过 `go install` 安装。
 
 **Full Changelog**: https://github.com/NeverStopDreamingWang/goi/compare/vOLD...vNEW
 ```
@@ -62,9 +68,11 @@ A locally prepared release should normally contain:
 
 - the intended source and documentation changes;
 - `version.go` updated to the target version;
-- rebuilt `cmd/goi.exe` and `cmd/goi`;
+- a successful temporary-`GOBIN` `go install ./cmd/goi` check and native version check;
 - focused test evidence and `go build ./...` evidence;
 - a clean `git diff --check` result;
 - a release-note draft derived from the actual release range.
+
+Prebuilt binaries are required only when explicitly requested as downloadable release assets, and they remain outside the Git commit.
 
 Do not hide environment-dependent integration-test failures. Record the failed command, cause, and narrower checks that passed.

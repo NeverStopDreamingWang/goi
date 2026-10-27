@@ -5,16 +5,16 @@ description: Prepare Goi framework releases when asked to bump a version, draft 
 
 # Goi Release
 
-Prepare a reproducible release while preserving the repository's established versioning, build artifacts, and Chinese release-note style.
+Prepare a reproducible release while preserving the repository's established versioning, optional binary-asset workflow, and Chinese release-note style.
 
-Read [references/project-conventions.md](references/project-conventions.md) before changing a version, building release artifacts, drafting final release notes, or publishing a release.
+Read [references/project-conventions.md](references/project-conventions.md) before changing a version, building optional release assets, drafting final release notes, or publishing a release.
 
 ## Establish the requested scope
 
 Distinguish these outcomes:
 
 - **Notes only:** inspect history and return a release-note draft without changing files.
-- **Prepare locally:** update the version and release artifacts, run checks, and report the resulting diff. Do not commit, tag, push, or create a remote release unless requested.
+- **Prepare locally:** update the version, prepare only explicitly requested assets, run checks, and report the resulting diff. Do not commit, tag, push, or create a remote release unless requested.
 - **Publish:** perform only the explicitly requested commit, tag, push, asset upload, and release operations. Confirm which remote or hosting service is in scope; do not assume that both GitHub and Gitee should be mutated.
 
 If the request is ambiguous, stop after the least-mutating outcome that still provides value. Never overwrite an existing tag or release.
@@ -51,12 +51,14 @@ Run checks proportionate to the change, normally including:
 
 Do not describe a failed test as pre-existing without evidence. If integration tests require unavailable database drivers or services, report the exact limitation and retain the focused test/build evidence; do not claim the full suite passed.
 
-Build release binaries through the checked-in host script:
+For source releases, verify the installable command with a temporary `GOBIN` and `go install ./cmd/goi`, then execute the native result to confirm it reports the target Goi version. The public installation path is `github.com/NeverStopDreamingWang/goi/v2/cmd/goi@<version>`.
+
+Do not build or commit executable files merely to publish a source release. `cmd/dist/` is ignored. Build downloadable binaries only when the user explicitly requests release assets, using the checked-in host script:
 
 - Windows: `cmd\build.bat`
 - Linux: `sh ./cmd/build.sh`
 
-Both scripts must produce `cmd/goi.exe` for `windows/amd64` and `cmd/goi` for `linux/amd64`. Verify that both files were rebuilt and are included in the release diff. On the native platform, execute the matching binary to confirm it reports the target Goi version. Do not attempt to execute the cross-compiled binary on the wrong operating system.
+Both scripts build the `cmd/goi` package and produce `cmd/dist/windows-amd64/goi.exe` for `windows/amd64` and `cmd/dist/linux-amd64/goi` for `linux/amd64`. Keep these files out of the Git commit. If assets are requested, verify them and upload them separately; do not attempt to execute a cross-compiled binary on the wrong operating system.
 
 ## Draft release notes
 

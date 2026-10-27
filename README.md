@@ -6,9 +6,9 @@
 
 ## goi 创建命令
 
-### 构建 goi 命令行工具
+### 本地构建 goi 命令行工具
 
-构建入口位于 `cmd/` 目录。Windows 和 Linux 分别提供对应环境的构建脚本；两个脚本都会交叉编译 Windows 与 Linux 两个系统的可执行文件。目标架构均为 `amd64`，并设置 `CGO_ENABLED=0`，因此不依赖目标系统的 C 工具链。构建命令使用 `-trimpath` 和 `-ldflags="-s -w"`，用于移除本地路径、符号表及调试信息，减小发布产物体积。
+命令行源码入口位于 `cmd/goi/`，构建脚本位于 `cmd/`。Windows 和 Linux 分别提供对应环境的构建脚本；两个脚本都会交叉编译 Windows 与 Linux 两个系统的可执行文件。目标架构均为 `amd64`，并设置 `CGO_ENABLED=0`，因此不依赖目标系统的 C 工具链。构建命令使用 `-trimpath` 和 `-ldflags="-s -w"`，用于移除本地路径、符号表及调试信息，减小发布产物体积。
 
 Windows 环境执行：
 
@@ -24,33 +24,28 @@ sh ./cmd/build.sh
 
 无论使用哪个脚本，都会生成以下两个构建产物：
 
-- `windows/amd64`：`cmd/goi.exe`
-- `linux/amd64`：`cmd/goi`
+- `windows/amd64`：`cmd/dist/windows-amd64/goi.exe`
+- `linux/amd64`：`cmd/dist/linux-amd64/goi`
 
 两个脚本都会自动切换到自身所在目录，因此也可以从其他工作目录通过脚本路径调用。
 
+`cmd/dist/` 仅用于本地验证或按需生成下载附件，构建产物不纳入 Git 版本控制。
+
 ### 安装 goi 命令行工具
 
-使用 `go env GOMODCACHE` 获取 go 软件包路径：`mypath\Go\pkg\mod` + `github.com\!never!stop!dreaming!wang\goi@v版本号\goi\goi.exe`
+使用 `go install` 安装最新版本：
 
-使用 `go env GOROOT` 获取 Go 安装目录，然后将对应系统的构建产物复制到其 `bin` 目录。
-
-Windows PowerShell：
-
-```powershell
-$goroot = go env GOROOT
-Copy-Item .\cmd\goi.exe "$goroot\bin\goi.exe"
+```shell
+go install github.com/NeverStopDreamingWang/goi/v2/cmd/goi@latest
 ```
 
-Linux：
+命令会安装为 `goi`（Windows 下为 `goi.exe`）。安装目录优先使用 `GOBIN`；未设置 `GOBIN` 时使用 `GOPATH/bin`。请将该目录加入 `PATH` 后再直接运行 `goi`。
 
-```sh
-cp ./cmd/goi "$(go env GOROOT)/bin/goi"
-```
+`go install` 会根据发布标签中的源码在用户本机构建命令行工具，因此发布版本只需要提交源码并创建标签，无需提交预编译的 Windows 或 Linux 可执行文件。
 
 ### goi 命令使用
 
-```shel
+```shell
 > goi
 
 Usage（用法）:                                         
