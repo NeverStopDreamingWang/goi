@@ -9,13 +9,27 @@ import (
 	"strings"
 	"unicode/utf16"
 
+	"github.com/NeverStopDreamingWang/goi/v2/db"
 	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
 )
 
-// Validate SQL Server Engine Validate
-// attrs 校验数据
-// partial 是否仅验证提供的非零值字段，零值字段跳过不验证必填项
+// commentRe 从列类型定义中提取注释。
+var commentRe = regexp.MustCompile(`(?i)COMMENT\s+['"]([^'"]+)['"]`)
+
+// Validate 按模型列定义校验数据
+//
+// 参数:
+//   - attrs: Model 待校验模型，支持结构体或非 nil 结构体指针
+//   - partial: bool true 时跳过 nil 指针字段，仅控制校验，不控制写入
+//
+// 返回:
+//   - error: 模型或字段校验错误
+//
+// 说明:
+//   - 每次使用当前全局 ColumnParser，不使用已有 Engine 的解析器
+//   - 校验必填指针和字符串长度；字段范围与列定义由 ColumnParser 决定
 func Validate(attrs Model, partial bool) error {
+	parser := GetColumnParser()
 	validatedDataValue := reflect.ValueOf(attrs)
 	if !validatedDataValue.IsValid() || (validatedDataValue.Kind() == reflect.Ptr && validatedDataValue.IsNil()) {
 		isNotStructPtrErrorMsg := i18n.T("serializer.is_not_struct_ptr", map[string]any{
@@ -46,57 +60,50 @@ func Validate(attrs Model, partial bool) error {
 			continue
 		}
 
-		// 根据标签校验字段值
-		if err := validateField(field, fieldValue); err != nil {
+		// 根据当前解析器返回的字段定义校验字段值。
+		if err := validateField(field, fieldValue, parser); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func getComment(field reflect.StructField) string {
+// getComment 优先读取 comment 标签，缺省时从列类型中提取注释
+func getComment(field reflect.StructField, columnType string) string {
 	fieldComment, ok := field.Tag.Lookup("comment")
 	if ok {
 		return fieldComment
 	}
-	fieldType, ok := field.Tag.Lookup("field_type")
-	if ok {
-		var commentRe = `(?i)COMMENT\s+['"]([^'"]+)['"]`
-		re := regexp.MustCompile(commentRe)
-		matches := re.FindStringSubmatch(fieldType)
-		if len(matches) > 1 {
-			return matches[1]
-		}
+	matches := commentRe.FindStringSubmatch(columnType)
+	if len(matches) > 1 {
+		return matches[1]
 	}
 	return ""
 }
 
-func validateField(field reflect.StructField, fieldValue reflect.Value) error {
-	field_name, ok := field.Tag.Lookup("field_name")
+// validateField 校验解析器选中的字段，跳过 id 列并为错误添加字段说明
+func validateField(field reflect.StructField, fieldValue reflect.Value, parser db.ColumnParser) error {
+	columnName, columnType, ok := parser.Parse(field)
 	if !ok {
-		field_name = strings.ToLower(field.Name)
-	}
-	fieldType, ok := field.Tag.Lookup("field_type")
-	if !ok { // 无 field_type 标签，跳过验证
 		return nil
 	}
 
-	if field_name == "id" {
+	if columnName == "id" {
 		return nil
 	}
 
-	err := validateFieldType(fieldType, fieldValue)
+	err := validateFieldType(columnType, fieldValue)
 	if err != nil {
-		comment := getComment(field)
+		comment := getComment(field, columnType)
 		if comment == "" {
-			comment = field_name
+			comment = columnName
 		}
 		return fmt.Errorf(`"%v" %v`, comment, err.Error())
 	}
 	return nil
 }
 
-// 根据 field_type 校验字段值
+// validateFieldType 校验 nil 指针的必填约束和字符串长度
 func validateFieldType(fieldType string, fieldValue reflect.Value) error {
 	if fieldValue.Kind() == reflect.Ptr {
 		if fieldValue.IsNil() && isNotNullValidate(fieldType) {
@@ -120,7 +127,7 @@ func validateFieldType(fieldType string, fieldValue reflect.Value) error {
 	return nil
 }
 
-// 不允许为空
+// isNotNullValidate 判断列是否必填，自动生成列和带默认值的列除外
 func isNotNullValidate(fieldType string) bool {
 	var re *regexp.Regexp
 
@@ -143,7 +150,7 @@ func isNotNullValidate(fieldType string) bool {
 	return re.MatchString(fieldType)
 }
 
-// NVARCHAR/VARCHAR 长度校验
+// varcharValidate 校验 VARCHAR/NVARCHAR 长度；VARCHAR 按字节，NVARCHAR 按 UTF-16 编码单元
 func varcharValidate(fieldType string, strValue string) error {
 	var VarcharRe = `(?i)(N?VARCHAR)\((\d+)\)`
 	re := regexp.MustCompile(VarcharRe)

@@ -2,21 +2,67 @@ package postgres
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
-// convertPlaceholders 将通用的 ? 占位符转换为 PostgreSQL 的 $1,$2,... 格式
+// whereIn 展开 IN 或 NOT IN 的集合参数
 //
 // 参数:
-//   - query: string 原始 SQL，使用 ? 作为占位符
-//   - argsCount: int 参数个数
+//   - leftPart: string 当前占位符左侧的 SQL
+//   - placeholder: string ORM 占位符
+//   - param: any 当前参数
+//
+// 返回:
+//   - string: 展开后的占位符片段，未匹配时为空
+//   - []any: 展开后的参数，未匹配时为 nil
+//   - bool: 是否展开，空集合也为 true
+//
+// 说明:
+//   - 左侧去除空格后须以 IN 结尾，参数须为切片或数组（字节切片除外）
+//   - 集合指针会解引用；空集合生成 ()，其他情况由 Where 按单个参数处理
+func whereIn(leftPart string, placeholder string, param any) (string, []any, bool) {
+	leftPart = strings.TrimSpace(leftPart)
+	if len(leftPart) < 2 || !strings.EqualFold(leftPart[len(leftPart)-2:], "in") {
+		return "", nil, false
+	}
+
+	paramValue := reflect.ValueOf(param)
+	for paramValue.IsValid() && paramValue.Kind() == reflect.Ptr {
+		if paramValue.IsNil() {
+			return "", nil, false
+		}
+		paramValue = paramValue.Elem()
+	}
+	if !paramValue.IsValid() ||
+		(paramValue.Kind() != reflect.Slice && paramValue.Kind() != reflect.Array) ||
+		paramValue.Kind() == reflect.Slice && paramValue.Type().Elem().Kind() == reflect.Uint8 {
+		return "", nil, false
+	}
+
+	inPlaceholder := strings.TrimSuffix(
+		strings.Repeat(placeholder+",", paramValue.Len()),
+		",",
+	)
+	inPlaceholder = "(" + inPlaceholder + ")"
+	inArgs := make([]any, 0, paramValue.Len())
+	for i := 0; i < paramValue.Len(); i++ {
+		inArgs = append(inArgs, paramValue.Index(i).Interface())
+	}
+	return inPlaceholder, inArgs, true
+}
+
+// convertPlaceholders 将 ? 转为 $1、$2 等驱动占位符
+//
+// 参数:
+//   - query: string 原始 SQL
+//   - argsCount: int 参数个数，最多替换相同数量的占位符
 //
 // 返回:
 //   - string: 转换后的 SQL
 //
 // 说明:
-//   - 使用顺序字符串遍历替代正则实现，依次将每个 ? 替换为 $1,$2,...
-//   - 仅做占位符级别的替换，不解析 SQL 语法，假设不会在字符串字面量中出现未转义的 ?
+//   - 按字符替换，不识别 SQL 字符串或注释中的 ?，也不校验占位符数量
 func convertPlaceholders(query string, argsCount int) string {
 	if argsCount == 0 || query == "" {
 		return query

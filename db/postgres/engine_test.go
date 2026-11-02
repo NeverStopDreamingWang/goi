@@ -1,6 +1,9 @@
+//go:build integration
+
 package postgres_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -36,7 +39,7 @@ func init() {
 	_, _ = pgDB.Execute(`DROP TABLE IF EXISTS "user_tb"`)
 
 	// 迁移模型
-	pgDB.Migrate("public", UserModel{})
+	pgDB.Migrate(context.Background(), UserModel{})
 
 	// 插入初始测试数据
 	username := "test_user"
@@ -89,7 +92,7 @@ func (userModel UserModel) ModelSet() *postgres.Settings {
 
 func ExampleEngine_Migrate() {
 	pgDB := db.Connect[*postgres.Engine]("default")
-	pgDB.Migrate("public", UserModel{})
+	pgDB.Migrate(context.Background(), UserModel{})
 	// Output:
 }
 
@@ -107,7 +110,7 @@ func ExampleEngine_Insert() {
 	}
 
 	pgDB.SetModel(UserModel{})
-	_, err := pgDB.Insert(user)
+	_, err := pgDB.Fields("Username", "Password", "CreateTime").Insert(context.Background(), user, false)
 	if err != nil {
 		fmt.Println("插入错误:", err)
 		return

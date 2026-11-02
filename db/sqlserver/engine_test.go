@@ -1,6 +1,9 @@
+//go:build integration
+
 package sqlserver_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -35,8 +38,9 @@ func init() {
 	_, _ = mssqlDB.Execute("IF OBJECT_ID('dbo.user_tb', 'U') IS NOT NULL DROP TABLE dbo.user_tb;")
 
 	// 迁移模型
-	mssqlDB.Migrate("", UserModel{})
+	mssqlDB.Migrate(context.Background(), UserModel{})
 
+	// 显式选择写入字段，省略自动生成的主键及未赋值的可选列。
 	// 插入初始测试数据
 	username := "test_user"
 	password := "test123456"
@@ -49,7 +53,7 @@ func init() {
 	}
 
 	mssqlDB.SetModel(UserModel{})
-	if _, err := mssqlDB.Insert(user); err != nil {
+	if _, err := mssqlDB.Fields("Username", "Password", "CreateTime").Insert(context.Background(), user, false); err != nil {
 		fmt.Println("插入错误:", err)
 		return
 	}
@@ -84,7 +88,7 @@ func (userModel UserModel) ModelSet() *sqlserver.Settings {
 
 func ExampleEngine_Migrate() {
 	mssqlDB := db.Connect[*sqlserver.Engine]("sqlserver_default")
-	mssqlDB.Migrate("dbo", UserModel{})
+	mssqlDB.Migrate(context.Background(), UserModel{})
 	// Output:
 }
 
@@ -102,7 +106,7 @@ func ExampleEngine_Insert() {
 	}
 
 	mssqlDB.SetModel(UserModel{})
-	if _, err := mssqlDB.Insert(user); err != nil {
+	if _, err := mssqlDB.Fields("Username", "Password", "CreateTime").Insert(context.Background(), user, false); err != nil {
 		fmt.Println("插入错误:", err)
 		return
 	}

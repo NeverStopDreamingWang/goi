@@ -1,6 +1,9 @@
+//go:build integration
+
 package oracle_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -37,8 +40,9 @@ func init() {
 	_, _ = oraDB.Execute(`BEGIN EXECUTE IMMEDIATE 'DROP TABLE "USER_TB"'; EXCEPTION WHEN OTHERS THEN NULL; END;`)
 
 	// 迁移模型
-	oraDB.Migrate("", UserModel{})
+	oraDB.Migrate(context.Background(), UserModel{})
 
+	// 显式选择写入字段，省略自动生成的主键及未赋值的可选列。
 	// 插入初始测试数据
 	username := "test_user"
 	password := "test123456"
@@ -52,7 +56,7 @@ func init() {
 
 	oraDB.SetModel(UserModel{})
 	// Oracle 推荐使用 RETURNING INTO 获取主键，这里仅演示 ORM Insert 调用
-	if _, err := oraDB.Insert(user); err != nil {
+	if _, err := oraDB.Fields("Username", "Password", "CreateTime").Insert(context.Background(), user, false); err != nil {
 		fmt.Println("插入错误:", err)
 		return
 	}
@@ -87,7 +91,7 @@ func (userModel UserModel) ModelSet() *oracle.Settings {
 
 func ExampleEngine_Migrate() {
 	oraDB := db.Connect[*oracle.Engine]("oracle_default")
-	oraDB.Migrate("", UserModel{})
+	oraDB.Migrate(context.Background(), UserModel{})
 	// Output:
 }
 
@@ -105,7 +109,7 @@ func ExampleEngine_Insert() {
 	}
 
 	oraDB.SetModel(UserModel{})
-	if _, err := oraDB.Insert(user); err != nil {
+	if _, err := oraDB.Fields("Username", "Password", "CreateTime").Insert(context.Background(), user, false); err != nil {
 		fmt.Println("插入错误:", err)
 		return
 	}
