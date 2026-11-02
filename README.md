@@ -4,6 +4,8 @@
 
 [详细示例：goi_example](https://github.com/NeverStopDreamingWang/goi_example)
 
+自定义 ORM 的公共接口、引擎注册、连接生命周期及 MySQL 方言实现示例见 [自定义 ORM 开发指南](db/README.md)。
+
 ## goi 创建命令
 
 ### 本地构建 goi 命令行工具
