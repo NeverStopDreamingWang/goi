@@ -65,6 +65,8 @@ var models = InitFile{
 		content := `package %s
 
 import (
+	"context"
+
 	"github.com/NeverStopDreamingWang/goi/v2"
 	"github.com/NeverStopDreamingWang/goi/v2/db"
 	"github.com/NeverStopDreamingWang/goi/v2/db/sqlite3"
@@ -73,15 +75,15 @@ import (
 func init() {
 	// sqlite 数据库
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
-	sqlite3DB.Migrate(MyModel{})
+	sqlite3DB.Migrate(context.Background(), MyModel{})
 }
 
 // 模型
 type MyModel struct {
-	Id         *int64  ` + "`" + `field_name:"id" field_type:"BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT 'ID'" json:"id"` + "`" + `
-	Name       *string ` + "`" + `field_name:"name" field_type:"VARCHAR(255) NOT NULL UNIQUE COMMENT '名称'" json:"name"` + "`" + `
-	CreateTime *string ` + "`" + `field_name:"create_time" field_type:"DATETIME NOT NULL COMMENT '创建时间'" json:"create_time"` + "`" + `
-	UpdateTime *string ` + "`" + `field_name:"update_time" field_type:"DATETIME DEFAULT NULL COMMENT '更新时间'" json:"update_time"` + "`" + `
+	Id         *int64  ` + "`" + `field_name:"id" field_type:"INTEGER PRIMARY KEY AUTOINCREMENT" comment:"ID" json:"id"` + "`" + `
+	Name       *string ` + "`" + `field_name:"name" field_type:"TEXT NOT NULL UNIQUE" comment:"名称" json:"name"` + "`" + `
+	CreateTime *string ` + "`" + `field_name:"create_time" field_type:"DATETIME NOT NULL" comment:"创建时间" json:"create_time"` + "`" + `
+	UpdateTime *string ` + "`" + `field_name:"update_time" field_type:"DATETIME DEFAULT NULL" comment:"更新时间" json:"update_time"` + "`" + `
 }
 
 // 设置表配置
@@ -114,6 +116,7 @@ var serializer = InitFile{
 		content := `package %s
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -132,7 +135,7 @@ func (self MyModel) Validate() error {
 	}
 
 	if self.Name != nil {
-		flag, err := sqlite3DB.Where("` + "`" + `name` + "`" + ` = ?", self.Name).Count()
+		flag, err := sqlite3DB.Where("` + "`" + `name` + "`" + ` = ?", self.Name).Count(context.Background())
 		if err != nil {
 			return errors.New("查询数据库错误")
 		}
@@ -149,13 +152,14 @@ func (self *MyModel) Create() error {
 		self.CreateTime = &CreateTime
 	}
 
-	err := sqlite3.Validate(self, true)
+	err := sqlite3.Validate(self, false)
 	if err != nil {
 		return err
 	}
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
-	result, err := sqlite3DB.Insert(self)
+	// 显式选择插入列，省略自增主键；skipNil=true 让 nil 字段使用数据库默认处理。
+	result, err := sqlite3DB.Fields("Name", "CreateTime", "UpdateTime").Insert(context.Background(), self, true)
 	if err != nil {
 		return errors.New("添加失败")
 	}
@@ -173,7 +177,8 @@ func (self *MyModel) Update(validated_data *MyModel) error {
 
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
-	_, err := sqlite3DB.Where("` + "`" + `id` + "`" + ` = ?", self.Id).Update(validated_data)
+	// 只更新本次选中的列；skipNil=false 允许 Name 为 nil 时显式置 NULL。
+	_, err := sqlite3DB.Fields("Name", "UpdateTime").Where("` + "`" + `id` + "`" + ` = ?", self.Id).Update(context.Background(), validated_data, false)
 	if err != nil {
 		return errors.New("修改失败")
 	}
@@ -185,7 +190,7 @@ func (self *MyModel) Update(validated_data *MyModel) error {
 func (self MyModel) Delete() error {
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
-	_, err := sqlite3DB.Where("` + "`" + `id` + "`" + ` = ?", self.Id).Delete()
+	_, err := sqlite3DB.Where("` + "`" + `id` + "`" + ` = ?", self.Id).Delete(context.Background())
 	if err != nil {
 		return errors.New("删除失败")
 	}

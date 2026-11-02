@@ -1,6 +1,9 @@
+//go:build integration
+
 package sqlite3_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"path/filepath"
@@ -37,7 +40,7 @@ func init() {
 	_, _ = sqliteDB.Execute("DROP TABLE IF EXISTS user_tb")
 
 	// 迁移模型
-	sqliteDB.Migrate(UserModel{})
+	sqliteDB.Migrate(context.Background(), UserModel{})
 
 	// 插入初始测试数据
 	username := "test_user"
@@ -52,7 +55,7 @@ func init() {
 	}
 
 	sqliteDB.SetModel(UserModel{})
-	result, err := sqliteDB.Insert(user)
+	result, err := sqliteDB.Fields("Username", "Password", "Create_time").Insert(context.Background(), user, false)
 	if err != nil {
 		fmt.Println("插入错误:", err)
 		return
@@ -114,7 +117,7 @@ func InitUser() error {
 		Update_time: nil,
 	}
 	sqliteDB.SetModel(UserModel{})
-	_, err = sqliteDB.Insert(&user)
+	_, err = sqliteDB.Insert(context.Background(), &user, false)
 	if err != nil {
 		return err
 	}
@@ -127,7 +130,7 @@ func ExampleEngine_Migrate() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 迁移模型
-	sqliteDB.Migrate(UserModel{})
+	sqliteDB.Migrate(context.Background(), UserModel{})
 
 	// Output:
 }
@@ -148,7 +151,7 @@ func ExampleEngine_Insert() {
 
 	// 设置模型并插入数据
 	sqliteDB.SetModel(UserModel{})
-	result, err := sqliteDB.Insert(user)
+	result, err := sqliteDB.Fields("Username", "Password", "Create_time").Insert(context.Background(), user, false)
 	if err != nil {
 		fmt.Println("插入错误:", err)
 		return
@@ -181,7 +184,7 @@ func ExampleEngine_Where() {
 	// LIKE条件
 	sqliteDB = sqliteDB.Where("username LIKE ?", "where_test%")
 
-	err := sqliteDB.Select(&users)
+	err := sqliteDB.Select(context.Background(), &users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -205,7 +208,7 @@ func ExampleEngine_Select() {
 	var users []*UserModel
 
 	sqliteDB.SetModel(UserModel{})
-	err := sqliteDB.Select(users)
+	err := sqliteDB.Select(context.Background(), &users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -226,13 +229,13 @@ func ExampleEngine_Page() {
 	var users []*UserModel
 
 	sqliteDB.SetModel(UserModel{})
-	total, totalPages, err := sqliteDB.Page(2, 5) // 第2页,每页5条
+	total, totalPages, err := sqliteDB.Page(context.Background(), 2, 5) // 第2页,每页5条
 	if err != nil {
 		fmt.Println("分页错误:", err)
 		return
 	}
 
-	err = sqliteDB.Select(&users)
+	err = sqliteDB.Select(context.Background(), &users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -252,12 +255,12 @@ func ExampleEngine_First() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 查询单条记录 First 支持 map 以及 结构体
-	// var user map[string]any
-	var user *UserModel
+	// map 结果可使用 user := make(map[string]any)，并直接传入 user。
+	var user UserModel
 
 	sqliteDB.SetModel(UserModel{})
 	sqliteDB = sqliteDB.Where("username = ?", "test_user")
-	err := sqliteDB.First(user)
+	err := sqliteDB.First(context.Background(), &user)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -273,19 +276,19 @@ func ExampleEngine_Fields() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 指定查询字段
-	var user map[string]any
+	var user UserModel
 
 	sqliteDB.SetModel(UserModel{})
 
 	// Fields 返回当前实例的副本指针
 	sqliteDB = sqliteDB.Fields("Username", "Create_time")
-	err := sqliteDB.Select(&user)
+	err := sqliteDB.First(context.Background(), &user)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
 	}
 
-	fmt.Println("用户名:", user["username"])
+	fmt.Println("用户名:", *user.Username)
 
 	// Output:
 	// 用户名: user_1
@@ -303,7 +306,7 @@ func ExampleEngine_Update() {
 	// 更新记录
 	sqliteDB.SetModel(UserModel{})
 	sqliteDB = sqliteDB.Where("username = ?", "test_user")
-	result, err := sqliteDB.Update(updateUser)
+	result, err := sqliteDB.Fields("Password").Update(context.Background(), updateUser, false)
 	if err != nil {
 		fmt.Println("更新错误:", err)
 		return
@@ -323,7 +326,7 @@ func ExampleEngine_Delete() {
 	sqliteDB = sqliteDB.Where("username = ?", "test_user")
 
 	// 删除记录
-	result, err := sqliteDB.Delete()
+	result, err := sqliteDB.Delete(context.Background())
 	if err != nil {
 		fmt.Println("删除错误:", err)
 		return
@@ -349,7 +352,7 @@ func ExampleEngine_GroupBy() {
 	sqliteDB.SetModel(UserModel{})
 	// GroupBy 返回当前实例的副本指针
 	sqliteDB = sqliteDB.GroupBy("DATE(create_time)")
-	err := sqliteDB.Select(&results)
+	err := sqliteDB.Select(context.Background(), &results)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -372,7 +375,7 @@ func ExampleEngine_OrderBy() {
 
 	// OrderBy 返回当前实例的副本指针
 	sqliteDB = sqliteDB.OrderBy("-create_time")
-	err := sqliteDB.Select(&users)
+	err := sqliteDB.Select(context.Background(), &users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -391,7 +394,7 @@ func ExampleEngine_Count() {
 
 	// 统计记录数
 	sqliteDB.SetModel(UserModel{})
-	count, err := sqliteDB.Count()
+	count, err := sqliteDB.Count(context.Background())
 	if err != nil {
 		fmt.Println("统计错误:", err)
 		return
@@ -408,7 +411,7 @@ func ExampleEngine_Exists() {
 
 	sqliteDB.SetModel(UserModel{})
 	// 检查记录是否存在
-	exists, err := sqliteDB.Where("username = ?", "test_user").Exists()
+	exists, err := sqliteDB.Where("username = ?", "test_user").Exists(context.Background())
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -424,7 +427,7 @@ func ExampleEngine_WithTransaction() {
 	sqliteDB := db.Connect[*sqlite3.Engine]("default")
 
 	// 事务
-	err := sqliteDB.WithTransaction(func(engine *sqlite3.Engine, args ...any) error {
+	err := sqliteDB.WithTransaction(context.Background(), func(engine *sqlite3.Engine, args ...any) error {
 		// 准备测试数据
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"
@@ -438,7 +441,7 @@ func ExampleEngine_WithTransaction() {
 			Create_time: &now,
 		}
 		engine.SetModel(UserModel{})
-		_, err := engine.Insert(user1)
+		_, err := engine.Fields("Username", "Password", "Create_time").Insert(context.Background(), user1, false)
 		if err != nil {
 			return err
 		}
@@ -449,7 +452,7 @@ func ExampleEngine_WithTransaction() {
 			Password:    &password,
 			Create_time: &now,
 		}
-		_, err = engine.Insert(user2)
+		_, err = engine.Fields("Username", "Password", "Create_time").Insert(context.Background(), user2, false)
 		if err != nil {
 			return err
 		}
