@@ -70,6 +70,7 @@
     "register_engine_twice": "Register called twice for Engine: \"{{ .name }}\"\n",
     "engine_not_registered": "Engine not registered: \"{{ .name }}\"\n",
     "engine_type_is_not_match": "Engine type mismatch, want {{ .want_type }}, got {{ .got_type }}\n",
+    "config_type_is_not_match": "Invalid {{ .engine }} configuration type: {{ .type }}",
     "select_error": "{{ .engine }} \"{{ .name }\" DataBase {{ .db_name }} Query error: {{ .err }}\n",
     "before_migration": "Before migration BeforeHandler ...",
     "before_migration_error": "Before migration BeforeHandler error: {{ .err }}\n",
@@ -90,8 +91,14 @@
     "where_args_placeholder_error": "The number of arguments does not match the placeholder\n",
     "is_not_ptr": "{{ .name }} is not a pointer type",
     "is_not_slice_or_array": "{{ .name }} is not a slice or array",
-    "is_not_struct_ptr_or_map": "{{ .name }} is not a struct structure pointer or a map[string]any dictionary",
-    "is_not_slice_struct_ptr_or_map": "{{ .name }} is not a []struct structure pointer slice or a []map[string]any dictionary slice"
+    "is_not_slice": "{{ .name }} is not a slice pointer",
+    "is_not_struct_ptr_or_map": "{{ .name }} is not a struct pointer or map",
+    "is_not_slice_struct_ptr_or_map": "{{ .name }} is not a pointer to a slice of structs or maps",
+    "query_result_is_nil": "{{ .name }} cannot be nil",
+    "model_is_nil": "{{ .name }} cannot be nil",
+    "model_is_not_struct": "{{ .name }} must be a struct or struct pointer",
+    "model_type_is_not_match": "model type mismatch: expected {{ .want_type }}, got {{ .got_type }}",
+    "update_fields_is_empty": "no fields are available to update"
   },
   "serializer": {
     "is_not_struct_ptr": "{{ .name }} is not a struct pointer",

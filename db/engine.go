@@ -1,129 +1,18 @@
 package db
 
-import (
-	"database/sql"
-	"fmt"
-	"reflect"
-	"sync"
+import "database/sql"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
-)
-
+// TransactionFunc 定义使用通用引擎的事务回调，本身不负责开启或提交事务。
 type TransactionFunc func(engine Engine, args ...any) error
 
-// Engine 结构体用于管理`数据库连接和操作
+// Engine 定义 ORM 引擎的基础操作，Name 返回连接配置名称。
 type Engine interface {
+	// Name 返回连接配置名称。
 	Name() string
+	// Execute 执行 SQL，返回执行结果。
 	Execute(query string, args ...any) (sql.Result, error)
+	// QueryRow 查询一行，错误由返回值的 Scan 方法报告。
 	QueryRow(query string, args ...any) *sql.Row
+	// Query 查询多行，调用方负责关闭返回的 Rows。
 	Query(query string, args ...any) (*sql.Rows, error)
-}
-
-type ConnectFunc func(UseDatabases string, database *goi.Database) Engine
-
-// engineMu 保护 engines
-var engineMu sync.RWMutex
-
-// engines 存储所有可用的数据库引擎
-// key: 数据库引擎名称
-// value: 数据库引擎连接函数
-var engines = map[string]ConnectFunc{}
-
-// Register 注册 ORM 数据库引擎
-//
-// 参数:
-//   - name string: 数据库引擎名称
-//   - connect ConnectFunc: 数据库引擎连接函数
-func Register(name string, connect ConnectFunc) {
-	engineMu.Lock()
-	defer engineMu.Unlock()
-	if connect == nil {
-		registerEngineConnectIsNotNilMsg := i18n.T("db.register_engine_is_not_nil")
-		panic(fmt.Errorf(registerEngineConnectIsNotNilMsg))
-	}
-	if _, dup := engines[name]; dup {
-		registerEngineConnectTwiceMsg := i18n.T("db.register_engine_twice", map[string]any{
-			"name": name,
-		})
-		panic(fmt.Errorf(registerEngineConnectTwiceMsg))
-	}
-	engines[name] = connect
-}
-
-// GetConnectFunc 获取 ORM 数据库引擎连接函数
-//
-// 参数:
-//   - name string: 数据库引擎名称
-//
-// 返回:
-//   - ConnectFunc: 数据库引擎连接函数
-//   - bool: 是否存在
-func GetConnectFunc(name string) (ConnectFunc, bool) {
-	engineMu.RLock()
-	defer engineMu.RUnlock()
-	connect, ok := engines[name]
-	return connect, ok
-}
-
-// Connect 连接 ORM 数据库引擎（泛型）
-//
-// 参数:
-//   - UseDatabases: string 数据库配置名称
-//
-// 返回:
-//   - T: 调用方期望的具体引擎类型（例如 *mysql.Engine、*sqlite3.Engine）
-//
-// 说明:
-//   - 从全局配置中获取数据库连接信息
-//   - 根据 Database.Engine（应为驱动名字符串）查找注册的引擎工厂
-//   - 使用工厂基于已建立的 *sql.DB 构造具体引擎实例
-//   - 将具体实例断言为 T；若类型不匹配则 panic
-func Connect[T Engine](UseDatabases string) T {
-	database, ok := goi.Settings.Databases[UseDatabases]
-	if !ok {
-		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]any{
-			"name": UseDatabases,
-		})
-		panic(fmt.Errorf(databasesNotErrorMsg))
-	}
-	return ConnectDatabase[T](UseDatabases, database)
-}
-
-// ConnectDatabase 连接 ORM 数据库引擎（泛型）
-//
-// 参数:
-//   - UseDatabases: string 数据库配置名称
-//   - database: *goi.Database 数据库连接管理器
-//
-// 返回:
-//   - T: 调用方期望的具体引擎类型（例如 *mysql.Engine、*sqlite3.Engine）
-//
-// 说明:
-//   - 根据 Database.Engine（应为驱动名字符串）查找注册的引擎工厂
-//   - 使用工厂基于已建立的 *sql.DB 构造具体引擎实例
-//   - 将具体实例断言为 T；若类型不匹配则 panic
-func ConnectDatabase[T Engine](UseDatabases string, database *goi.Database) T {
-	connect, ok := GetConnectFunc(database.Engine)
-	if !ok {
-		engineNotRegisteredMsg := i18n.T("db.engine_not_registered", map[string]any{
-			"engine": database.Engine,
-		})
-		panic(fmt.Errorf(engineNotRegisteredMsg))
-	}
-
-	// 构造具体引擎实例
-	engine := connect(UseDatabases, database)
-
-	// 泛型断言为调用方期望的类型 T
-	v, ok := any(engine).(T)
-	if !ok {
-		var zero T
-		engineTypeIsNotMatchMsg := i18n.T("db.engine_type_is_not_match", map[string]any{
-			"want_type": reflect.TypeOf(zero).String(),
-			"got_type":  reflect.TypeOf(engine).String(),
-		})
-		panic(fmt.Errorf(engineTypeIsNotMatchMsg))
-	}
-	return v
 }
