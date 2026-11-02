@@ -1,6 +1,9 @@
+//go:build integration
+
 package kingbase_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -8,12 +11,14 @@ import (
 	"github.com/NeverStopDreamingWang/goi/v2"
 	"github.com/NeverStopDreamingWang/goi/v2/db"
 	"github.com/NeverStopDreamingWang/goi/v2/db/kingbase"
+	"github.com/NeverStopDreamingWang/goi/v2/db/postgres"
 )
 
-// 注意: 要运行这些示例测试，需要本地已启动 Kingbase（人大金仓），且修改 DSN 与权限
+// 运行前需导入官方驱动 _ "kingbase.com/gokb"，启动 PostgreSQL 兼容模式的 Kingbase，并配置 DSN 与权限。
 func init() {
 	goi.Settings.Databases["default"] = &goi.Database{
 		Engine: "kingbase",
+		Config: kingbase.Config{Mode: kingbase.ModePostgreSQL},
 		Connect: func(Engine string) *sql.DB {
 			var DB *sql.DB
 			var err error
@@ -30,13 +35,13 @@ func init() {
 	}
 
 	// 初始化测试数据库（示例）
-	kbDB := db.Connect[*kingbase.Engine]("default")
+	kbDB := db.Connect[*postgres.Engine]("default")
 
 	// 迁移模型前清理旧表(如果存在)
 	_, _ = kbDB.Execute(`DROP TABLE IF EXISTS "user_tb"`)
 
 	// 迁移模型
-	kbDB.Migrate("public", UserModel{})
+	kbDB.Migrate(context.Background(), UserModel{})
 
 	// 插入初始测试数据
 	username := "test_user"
@@ -50,7 +55,7 @@ func init() {
 	}
 
 	kbDB.SetModel(UserModel{})
-	// Kingbase 推荐使用 RETURNING 子句获取主键
+	// PostgreSQL 兼容模式下使用 RETURNING 子句获取主键
 	row := kbDB.QueryRow(`INSERT INTO "user_tb" ("username", "password", "create_time") VALUES (?, ?, ?) RETURNING id`, username, password, now)
 	var id int64
 	if err := row.Scan(&id); err != nil {
@@ -68,14 +73,14 @@ type UserModel struct {
 	UpdateTime *string `field_name:"update_time" field_type:"TIMESTAMP WITH TIME ZONE" json:"update_time"`
 }
 
-func (userModel UserModel) ModelSet() *kingbase.Settings {
+func (userModel UserModel) ModelSet() *postgres.Settings {
 	encryptFields := []string{
 		"username",
 		"password",
 	}
 
-	modelSettings := &kingbase.Settings{
-		MigrationsHandler: kingbase.MigrationsHandler{
+	modelSettings := &postgres.Settings{
+		MigrationsHandler: postgres.MigrationsHandler{
 			BeforeHandler: nil,
 			AfterHandler:  nil,
 		},
@@ -87,14 +92,14 @@ func (userModel UserModel) ModelSet() *kingbase.Settings {
 	return modelSettings
 }
 
-func ExampleEngine_Migrate() {
-	kbDB := db.Connect[*kingbase.Engine]("default")
-	kbDB.Migrate("public", UserModel{})
+func ExampleConnect_migrate() {
+	kbDB := db.Connect[*postgres.Engine]("default")
+	kbDB.Migrate(context.Background(), UserModel{})
 	// Output:
 }
 
-func ExampleEngine_Insert() {
-	kbDB := db.Connect[*kingbase.Engine]("default")
+func ExampleConnect_insert() {
+	kbDB := db.Connect[*postgres.Engine]("default")
 
 	username := "test_user"
 	password := "test123456"
@@ -107,7 +112,7 @@ func ExampleEngine_Insert() {
 	}
 
 	kbDB.SetModel(UserModel{})
-	_, err := kbDB.Insert(user)
+	_, err := kbDB.Fields("Username", "Password", "CreateTime").Insert(context.Background(), user, false)
 	if err != nil {
 		fmt.Println("插入错误:", err)
 		return
