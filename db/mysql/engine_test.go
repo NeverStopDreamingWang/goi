@@ -1,6 +1,9 @@
+//go:build integration
+
 package mysql_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -36,7 +39,7 @@ func init() {
 	_, _ = mysqlDB.Execute("DROP TABLE IF EXISTS user_tb")
 
 	// 迁移模型
-	mysqlDB.Migrate("test_db", UserModel{})
+	mysqlDB.Migrate(context.Background(), UserModel{})
 
 	// 插入初始测试数据
 	username := "test_user"
@@ -51,7 +54,7 @@ func init() {
 	}
 
 	mysqlDB.SetModel(UserModel{})
-	result, err := mysqlDB.Insert(user)
+	result, err := mysqlDB.Fields("Username", "Password", "Create_time", "Update_time").Insert(context.Background(), user, false)
 	if err != nil {
 		fmt.Println("插入错误:", err)
 		return
@@ -82,6 +85,7 @@ func (userModel UserModel) ModelSet() *mysql.Settings {
 			AfterHandler:  InitUser, // 迁移之后处理函数
 		},
 
+		Schema:          "test_goi",           // 设置数据库名称
 		TableName:       "user_tb",            // 设置表名
 		Engine:          "InnoDB",             // 设置存储引擎，默认: InnoDB
 		AUTO_INCREMENT:  1,                    // 设置自增长起始值
@@ -123,10 +127,10 @@ func InitUser() error {
 		Username:    &username,
 		Password:    &password,
 		Create_time: &create_Datetime,
-		Update_time: nil,
+		Update_time: &create_Datetime,
 	}
 	mysqlDB.SetModel(UserModel{})
-	_, err = mysqlDB.Insert(&user)
+	_, err = mysqlDB.Fields("Id", "Username", "Password", "Create_time", "Update_time").Insert(context.Background(), &user, false)
 	if err != nil {
 		return err
 	}
@@ -139,7 +143,7 @@ func ExampleEngine_Migrate() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 迁移模型
-	mysqlDB.Migrate("test_db", UserModel{})
+	mysqlDB.Migrate(context.Background(), UserModel{})
 
 	// Output:
 }
@@ -160,7 +164,7 @@ func ExampleEngine_Insert() {
 
 	// 设置模型并插入数据
 	mysqlDB.SetModel(UserModel{})
-	result, err := mysqlDB.Insert(user)
+	result, err := mysqlDB.Fields("Username", "Password", "Create_time", "Update_time").Insert(context.Background(), user, false)
 	if err != nil {
 		fmt.Println("插入错误:", err)
 		return
@@ -193,7 +197,7 @@ func ExampleEngine_Where() {
 	// LIKE条件
 	mysqlDB = mysqlDB.Where("username LIKE ?", "where_test%")
 
-	err := mysqlDB.Select(&users)
+	err := mysqlDB.Select(context.Background(), &users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -213,12 +217,11 @@ func ExampleEngine_Where() {
 func ExampleEngine_Select() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
-	// 查询多条记录 Select 支持 map 以及 结构体
-	// var users []map[string]any
+	// 查询多条记录，支持结构体或结构体指针切片。
 	var users []*UserModel
 
 	mysqlDB.SetModel(UserModel{})
-	err := mysqlDB.Select(users)
+	err := mysqlDB.Select(context.Background(), &users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -239,13 +242,13 @@ func ExampleEngine_Page() {
 	var users []*UserModel
 
 	mysqlDB.SetModel(UserModel{})
-	total, totalPages, err := mysqlDB.Page(2, 5) // 第2页,每页5条
+	total, totalPages, err := mysqlDB.Page(context.Background(), 2, 5) // 第2页,每页5条
 	if err != nil {
 		fmt.Println("分页错误:", err)
 		return
 	}
 
-	err = mysqlDB.Select(&users)
+	err = mysqlDB.Select(context.Background(), &users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -264,13 +267,12 @@ func ExampleEngine_Page() {
 func ExampleEngine_First() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
-	// 查询单条记录 First 支持 map 以及 结构体
-	// var user map[string]any
-	var user *UserModel
+	// 查询单条记录，传入结构体指针。
+	var user UserModel
 
 	mysqlDB.SetModel(UserModel{})
 	mysqlDB = mysqlDB.Where("username = ?", "test_user")
-	err := mysqlDB.First(user)
+	err := mysqlDB.First(context.Background(), &user)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -286,19 +288,19 @@ func ExampleEngine_Fields() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 指定查询字段
-	var user map[string]any
+	var user UserModel
 
 	mysqlDB.SetModel(UserModel{})
 
 	// Fields 返回当前实例的副本指针
 	mysqlDB = mysqlDB.Fields("Username", "Create_time")
-	err := mysqlDB.Select(&user)
+	err := mysqlDB.First(context.Background(), &user)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
 	}
 
-	fmt.Println("用户名:", user["username"])
+	fmt.Println("用户名:", *user.Username)
 
 	// Output:
 	// 用户名: user_1
@@ -316,7 +318,7 @@ func ExampleEngine_Update() {
 	// 更新记录
 	mysqlDB.SetModel(UserModel{})
 	mysqlDB = mysqlDB.Where("username = ?", "test_user")
-	result, err := mysqlDB.Update(updateUser)
+	result, err := mysqlDB.Fields("Password").Update(context.Background(), updateUser, false)
 	if err != nil {
 		fmt.Println("更新错误:", err)
 		return
@@ -336,7 +338,7 @@ func ExampleEngine_Delete() {
 	mysqlDB = mysqlDB.Where("username = ?", "test_user")
 
 	// 删除记录
-	result, err := mysqlDB.Delete()
+	result, err := mysqlDB.Delete(context.Background())
 	if err != nil {
 		fmt.Println("删除错误:", err)
 		return
@@ -362,7 +364,7 @@ func ExampleEngine_GroupBy() {
 	mysqlDB.SetModel(UserModel{})
 	// GroupBy 返回当前实例的副本指针
 	mysqlDB = mysqlDB.GroupBy("DATE(create_time)")
-	err := mysqlDB.Select(&results)
+	err := mysqlDB.Select(context.Background(), &results)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -385,7 +387,7 @@ func ExampleEngine_OrderBy() {
 
 	// OrderBy 返回当前实例的副本指针
 	mysqlDB = mysqlDB.OrderBy("-create_time")
-	err := mysqlDB.Select(&users)
+	err := mysqlDB.Select(context.Background(), &users)
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -404,7 +406,7 @@ func ExampleEngine_Count() {
 
 	// 统计记录数
 	mysqlDB.SetModel(UserModel{})
-	count, err := mysqlDB.Count()
+	count, err := mysqlDB.Count(context.Background())
 	if err != nil {
 		fmt.Println("统计错误:", err)
 		return
@@ -421,7 +423,7 @@ func ExampleEngine_Exists() {
 
 	mysqlDB.SetModel(UserModel{})
 	// 检查记录是否存在
-	exists, err := mysqlDB.Where("username = ?", "test_user").Exists()
+	exists, err := mysqlDB.Where("username = ?", "test_user").Exists(context.Background())
 	if err != nil {
 		fmt.Println("查询错误:", err)
 		return
@@ -437,7 +439,7 @@ func ExampleEngine_WithTransaction() {
 	mysqlDB := db.Connect[*mysql.Engine]("default")
 
 	// 事务
-	err := mysqlDB.WithTransaction(func(engine *mysql.Engine, args ...any) error {
+	err := mysqlDB.WithTransaction(context.Background(), func(engine *mysql.Engine, args ...any) error {
 		// 准备测试数据
 		username1 := "transaction_user1"
 		username2 := "transaction_user2"
@@ -451,7 +453,7 @@ func ExampleEngine_WithTransaction() {
 			Create_time: &now,
 		}
 		engine.SetModel(UserModel{})
-		_, err := engine.Insert(user1)
+		_, err := engine.Fields("Username", "Password", "Create_time", "Update_time").Insert(context.Background(), user1, false)
 		if err != nil {
 			return err
 		}
@@ -462,7 +464,7 @@ func ExampleEngine_WithTransaction() {
 			Password:    &password,
 			Create_time: &now,
 		}
-		_, err = engine.Insert(user2)
+		_, err = engine.Fields("Username", "Password", "Create_time", "Update_time").Insert(context.Background(), user2, false)
 		if err != nil {
 			return err
 		}

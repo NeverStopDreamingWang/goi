@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -11,93 +12,26 @@ import (
 	"github.com/NeverStopDreamingWang/goi/v2"
 	"github.com/NeverStopDreamingWang/goi/v2/db"
 	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
-	"github.com/NeverStopDreamingWang/goi/v2/utils"
 )
-
-// driverName 与 goi.Settings.Databases[*].Engine 保持一致
-const driverName = "mysql"
-
-func init() {
-	db.Register(driverName, factory)
-}
-
-// factory 是 db.Engine 的工厂函数
-func factory(UseDatabases string, database *goi.Database) db.Engine {
-	return ConnectDatabase(UseDatabases, database)
-}
-
-// ConnectDatabase 连接 MySQL 数据库
-//
-// 参数:
-//   - UseDatabases: string 数据库配置名称
-//   - database: *goi.Database 数据库连接管理器
-//
-// 返回:
-//   - *Engine: MySQL 数据库操作实例
-//
-// 说明:
-//   - 如果 Engine 不匹配则 panic
-//   - 需要手动添加 _ "github.com/go-sql-driver/mysql" 包
-func ConnectDatabase(UseDatabases string, database *goi.Database) *Engine {
-	if database.Engine != driverName {
-		engineNotMatchErrorMsg := i18n.T("db.engine_type_is_not_match", map[string]any{
-			"want_type": driverName,
-			"got_type":  database.Engine,
-		})
-		panic(engineNotMatchErrorMsg)
-	}
-	return &Engine{
-		name:     UseDatabases,
-		DB:       database.DB(),
-		model:    nil,
-		fields:   nil,
-		fieldSQL: nil,
-		whereSQL: nil,
-		limitSQL: "",
-		groupSQL: "",
-		orderSQL: "",
-		sql:      "",
-		args:     nil,
-	}
-}
-
-// Connect 连接 MySQL 数据库
-//
-// 参数:
-//   - UseDatabases: string 数据库配置名称
-//
-// 返回:
-//   - *Engine: MySQL 数据库操作实例
-//
-// 说明:
-//   - 从全局配置中获取数据库连接信息
-//   - 如果 Engine 不匹配则 panic
-//   - 需要手动添加 _ "github.com/go-sql-driver/mysql" 包
-func Connect(UseDatabases string) *Engine {
-	database, ok := goi.Settings.Databases[UseDatabases]
-	if !ok {
-		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]any{
-			"name": UseDatabases,
-		})
-		panic(databasesNotErrorMsg)
-	}
-	return ConnectDatabase(UseDatabases, database)
-}
 
 // Engine 结构体用于管理 MySQL 数据库连接和操作
 type Engine struct {
-	name        string   // 数据库连接名称
-	DB          *sql.DB  // 数据库连接对象
-	transaction *sql.Tx  // 当前事务对象
-	model       Model    // 当前操作的数据模型
-	fields      []string // 模型结构体字段名
-	fieldSQL    []string // 数据库表字段名
-	whereSQL    []string // WHERE 条件语句
-	limitSQL    string   // LIMIT 分页语句
-	groupSQL    string   // GROUP BY 分组语句
-	orderSQL    string   // ORDER BY 排序语句
-	sql         string   // 最终执行的 SQL 语句
-	args        []any    // SQL 语句的参数值
+	name              string               // 数据库连接名称
+	DB                *sql.DB              // 数据库连接对象
+	tx                *sql.Tx              // 当前事务对象
+	placeholderParser db.PlaceholderParser // 当前实例使用的占位符解析器
+	identifierQuoter  db.IdentifierQuoter  // 当前实例使用的标识符引用器
+	columnParser      db.ColumnParser      // 当前实例使用的列定义解析器
+	model             Model                // 当前操作的数据模型
+	tableName         string               // 当前模型对应的完整表名
+	fields            []string             // 模型结构体字段名
+	fieldSQL          []string             // 数据库表字段名
+	whereSQL          []string             // WHERE 条件语句
+	limitSQL          string               // LIMIT 分页语句
+	groupSQL          string               // GROUP BY 分组语句
+	orderSQL          string               // ORDER BY 排序语句
+	sql               string               // 最终执行的 SQL 语句
+	args              []any                // SQL 语句的参数值
 }
 
 // Name 获取数据库连接名称
@@ -108,38 +42,157 @@ func (engine Engine) Name() string {
 	return engine.name
 }
 
-// GetSQL 获取最近一次执行的 SQL 语句
+// GetSQL 获取最近一次执行使用的 SQL
 //
 // 返回:
-//   - string: 最近一次执行的 SQL 语句
+//   - string: PlaceholderParser 解析后的 SQL，尚未执行时为空；不额外拼接参数值
 func (engine Engine) GetSQL() string {
 	return engine.sql
 }
 
-// 事务执行函数
-type TransactionFunc func(engine *Engine, args ...any) error
-
-// WithTransaction 使用事务执行函数
+// Execute 使用默认上下文执行 SQL。
 //
 // 参数:
-//   - transactionFunc: TransactionFunc func(engine *Engine, args ...any) error 事务执行函数
+//   - query: string SQL 语句
+//   - args: ...any SQL 参数值列表
+//
+// 返回:
+//   - sql.Result: 执行结果
+//   - error: 执行错误
+//
+// 说明:
+//   - 等同于使用 context.Background() 调用 ExecuteContext
+func (engine *Engine) Execute(query string, args ...any) (sql.Result, error) {
+	return engine.ExecuteContext(context.Background(), query, args...)
+}
+
+// ExecuteContext 使用指定上下文执行 SQL。
+//
+// 参数:
+//   - ctx: context.Context 操作上下文，用于取消和超时控制
+//   - query: string SQL 语句，使用当前 PlaceholderParser 的 ORM 占位符，默认 ?
+//   - args: ...any SQL 参数值列表
+//
+// 返回:
+//   - sql.Result: 执行操作的结果
+//   - error: 执行过程中的错误
+//
+// 说明:
+//   - 通过当前实例的 PlaceholderParser 解析 SQL，并保存解析结果供 GetSQL 获取
+//   - 已开启事务时使用当前事务，否则使用数据库连接
+func (engine *Engine) ExecuteContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	query = engine.placeholderParser.Parse(query, args...)
+	engine.sql = query
+	if engine.tx != nil {
+		return engine.tx.ExecContext(ctx, query, args...)
+	}
+	return engine.DB.ExecContext(ctx, query, args...)
+}
+
+// QueryRow 使用默认上下文查询单行。
+//
+// 参数:
+//   - query: string SQL 查询语句
+//   - args: ...any SQL 参数值列表
+//
+// 返回:
+//   - *sql.Row: 查询结果行
+//
+// 说明:
+//   - 等同于使用 context.Background() 调用 QueryRowContext
+func (engine *Engine) QueryRow(query string, args ...any) *sql.Row {
+	return engine.QueryRowContext(context.Background(), query, args...)
+}
+
+// QueryRowContext 使用指定上下文查询单行。
+//
+// 参数:
+//   - ctx: context.Context 查询上下文，用于取消和超时控制
+//   - query: string 查询语句，使用当前 PlaceholderParser 的 ORM 占位符，默认 ?
+//   - args: ...any SQL 参数值列表
+//
+// 返回:
+//   - *sql.Row: 查询结果行
+//
+// 说明:
+//   - 通过当前实例的 PlaceholderParser 解析 SQL，并保存解析结果供 GetSQL 获取
+//   - 已开启事务时使用当前事务；查询错误由 Row.Err 或 Scan 返回，无记录时 Scan 返回 sql.ErrNoRows
+func (engine *Engine) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	query = engine.placeholderParser.Parse(query, args...)
+	engine.sql = query
+	if engine.tx != nil {
+		return engine.tx.QueryRowContext(ctx, query, args...)
+	}
+	return engine.DB.QueryRowContext(ctx, query, args...)
+}
+
+// Query 使用默认上下文查询多行。
+//
+// 参数:
+//   - query: string SQL 查询语句
+//   - args: ...any SQL 参数值列表
+//
+// 返回:
+//   - *sql.Rows: 查询结果集
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 等同于使用 context.Background() 调用 QueryContext
+func (engine *Engine) Query(query string, args ...any) (*sql.Rows, error) {
+	return engine.QueryContext(context.Background(), query, args...)
+}
+
+// QueryContext 使用指定上下文查询多行。
+//
+// 参数:
+//   - ctx: context.Context 查询上下文，用于取消和超时控制
+//   - query: string 查询语句，使用当前 PlaceholderParser 的 ORM 占位符，默认 ?
+//   - args: ...any SQL 参数值列表
+//
+// 返回:
+//   - *sql.Rows: 查询结果集
+//   - error: 查询过程中的错误
+//
+// 说明:
+//   - 通过当前实例的 PlaceholderParser 解析 SQL，并保存解析结果供 GetSQL 获取
+//   - 已开启事务时使用当前事务；调用方须关闭结果集并检查 rows.Err()
+func (engine *Engine) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	query = engine.placeholderParser.Parse(query, args...)
+	engine.sql = query
+	if engine.tx != nil {
+		return engine.tx.QueryContext(ctx, query, args...)
+	}
+	return engine.DB.QueryContext(ctx, query, args...)
+}
+
+// TransactionFunc 在指定 Engine 的事务中执行操作，返回错误表示执行失败。
+type TransactionFunc func(engine *Engine, args ...any) error
+
+// WithTransaction 在事务中执行回调。
+//
+// 参数:
+//   - ctx: context.Context 事务上下文，用于取消和超时控制
+//   - transactionFunc: TransactionFunc 事务回调，接收当前 Engine 的副本
 //   - args: ...any 传递给事务函数的参数列表
 //
 // 返回:
-//   - error: 事务执行的错误，发生错误时会自动回滚
+//   - error: 开启事务、回调或提交时的错误
 //
 // 说明:
-//   - 使用值接收者，在事务内部会基于当前 Engine 复制一个副本，避免事务内外状态互相干扰
-//   - 不支持嵌套事务，如果当前已在事务中则返回错误
-//   - 事务函数执行失败时自动回滚，支持内部 panic
-func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...any) (err error) {
-	if engine.transaction != nil {
-		transactionCannotBeNestedErrorMsg := i18n.T("db.transaction_cannot_be_nested_error")
-		return errors.New(transactionCannotBeNestedErrorMsg)
+//   - 原实例的事务状态不变；最外层回调成功后提交，出错或 panic 时尝试回滚
+//   - panic 在回滚后继续向上传播，不在此处恢复
+//   - 嵌套调用复用当前事务，不创建保存点或单独提交、回滚；内层错误须向外返回才能使外层回滚
+func (engine Engine) WithTransaction(ctx context.Context, transactionFunc TransactionFunc, args ...any) (err error) {
+	if engine.tx != nil {
+		err = transactionFunc(&engine, args...)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	// 开启事务
-	engine.transaction, err = engine.DB.Begin()
+	engine.tx, err = engine.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -148,7 +201,7 @@ func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...an
 	panicked := true
 	defer func() {
 		if panicked || err != nil {
-			_ = engine.transaction.Rollback()
+			_ = engine.tx.Rollback()
 		}
 	}()
 
@@ -160,88 +213,35 @@ func (engine Engine) WithTransaction(transactionFunc TransactionFunc, args ...an
 
 	panicked = false
 	// 提交事务
-	return engine.transaction.Commit()
+	return engine.tx.Commit()
 }
 
-// Execute 执行 SQL 语句
+// Migrate 根据模型创建尚不存在的表。
 //
 // 参数:
-//   - query: string SQL语句，使用 ? 作为占位符，例如: "id = ? AND status IN (?)"
-//   - args: ...any SQL参数值列表
-//
-// 返回:
-//   - sql.Result: 执行操作的结果
-//   - error: 执行过程中的错误
-//
-// 说明:
-//   - 支持在事务中使用
-func (engine *Engine) Execute(query string, args ...any) (sql.Result, error) {
-	engine.sql = query
-	if engine.transaction != nil {
-		return engine.transaction.Exec(query, args...)
-	}
-	return engine.DB.Exec(query, args...)
-}
-
-// QueryRow 执行查询 SQL 语句
-//
-// 参数:
-//   - query: string SQL查询语句，使用 ? 作为占位符，例如: "id = ? AND status IN (?)"
-//   - args: ...any SQL参数值列表
-//
-// 返回:
-//   - *sql.Row: 查询结果行
-//
-// 说明:
-//   - 查询失败时返回nil
-//   - 支持在事务中使用
-func (engine *Engine) QueryRow(query string, args ...any) *sql.Row {
-	engine.sql = query
-	if engine.transaction != nil {
-		return engine.transaction.QueryRow(query, args...)
-	}
-	return engine.DB.QueryRow(query, args...)
-}
-
-// Query 执行查询 SQL 语句
-//
-// 参数:
-//   - query: string SQL查询语句，使用 ? 作为占位符，例如: "id = ? AND status IN (?)"
-//   - args: ...any SQL参数值列表
-//
-// 返回:
-//   - *sql.Rows: 查询结果集
-//   - error: 查询过程中的错误
-//
-// 说明:
-//   - 返回的结果集需要调用方手动关闭
-//   - 查询失败时返回nil和错误信息
-//   - 支持在事务中使用
-func (engine *Engine) Query(query string, args ...any) (*sql.Rows, error) {
-	engine.sql = query
-	if engine.transaction != nil {
-		return engine.transaction.Query(query, args...)
-	}
-	return engine.DB.Query(query, args...)
-}
-
-// Migrate 根据模型创建数据库表
-//
-// 参数:
-//   - schema: string 数据库名称，如果连接字符串中已指定数据库则可以传入空字符串
+//   - ctx: context.Context 迁移上下文，用于取消和超时控制
 //   - model: Model 数据模型
 //
 // 说明:
-//   - 检查表是否已存在，存在则跳过创建
-//   - 解析模型结构体的字段标签
-//   - 支持表的存储引擎、字符集等配置
-//   - 支持自定义迁移前后处理函数
-//   - 创建失败时会panic
-func (engine *Engine) Migrate(schema string, model Model) {
+//   - 会调用 SetModel 切换当前模型；表已存在时跳过，不修改已有表或创建数据库
+//   - Settings.Schema 指定数据库，留空时使用当前连接选择的数据库
+//   - 列定义由当前 ColumnParser 解析，表选项取自模型 Settings
+//   - 支持迁移前后回调；查询、建表或回调失败时记录日志并 panic
+func (engine *Engine) Migrate(ctx context.Context, model Model) {
 	var err error
-	settings := model.ModelSet()
+	engine.SetModel(model)
+	settings := engine.model.ModelSet()
+	schema := settings.Schema
+	placeholder := engine.placeholderParser.Placeholder()
 
-	row := engine.QueryRow("SELECT 1 FROM `information_schema`.`tables` WHERE `table_schema` = ? AND `table_name` = ?;", schema, settings.TableName)
+	var row *sql.Row
+	if schema == "" {
+		query := fmt.Sprintf("SELECT 1 FROM `information_schema`.`tables` WHERE `table_schema` = DATABASE() AND `table_name` = %s;", placeholder)
+		row = engine.QueryRowContext(ctx, query, settings.TableName)
+	} else {
+		query := fmt.Sprintf("SELECT 1 FROM `information_schema`.`tables` WHERE `table_schema` = %s AND `table_name` = %s;", placeholder, placeholder)
+		row = engine.QueryRowContext(ctx, query, schema, settings.TableName)
+	}
 
 	var exists int
 	err = row.Scan(&exists)
@@ -256,7 +256,7 @@ func (engine *Engine) Migrate(schema string, model Model) {
 		panic(selectErrorMsg)
 	}
 
-	if exists == 1 {
+	if exists > 0 {
 		return
 	}
 
@@ -269,19 +269,15 @@ func (engine *Engine) Migrate(schema string, model Model) {
 	var columns []string
 	for i := 0; i < modelType.NumField(); i++ {
 		field := modelType.Field(i)
-		fieldType, ok := field.Tag.Lookup("field_type")
+		columnName, columnType, ok := engine.columnParser.Parse(field)
 		if !ok {
 			continue
 		}
-		fieldName, ok := field.Tag.Lookup("field_name")
-		if !ok {
-			fieldName = strings.ToLower(field.Name)
-		}
-		columns = append(columns, fmt.Sprintf("  `%v` %v", fieldName, fieldType))
+		columns = append(columns, fmt.Sprintf("  %s %v", engine.identifierQuoter.QuoteIdentifier(columnName), columnType))
 	}
 
 	columnsSQL := strings.Join(columns, ",\n")
-	createSQL := fmt.Sprintf("CREATE TABLE `%v`.`%v` (\n%v\n)", schema, settings.TableName, columnsSQL)
+	createSQL := fmt.Sprintf("CREATE TABLE %s (\n%v\n)", engine.tableName, columnsSQL)
 	if settings.Engine != "" { // 设置存储引擎
 		createSQL += fmt.Sprintf(" Engine=%v", settings.Engine)
 	}
@@ -341,7 +337,7 @@ func (engine *Engine) Migrate(schema string, model Model) {
 		"tb_name": settings.TableName,
 	})
 	goi.Log.Info(migrationModelMsg)
-	_, err = engine.Execute(createSQL)
+	_, err = engine.ExecuteContext(ctx, createSQL)
 	if err != nil {
 		migrationErrorMsg := i18n.T("db.migration_error", map[string]any{"err": err})
 		goi.Log.Error(migrationErrorMsg)
@@ -360,11 +356,7 @@ func (engine *Engine) Migrate(schema string, model Model) {
 	}
 }
 
-// isSetModel 检查是否已设置数据模型
-//
-// 说明:
-//   - 内部方法，用于验证模型是否已设置
-//   - 如果未设置模型则 panic
+// isSetModel 在尚未设置模型时 panic。
 func (engine *Engine) isSetModel() {
 	if engine.model == nil {
 		notSetModelErrorMsg := i18n.T("db.not_SetModel_error")
@@ -372,20 +364,30 @@ func (engine *Engine) isSetModel() {
 	}
 }
 
-// SetModel 设置当前操作的数据模型
+// SetModel 设置当前模型并重置查询状态。
 //
 // 参数:
 //   - model: Model 要设置的数据模型实例
 //
 // 返回:
-//   - *Engine: 当前 Engine 指针，支持链式调用
+//   - *Engine: 当前实例，支持链式调用
 //
 // 说明:
-//   - 会重置内部的字段缓存、条件、排序、分组、分页等状态
-//   - 只解析带有 field_type 标签的结构体字段
-//   - 数据库字段名默认使用字段名的小写形式，或由 field_name 标签显式指定
+//   - 模型须为结构体或非 nil 的结构体指针，否则 panic
+//   - 按当前 ColumnParser 解析字段并缓存完整表名，清空条件、分组、排序、分页及参数
+//   - 默认按 field_type 和 field_name 标签解析，具体规则见 GetColumnParser
 func (engine *Engine) SetModel(model Model) *Engine {
+	modelValue, err := db.ModelStructValue(model)
+	if err != nil {
+		panic(err)
+	}
 	engine.model = model
+	settings := model.ModelSet()
+	if settings.Schema == "" {
+		engine.tableName = engine.identifierQuoter.QuoteIdentifier(settings.TableName)
+	} else {
+		engine.tableName = engine.identifierQuoter.QuoteIdentifier(settings.Schema) + "." + engine.identifierQuoter.QuoteIdentifier(settings.TableName)
+	}
 	// 获取字段
 	engine.fields = nil
 	engine.fieldSQL = nil
@@ -393,43 +395,23 @@ func (engine *Engine) SetModel(model Model) *Engine {
 	engine.limitSQL = ""
 	engine.groupSQL = ""
 	engine.orderSQL = ""
-	engine.sql = ""
 	engine.args = nil
-
-	modelType := reflect.TypeOf(engine.model)
-	if modelType.Kind() == reflect.Ptr {
-		modelType = modelType.Elem()
-	}
-	for i := 0; i < modelType.NumField(); i++ {
-		field := modelType.Field(i)
-		_, ok := field.Tag.Lookup("field_type")
-		if !ok {
-			continue
-		}
-		engine.fields = append(engine.fields, field.Name)
-		fieldName, ok := field.Tag.Lookup("field_name")
-		if !ok {
-			fieldName = strings.ToLower(field.Name)
-		}
-		engine.fieldSQL = append(engine.fieldSQL, fieldName)
-	}
+	engine.fields, engine.fieldSQL = db.ModelFields(modelValue, engine.columnParser)
 	return engine
 }
 
-// Fields 指定查询要返回的字段
+// Fields 指定查询、插入或更新使用的字段。
 //
 // 参数:
-//   - fields: ...string 要查询的字段名列表（模型结构体中的字段名）
+//   - fields: ...string 模型结构体字段名，区分大小写，不是数据库列名
 //
 // 返回:
 //   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
-//   - 字段名必须是模型结构体中已定义的字段
-//   - 只返回带有 field_type 标签的字段，未标记的字段会被忽略
-//   - 字段名大小写不敏感，会自动转换为数据库字段名
-//   - 数据库字段名默认使用字段名的小写形式，或由 field_name 标签显式指定
-//   - 如果字段不存在则会 panic
+//   - 先调用 SetModel；字段不存在时 panic，当前 ColumnParser 排除的字段会被忽略
+//   - 未调用时使用全部映射字段；每次调用替换之前的选择，不传字段时选中空集合
+//   - Insert/Update 在选中字段内按 skipNil 处理 nil 值
 func (engine Engine) Fields(fields ...string) *Engine {
 	modelType := reflect.TypeOf(engine.model)
 	if modelType.Kind() == reflect.Ptr {
@@ -447,17 +429,11 @@ func (engine Engine) Fields(fields ...string) *Engine {
 			panic(fieldIsNotErrorMsg)
 		}
 
-		// 检查字段是否有field_type标签
-		if _, ok = field.Tag.Lookup("field_type"); !ok {
+		columnName, _, ok := engine.columnParser.Parse(field)
+		if !ok {
 			continue
 		}
 		engine.fields = append(engine.fields, field.Name)
-
-		// 获取数据库字段名，如果没有field_name标签则使用字段名小写
-		columnName, ok := field.Tag.Lookup("field_name")
-		if !ok {
-			columnName = strings.ToLower(field.Name)
-		}
 		engine.fieldSQL = append(engine.fieldSQL, columnName)
 	}
 	return &engine
@@ -466,62 +442,65 @@ func (engine Engine) Fields(fields ...string) *Engine {
 // Insert 向数据库插入一条记录
 //
 // 参数:
-//   - model: Model 要插入的数据模型实例
+//   - ctx: context.Context 操作上下文，用于取消和超时控制
+//   - model: Model 待插入的模型实例
+//   - skipNil: bool nil 值的处理方式；true 时省略该列，false 时写入 SQL NULL
 //
 // 返回:
-//   - sql.Result: 插入操作的结果
-//   - error: 插入过程中的错误
+//   - sql.Result: 插入结果
+//   - error: 插入错误
 //
 // 说明:
-//   - 调用前必须先通过 SetModel 设置数据模型
-//   - 支持指针和非指针类型的字段值
-//   - 只插入带有 field_type 标签的字段
-func (engine *Engine) Insert(model Model) (sql.Result, error) {
+//   - 先调用 SetModel 设置模型；Fields 可选插入字段，默认使用全部映射字段
+//   - 支持普通值和指针；nil 指针按 nil 处理，0、false、空字符串正常写入
+//   - 省略的列由数据库按默认值、自动生成规则及约束处理
+//   - sql.Null、driver.Valuer 由 database/sql 转换，skipNil 不检查转换结果
+//   - 字段列表为空时仍执行 SQL，由数据库处理
+func (engine *Engine) Insert(ctx context.Context, model Model, skipNil bool) (sql.Result, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TableName
-
-	modelValue := reflect.ValueOf(model)
-	if modelValue.Kind() == reflect.Ptr {
-		modelValue = modelValue.Elem()
+	modelValue, err := db.ValidateOperationModel(engine.model, model)
+	if err != nil {
+		return nil, err
 	}
 
-	insertValues := make([]any, len(engine.fields))
+	insertFields := make([]string, 0, len(engine.fields))
+	insertValues := make([]any, 0, len(engine.fields))
 	for i, fieldName := range engine.fields {
-		field := modelValue.FieldByName(fieldName)
-		if field.Kind() == reflect.Ptr {
-			if field.IsNil() {
-				insertValues[i] = nil
-			} else {
-				insertValues[i] = field.Elem().Interface()
-			}
-		} else {
-			insertValues[i] = field.Interface()
+		value, ok := db.ModelFieldValue(modelValue, fieldName)
+		if !ok || skipNil && value == nil {
+			continue
 		}
+		insertFields = append(insertFields, engine.fieldSQL[i])
+		insertValues = append(insertValues, value)
 	}
 
-	fieldsSQL := strings.Join(engine.fieldSQL, "`,`")
-	valuesSQL := strings.TrimRight(strings.Repeat("?,", len(engine.fields)), ",")
-
-	engine.sql = fmt.Sprintf("INSERT INTO `%v` (`%v`) VALUES (%v)", TableName, fieldsSQL, valuesSQL)
-	return engine.Execute(engine.sql, insertValues...)
+	placeholder := engine.placeholderParser.Placeholder()
+	valuesSQL := strings.TrimRight(strings.Repeat(placeholder+",", len(insertFields)), ",")
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", engine.tableName, engine.identifierQuoter.QuoteIdentifiers(insertFields), valuesSQL)
+	return engine.ExecuteContext(ctx, query, insertValues...)
 }
 
-// Where 构造 WHERE 条件
+// Where 追加查询条件
 //
 // 参数:
-//   - query: string 条件语句，使用 ? 作为占位符，例如: "id = ? AND status IN (?)"
-//   - args: ...any 对应占位符的参数列表，支持基本类型和切片/数组
+//   - query: string 条件语句，使用当前 PlaceholderParser 的占位符，默认 ?
+//   - args: ...any 与占位符一一对应的参数
 //
 // 返回:
-//   - *Engine: 当前实例的副本指针，支持链式调用
+//   - *Engine: 条件独立的实例副本，支持链式调用
 //
 // 说明:
-//   - 支持多次调用，条件之间使用 AND 连接
-//   - 对切片/数组参数会自动展开为 IN (...) 形式，占位符数量与元素个数一致
-//   - 空切片/数组会被当作普通参数处理，此时生成的 SQL 可能不是预期的 IN () 语义，应在业务层避免传入空集合
+//   - 多次调用以 AND 连接；占位符与参数数量不一致时 panic
+//   - IN ?、NOT IN ? 对应的切片或数组会展开，支持集合指针；[]byte 不展开
+//   - IN (?) 等带括号的写法须手动提供占位符和参数；空集合展开为 ()，由数据库处理
+//   - 仅按字符串匹配占位符，不解析 SQL 字符串或注释；不匹配 IN 规则的参数不展开
 func (engine Engine) Where(query string, args ...any) *Engine {
-	queryParts := strings.Split(query, "?")
+	// 复制条件和参数，避免不同查询分支相互影响。
+	engine.whereSQL = append([]string(nil), engine.whereSQL...)
+	engine.args = append([]any(nil), engine.args...)
+	placeholder := engine.placeholderParser.Placeholder()
+	queryParts := strings.Split(query, placeholder)
 	if len(queryParts)-1 != len(args) {
 		whereArgsPlaceholderErrorMsg := i18n.T("db.where_args_placeholder_error")
 		goi.Log.Error(whereArgsPlaceholderErrorMsg)
@@ -531,26 +510,14 @@ func (engine Engine) Where(query string, args ...any) *Engine {
 	queryBuilder := strings.Builder{}
 	queryBuilder.WriteString(queryParts[0])
 	for i, param := range args {
-		// 检查是否是切片
-		paramValue := reflect.ValueOf(param)
-		if paramValue.Kind() == reflect.Ptr {
-			paramValue = paramValue.Elem()
-		}
-
-		if (paramValue.Kind() == reflect.Slice || paramValue.Kind() == reflect.Array) && paramValue.Len() != 0 {
-			placeholders := "(" + strings.TrimRight(strings.Repeat("?,", paramValue.Len()), ",") + ")"
-			queryBuilder.WriteString(placeholders)
-
-			// 将切片/数组元素加入 args
-			for j := 0; j < paramValue.Len(); j++ {
-				engine.args = append(engine.args, paramValue.Index(j).Interface())
-			}
+		inPlaceholder, inArgs, ok := whereIn(queryParts[i], placeholder, param)
+		if ok {
+			queryBuilder.WriteString(inPlaceholder)
+			engine.args = append(engine.args, inArgs...)
 		} else {
-			// 普通参数，直接添加占位符
-			queryBuilder.WriteString("?")
+			queryBuilder.WriteString(placeholder)
 			engine.args = append(engine.args, param)
 		}
-		// 添加切割后的下一部分
 		queryBuilder.WriteString(queryParts[i+1])
 	}
 	engine.whereSQL = append(engine.whereSQL, queryBuilder.String())
@@ -566,21 +533,12 @@ func (engine Engine) Where(query string, args ...any) *Engine {
 //   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
-//   - 字段名会被自动去除首尾空格和引号
-//   - 字段名最终会使用 MySQL 的反引号引用: `column`
-//   - 空字段名会被忽略
-//   - 多次调用会覆盖之前的分组设置
+//   - 字段交由当前 IdentifierQuoter 处理，默认使用反引号并忽略空字段
+//   - 每次调用替换之前的分组，不传有效字段时清空分组
 func (engine Engine) GroupBy(groups ...string) *Engine {
-	var groupFields []string
-	for _, field := range groups {
-		field = strings.Trim(field, " `'\"")
-		if field == "" {
-			continue
-		}
-		groupFields = append(groupFields, fmt.Sprintf("`%s`", field))
-	}
-	if len(groupFields) > 0 {
-		engine.groupSQL = fmt.Sprintf(" GROUP BY %s", strings.Join(groupFields, ", "))
+	groupFields := engine.identifierQuoter.QuoteIdentifiers(groups)
+	if groupFields != "" {
+		engine.groupSQL = " GROUP BY " + groupFields
 	} else {
 		engine.groupSQL = ""
 	}
@@ -590,21 +548,18 @@ func (engine Engine) GroupBy(groups ...string) *Engine {
 // OrderBy 设置排序条件
 //
 // 参数:
-//   - orders: ...string 排序字段列表，支持前缀 "-" 表示倒序，例如: "name", "-created_at"
+//   - orders: ...string 排序字段；默认升序，前缀 - 表示降序，例如 name、-created_at
 //
 // 返回:
 //   - *Engine: 当前实例的副本指针，支持链式调用
 //
 // 说明:
-//   - 字段名会自动去除首尾的空格和引号字符
-//   - 不带前缀时使用 ASC 升序，带 "-" 前缀时使用 DESC 降序
-//   - 字段名最终会使用 MySQL 的反引号引用: `column` ASC/DESC
-//   - 多次调用会覆盖之前的排序设置
+//   - 去除字段首尾空格后交由当前 IdentifierQuoter 处理，默认使用反引号
+//   - 每次调用替换之前的排序，空字段会被忽略；不传有效字段时清空排序
 func (engine Engine) OrderBy(orders ...string) *Engine {
 	var orderFields []string
 	for _, order := range orders {
-		// 去除字段名首尾的空格和引号
-		order = strings.Trim(order, " `'\"")
+		order = strings.TrimSpace(order)
 		if order == "" {
 			continue
 		}
@@ -613,13 +568,16 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 		var fieldName string
 		// 处理排序方向
 		if order[0] == '-' {
-			fieldName = order[1:]
+			fieldName = strings.TrimSpace(order[1:])
 			sequence = "DESC"
 		} else {
 			fieldName = order
 			sequence = "ASC"
 		}
-		orderFields = append(orderFields, fmt.Sprintf("`%s` %s", fieldName, sequence))
+		if fieldName == "" {
+			continue
+		}
+		orderFields = append(orderFields, fmt.Sprintf("%s %s", engine.identifierQuoter.QuoteIdentifier(fieldName), sequence))
 	}
 	if len(orderFields) > 0 {
 		engine.orderSQL = fmt.Sprintf(" ORDER BY %s", strings.Join(orderFields, ", "))
@@ -629,9 +587,10 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 	return &engine
 }
 
-// Page 设置分页参数
+// Page 设置当前实例的分页并查询总记录数。
 //
 // 参数:
+//   - ctx: context.Context 查询上下文，用于取消和超时控制
 //   - page: int64 页码，从 1 开始
 //   - pageSize: int64 每页记录数
 //
@@ -641,12 +600,9 @@ func (engine Engine) OrderBy(orders ...string) *Engine {
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 页码小于等于 0 时自动设为 1
-//   - 每页记录数小于等于 0 时设为默认值 10
-//   - 总页数根据总记录数和每页记录数计算
-//   - 会自动执行一次 Count 查询获取总记录数
-//   - MySQL 使用 LIMIT pageSize OFFSET offset 实现分页
-func (engine *Engine) Page(page int64, pageSize int64) (int64, int64, error) {
+//   - page 小于等于 0 时按 1 处理，pageSize 小于等于 0 时按 10 处理
+//   - 使用 LIMIT/OFFSET 分页，并调用 Count；总数仅受 WHERE 影响，不受分组和分页影响
+func (engine *Engine) Page(ctx context.Context, page int64, pageSize int64) (int64, int64, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -655,7 +611,7 @@ func (engine *Engine) Page(page int64, pageSize int64) (int64, int64, error) {
 	}
 	offset := (page - 1) * pageSize
 	engine.limitSQL = fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
-	total, err := engine.Count()
+	total, err := engine.Count(ctx)
 	totalPages := int64(math.Ceil(float64(total) / float64(pageSize)))
 	return total, totalPages, err
 }
@@ -663,114 +619,48 @@ func (engine *Engine) Page(page int64, pageSize int64) (int64, int64, error) {
 // Select 执行查询并将结果扫描到切片中
 //
 // 参数:
-//   - queryResult: *[]T 或 []*T，用于接收结果的切片指针，其中 T 可以是 struct 或 map 类型
+//   - ctx: context.Context 查询上下文，用于取消和超时控制
+//   - queryResult: any 非 nil 的切片指针，元素可为结构体、结构体指针或 map
 //
 // 返回:
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 必须传入切片指针，且元素类型为结构体或 map
-//   - 支持指针和非指针类型的结构体元素（[]T / []*T）
-//   - 会根据 SetModel/Fields 解析的字段集合，自动将数据库字段映射到结构体字段或 map 键上
-//   - 查询结束后会检查 rows.Err()，不会静默吞掉迭代过程中的错误
-func (engine *Engine) Select(queryResult any) error {
+//   - 先调用 SetModel；按 Fields 选择的字段扫描，默认使用全部映射字段
+//   - 切片本身可为 nil，不支持数组；每行成功扫描后追加到切片，不清空已有元素
+//   - 结构体按字段名匹配；map 按模型字段类型读取，以结构体字段名为键，调用方须保证键值类型兼容
+//   - 无记录时不修改切片并返回 nil；查询、扫描和迭代错误会返回，已追加的结果会保留
+func (engine *Engine) Select(ctx context.Context, queryResult any) error {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TableName
-
-	var (
-		isPtr    bool
-		ItemType reflect.Type
-		result   = reflect.ValueOf(queryResult)
-	)
-	if result.Kind() != reflect.Ptr {
-		isNotPtrErrorMsg := i18n.T("db.is_not_ptr", map[string]any{"name": "queryResult"})
-		return errors.New(isNotPtrErrorMsg)
-	}
-	result = result.Elem()
-
-	kind := result.Kind()
-	if kind != reflect.Slice && kind != reflect.Array {
-		isNotSlicePtrErrorMsg := i18n.T("db.is_not_slice_or_array", map[string]any{"name": "queryResult"})
-		return errors.New(isNotSlicePtrErrorMsg)
+	writeResult, err := db.PrepareSliceResult(engine.model, queryResult, engine.fields)
+	if err != nil {
+		return err
 	}
 
-	ItemType = result.Type().Elem() // 获取切片中的元素
-	if ItemType.Kind() == reflect.Ptr {
-		isPtr = true
-		ItemType = ItemType.Elem()
-	}
-	if kind := ItemType.Kind(); kind != reflect.Struct && kind != reflect.Map {
-		isNotStructPtrErrorMsg := i18n.T("db.is_not_slice_struct_ptr_or_map", map[string]any{"name": "queryResult"})
-		return errors.New(isNotStructPtrErrorMsg)
-	}
-
-	fieldsSQL := strings.Join(engine.fieldSQL, "`,`")
-	engine.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQL, TableName)
+	query := fmt.Sprintf("SELECT %s FROM %s", engine.identifierQuoter.QuoteIdentifiers(engine.fieldSQL), engine.tableName)
 	if len(engine.whereSQL) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
+		query += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
 	if engine.groupSQL != "" {
-		engine.sql += engine.groupSQL
+		query += engine.groupSQL
 	}
 	if engine.orderSQL != "" {
-		engine.sql += engine.orderSQL
+		query += engine.orderSQL
 	}
 	if engine.limitSQL != "" {
-		engine.sql += engine.limitSQL
+		query += engine.limitSQL
 	}
 
-	rows, err := engine.Query(engine.sql, engine.args...)
+	rows, err := engine.QueryContext(ctx, query, engine.args...)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		values := make([]any, len(engine.fields))
-
-		var item reflect.Value
-		if ItemType.Kind() == reflect.Struct {
-			// 如果是结构体类型，使用 New 创建
-			item = reflect.New(ItemType).Elem()
-
-			for i, fieldName := range engine.fields {
-				fieldValue := item.FieldByName(fieldName)
-				if !fieldValue.IsValid() || !fieldValue.CanAddr() {
-					values[i] = new(any)
-				} else {
-					values[i] = fieldValue.Addr().Interface()
-				}
-			}
-		} else {
-			modelType := reflect.TypeOf(engine.model)
-			if modelType.Kind() == reflect.Ptr {
-				modelType = modelType.Elem()
-			}
-			for i, fieldName := range engine.fields {
-				field, _ := modelType.FieldByName(fieldName)
-				val := reflect.New(field.Type) // 获取模型字段类型
-				values[i] = val.Interface()
-			}
-		}
-
-		if err = rows.Scan(values...); err != nil {
+		if err = writeResult(rows); err != nil {
 			return err
-		}
-
-		// 设置 map 值
-		if ItemType.Kind() == reflect.Map {
-			item = reflect.MakeMap(ItemType)
-			for i, fieldName := range engine.fieldSQL {
-				val := reflect.ValueOf(values[i])
-				item.SetMapIndex(reflect.ValueOf(fieldName), val.Elem())
-			}
-		}
-
-		if isPtr {
-			result.Set(reflect.Append(result, item.Addr()))
-		} else {
-			result.Set(reflect.Append(result, item))
 		}
 	}
 	return rows.Err()
@@ -779,112 +669,64 @@ func (engine *Engine) Select(queryResult any) error {
 // First 获取查询结果的第一条记录
 //
 // 参数:
-//   - queryResult: *struct{} 或 map[string]any / *map[string]any，用于接收结果的结构体指针或 map
+//   - ctx: context.Context 查询上下文，用于取消和超时控制
+//   - queryResult: any 非 nil 的结构体指针或已初始化的 map
 //
 // 返回:
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 必须传入结构体指针或 map/map 指针
-//   - 自动映射数据库字段到结构体字段或 map 键
-//   - 无记录时返回 sql.ErrNoRows
-//   - 查询失败时返回错误信息
-func (engine *Engine) First(queryResult any) error {
+//   - 先调用 SetModel；按 Fields 选择的字段扫描，默认使用全部映射字段
+//   - 结构体按字段名匹配；map 按模型字段类型读取，以结构体字段名为键，调用方须保证键值类型兼容
+//   - 使用当前条件、分组、排序及分页获取第一行；不自动按主键排序
+//   - 无记录时返回 sql.ErrNoRows，其他查询或扫描错误原样返回
+func (engine *Engine) First(ctx context.Context, queryResult any) error {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TableName
-
-	result := reflect.ValueOf(queryResult)
-	if result.Kind() != reflect.Map {
-		if result.Kind() != reflect.Ptr {
-			isNotPtrErrorMsg := i18n.T("db.is_not_ptr", map[string]any{"name": "queryResult"})
-			return errors.New(isNotPtrErrorMsg)
-		}
-		result = result.Elem()
-	}
-	if kind := result.Kind(); kind != reflect.Struct && kind != reflect.Map {
-		isNotStructPtrErrorMsg := i18n.T("db.is_not_struct_ptr_or_map", map[string]any{"name": "queryResult"})
-		return errors.New(isNotStructPtrErrorMsg)
+	writeResult, err := db.PrepareSingleResult(engine.model, queryResult, engine.fields)
+	if err != nil {
+		return err
 	}
 
-	fieldsSQL := strings.Join(engine.fieldSQL, "`,`")
-	engine.sql = fmt.Sprintf("SELECT `%v` FROM `%v`", fieldsSQL, TableName)
+	query := fmt.Sprintf("SELECT %s FROM %s", engine.identifierQuoter.QuoteIdentifiers(engine.fieldSQL), engine.tableName)
 	if len(engine.whereSQL) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
+		query += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
 	if engine.groupSQL != "" {
-		engine.sql += engine.groupSQL
+		query += engine.groupSQL
 	}
 	if engine.orderSQL != "" {
-		engine.sql += engine.orderSQL
+		query += engine.orderSQL
 	}
 	if engine.limitSQL != "" {
-		engine.sql += engine.limitSQL
+		query += engine.limitSQL
 	}
 
-	row := engine.QueryRow(engine.sql, engine.args...)
-	if err := row.Err(); err != nil {
-		return err
-	}
-
-	values := make([]any, len(engine.fields))
-	if result.Kind() == reflect.Struct {
-		for i, fieldName := range engine.fields {
-			fieldValue := result.FieldByName(fieldName)
-			if !fieldValue.IsValid() || !fieldValue.CanAddr() {
-				values[i] = new(any)
-			} else {
-				values[i] = fieldValue.Addr().Interface()
-			}
-		}
-	} else {
-		modelType := reflect.TypeOf(engine.model)
-		if modelType.Kind() == reflect.Ptr {
-			modelType = modelType.Elem()
-		}
-		for i, fieldName := range engine.fields {
-			field, _ := modelType.FieldByName(fieldName)
-			val := reflect.New(field.Type) // 获取模型字段类型
-			values[i] = val.Interface()
-		}
-	}
-
-	if err := row.Scan(values...); err != nil {
-		return err
-	}
-
-	// 更新实际扫描到的值
-	if result.Kind() == reflect.Map {
-		for i, fieldName := range engine.fieldSQL {
-			val := reflect.ValueOf(values[i])
-			result.SetMapIndex(reflect.ValueOf(fieldName), val.Elem())
-		}
-	}
-
-	return nil
+	row := engine.QueryRowContext(ctx, query, engine.args...)
+	return writeResult(row)
 }
 
-// Count 统计符合当前条件的记记录数
+// Count 统计符合当前 WHERE 条件的记录数。
+//
+// 参数:
+//   - ctx: context.Context 查询上下文，用于取消和超时控制
 //
 // 返回:
 //   - int64: 满足当前 WHERE 条件的记录总数
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 必须先通过 SetModel 设置数据模型
-//   - 会根据当前设置的 WHERE 条件生成 COUNT 语句
-//   - 查询失败时返回0和错误信息
-func (engine *Engine) Count() (int64, error) {
+//   - 先调用 SetModel；未设置 WHERE 时统计全表，不受 Fields、分组、排序或分页影响
+//   - 查询失败时返回 0 和错误
+func (engine *Engine) Count(ctx context.Context) (int64, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TableName
-
-	engine.sql = fmt.Sprintf("SELECT count(*) FROM `%v`", TableName)
+	query := fmt.Sprintf("SELECT count(*) FROM %s", engine.tableName)
 	if len(engine.whereSQL) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
+		query += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
 
-	row := engine.QueryRow(engine.sql, engine.args...)
+	row := engine.QueryRowContext(ctx, query, engine.args...)
 	if err := row.Err(); err != nil {
 		return 0, err
 	}
@@ -898,26 +740,25 @@ func (engine *Engine) Count() (int64, error) {
 
 // Exists 判断是否存在符合条件的记录
 //
+// 参数:
+//   - ctx: context.Context 查询上下文，用于取消和超时控制
+//
 // 返回:
 //   - bool: 是否存在至少一条满足条件的记录
 //   - error: 查询过程中的错误
 //
 // 说明:
-//   - 必须先通过 SetModel 设置数据模型
-//   - 会根据当前 WHERE 条件生成 SELECT 1 FROM `table`" ...
-//   - 使用 QueryRow 执行，若返回 sql.ErrNoRows 则视为不存在（false, nil）
-//   - 其他错误会原样返回
-func (engine *Engine) Exists() (bool, error) {
+//   - 先调用 SetModel；仅使用当前 WHERE 条件，未设置时检查全表
+//   - 无记录时返回 false, nil，其他查询错误原样返回
+func (engine *Engine) Exists(ctx context.Context) (bool, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TableName
-
-	engine.sql = fmt.Sprintf("SELECT 1 FROM `%v`", TableName)
+	query := fmt.Sprintf("SELECT 1 FROM %s", engine.tableName)
 	if len(engine.whereSQL) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
+		query += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
 	}
 
-	row := engine.QueryRow(engine.sql, engine.args...)
+	row := engine.QueryRowContext(ctx, query, engine.args...)
 	if err := row.Err(); err != nil {
 		return false, err
 	}
@@ -935,71 +776,74 @@ func (engine *Engine) Exists() (bool, error) {
 // Update 更新符合条件的记录
 //
 // 参数:
-//   - model: Model 要更新的数据模型实例
+//   - ctx: context.Context 操作上下文，用于取消和超时控制
+//   - model: Model 待更新的模型实例
+//   - skipNil: bool nil 值的处理方式；true 时保留原值，false 时更新为 SQL NULL
 //
 // 返回:
-//   - sql.Result: 更新操作的结果
-//   - error: 更新过程中的错误
+//   - sql.Result: 更新结果
+//   - error: 更新错误
 //
 // 说明:
-//   - 调用前必须先通过 SetModel 设置数据模型
-//   - 只更新非空字段
-//   - 支持指针和非指针类型的字段值
-//   - 会根据当前设置的 WHERE 条件生成 UPDATE 语句
-func (engine *Engine) Update(model Model) (sql.Result, error) {
+//   - 先调用 SetModel 设置模型；Fields 可选更新字段，默认使用全部映射字段
+//   - 未选中或跳过的字段保持原值
+//   - 支持普通值和指针；nil 指针按 nil 处理，0、false、空字符串正常写入
+//   - sql.Null、driver.Valuer 由 database/sql 转换，skipNil 不检查转换结果
+//   - 没有可更新字段时返回错误，不执行 SQL
+//   - 未设置 Where 条件时更新整张表，调用方需明确操作范围
+func (engine *Engine) Update(ctx context.Context, model Model, skipNil bool) (sql.Result, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TableName
-
-	modelValue := reflect.ValueOf(model)
-	if modelValue.Kind() == reflect.Ptr {
-		modelValue = modelValue.Elem()
+	modelValue, err := db.ValidateOperationModel(engine.model, model)
+	if err != nil {
+		return nil, err
 	}
 
 	// 字段
 	updateFields := make([]string, 0)
 	// 值
 	updateValues := make([]any, 0)
-	utils.Zip(engine.fields, engine.fieldSQL, func(fieldName, fieldSQL string) {
-		field := modelValue.FieldByName(fieldName)
-		if field.Kind() == reflect.Ptr {
-			if field.IsNil() {
-				return
-			}
-			field = field.Elem()
+	placeholder := engine.placeholderParser.Placeholder()
+	for i, fieldName := range engine.fields {
+		value, ok := db.ModelFieldValue(modelValue, fieldName)
+		if !ok || skipNil && value == nil {
+			continue
 		}
-		if field.IsValid() {
-			updateFields = append(updateFields, fmt.Sprintf("`%v` = ?", fieldSQL))
-			updateValues = append(updateValues, field.Interface())
-		}
-	})
+		updateFields = append(updateFields, fmt.Sprintf("%s = %s", engine.identifierQuoter.QuoteIdentifier(engine.fieldSQL[i]), placeholder))
+		updateValues = append(updateValues, value)
+	}
+	if len(updateFields) == 0 {
+		updateFieldsIsEmptyErrorMsg := i18n.T("db.update_fields_is_empty")
+		return nil, errors.New(updateFieldsIsEmptyErrorMsg)
+	}
 	fieldsSQL := strings.Join(updateFields, ",")
 
-	engine.sql = fmt.Sprintf("UPDATE `%v` SET %v", TableName, fieldsSQL)
+	query := fmt.Sprintf("UPDATE %s SET %s", engine.tableName, fieldsSQL)
 	if len(engine.whereSQL) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
+		query += fmt.Sprintf(" WHERE %s", strings.Join(engine.whereSQL, " AND "))
 		updateValues = append(updateValues, engine.args...)
 	}
-	return engine.Execute(engine.sql, updateValues...)
+	return engine.ExecuteContext(ctx, query, updateValues...)
 }
 
 // Delete 删除符合条件的记录
+//
+// 参数:
+//   - ctx: context.Context 操作上下文，用于取消和超时控制
 //
 // 返回:
 //   - sql.Result: 删除操作的结果
 //   - error: 删除过程中的错误
 //
 // 说明:
-//   - 调用前必须先通过 SetModel 设置数据模型
-//   - 会根据当前设置的 WHERE 条件生成 DELETE 语句
-//   - 未设置 WHERE 条件时将删除整张表中的所有记录，使用时需谨慎
-func (engine *Engine) Delete() (sql.Result, error) {
+//   - 先调用 SetModel；仅使用当前 WHERE 条件，不受 Fields、分组、排序或分页影响
+//   - 未设置 Where 条件时删除整张表，调用方需明确操作范围
+func (engine *Engine) Delete(ctx context.Context) (sql.Result, error) {
 	engine.isSetModel()
 
-	TableName := engine.model.ModelSet().TableName
-	engine.sql = fmt.Sprintf("DELETE FROM `%v`", TableName)
+	query := fmt.Sprintf("DELETE FROM %s", engine.tableName)
 	if len(engine.whereSQL) > 0 {
-		engine.sql += fmt.Sprintf(" WHERE %v", strings.Join(engine.whereSQL, " AND "))
+		query += fmt.Sprintf(" WHERE %s", strings.Join(engine.whereSQL, " AND "))
 	}
-	return engine.Execute(engine.sql, engine.args...)
+	return engine.ExecuteContext(ctx, query, engine.args...)
 }

@@ -4,16 +4,17 @@ import (
 	"github.com/NeverStopDreamingWang/goi/v2"
 )
 
-// 迁移处理函数
+// MigrationsHandler 定义建表前后的回调。
 type MigrationsHandler struct {
 	BeforeHandler func() error // 迁移之前处理函数
 	AfterHandler  func() error // 迁移之后处理函数
 }
 
-// MySQL 模型设置
+// Settings 定义 MySQL 表、迁移及自定义配置。
 type Settings struct {
 	MigrationsHandler // 迁移处理函数
 
+	Schema          string // 设置数据库名称；MySQL 中 Schema 与 Database 含义相同
 	TableName       string // 设置表名
 	Engine          string // 设置存储引擎，默认: InnoDB
 	AUTO_INCREMENT  int    // 设置自增长起始值
@@ -32,7 +33,8 @@ type Settings struct {
 	Settings goi.Params
 }
 
-// 模型类
+// Model 提供 MySQL 模型的表及迁移配置。
 type Model interface {
+	// ModelSet 返回当前模型的配置。
 	ModelSet() *Settings
 }
