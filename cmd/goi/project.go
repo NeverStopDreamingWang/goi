@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"go/version"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
+	"strings"
 
 	"github.com/NeverStopDreamingWang/goi/v3"
 	"github.com/NeverStopDreamingWang/goi/v3/crypto"
@@ -14,29 +15,33 @@ import (
 )
 
 var CreateProject = &cobra.Command{
-	Use:   "create-project",
+	Use:   "create-project [path]<project-name>",
 	Short: "创建项目",
-	Args:  cobra.ExactArgs(1),
-	RunE:  GoiCreateProject,
+	Long: "先创建并进入项目根目录，再运行创建命令；当前目录即 Go 模块根目录。\n" +
+		"go.mod 写入当前目录，服务入口为 server/main.go，配置包写入指定相对路径。\n" +
+		"module 默认使用当前项目根目录名，可通过 --module 指定。\n" +
+		"[path] 为可选的相对父路径前缀，包含当前系统的目录分隔符；<project-name> 为必填配置包名。\n" +
+		"方括号和尖括号仅用于说明，不需要输入。\n" +
+		"例如 myproject 或 path/myproject；创建后无需切换目录。",
+	Example: "  mkdir project\n" +
+		"  cd project\n" +
+		"  goi create-project path/myproject\n" +
+		"  goi create-app path/myapp\n" +
+		"  go run ./server",
+	Args: cobra.ExactArgs(1),
+	RunE: GoiCreateProject,
 }
 
 func init() {
+	CreateProject.Flags().String("module", "", "Go 模块路径，默认使用当前项目根目录名")
 	GoiCmd.AddCommand(CreateProject) // 创建项目
 }
-
-// AES 密钥
-var secretKey string
-
-// RSA 私钥
-var privateKey string
-
-// RSA 公钥
-var publicKey string
 
 var MainAppFileList = []InitFile{
 	mainGo,
 	goMod,
 	settings,
+	projectURLs,
 	converter,
 	validator,
 	logger,
@@ -45,11 +50,39 @@ var MainAppFileList = []InitFile{
 
 // 创建项目
 func GoiCreateProject(cmd *cobra.Command, args []string) error {
-	projectName = args[0]
+	rootDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	projectPath, projectName, err := parseCreationPath(args[0])
+	if err != nil {
+		return err
+	}
+	if strings.EqualFold(projectPath, "server") {
+		return fmt.Errorf("配置包路径不能为 server，该目录用于服务入口")
+	}
+	modulePath, err := cmd.Flags().GetString("module")
+	if err != nil {
+		return err
+	}
+	if modulePath == "" {
+		modulePath = filepath.Base(rootDir)
+	}
+	if err := validateModulePath(modulePath); err != nil {
+		return err
+	}
+	for _, target := range []string{
+		filepath.Join(rootDir, "go.mod"),
+		filepath.Join(rootDir, filepath.FromSlash(projectPath)),
+		filepath.Join(rootDir, "server", "main.go"),
+	} {
+		if err := ensureNewDirectory(target); err != nil {
+			return err
+		}
+	}
 
-	var err error
 	// 生成密钥
-	secretKey, err = crypto.GenerateRandomSecretKey()
+	secretKey, err := crypto.GenerateRandomSecretKey()
 	if err != nil {
 		return err
 	}
@@ -59,97 +92,76 @@ func GoiCreateProject(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	privateKey = string(privateKeyBytes)
-	publicKey = string(publicKeyBytes)
-
-	for _, itemFile := range MainAppFileList {
-		itemPath := itemFile.Path()
-		_, err = os.Stat(itemPath)
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(itemPath, 0755)
-			if err != nil {
-				return err
-			}
-		}
-
-		// 创建文件
-		filePath := filepath.Join(itemPath, itemFile.Name)
-		file, err := os.Create(filePath)
-
-		Content := itemFile.Content()
-		_, err = file.WriteString(Content)
-		if err != nil {
-			return err
-		}
+	config := createConfig{
+		RootDir:        rootDir,
+		ProjectName:    projectName,
+		ProjectPath:    projectPath,
+		ModulePath:     modulePath,
+		SettingsImport: modulePath + "/" + projectPath,
+		SecretKey:      secretKey,
+		PrivateKey:     string(privateKeyBytes),
+		PublicKey:      string(publicKeyBytes),
 	}
-
-	return nil
+	return generateFiles(config, MainAppFileList)
 }
 
 // main.go 文件
 var mainGo = InitFile{
 	Name: "main.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package main
 
 import (
-	"%s/%s"
+	"%s"
 
-	// 注册app
-	// _ "xxx"
+	// 创建应用后，取消注释并导入对应应用包。
+	// "context"
+	// "%s/path/myapp"
 )
 
 func main() {
+	// 需要建表时，在启动服务前显式执行迁移。
+	// myapp.Migrate(context.Background())
 
 	// 启动服务
 	%s.Server.RunServer()
 }
 `
-		return fmt.Sprintf(content, projectName, projectName, projectName)
+		return fmt.Sprintf(content, config.SettingsImport, config.ModulePath, config.ProjectName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, projectName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, "server")
 	},
 }
 
 // go.mod 文件
 var goMod = InitFile{
 	Name: "go.mod",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `module %s
 
 go %s
 
-require github.com/NeverStopDreamingWang/goi/v3 %s
-
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/go-sql-driver/mysql v1.9.3 // indirect
-	github.com/mattn/go-sqlite3 v1.14.32 // indirect
+	github.com/NeverStopDreamingWang/goi/v3 %s
+	github.com/mattn/go-sqlite3 v1.14.32
 )
-
-
 `
-		var version string
-		versionStr := runtime.Version()
-
-		regexpStr := `(\d+.\d+)`
-		re := regexp.MustCompile(regexpStr)
-		result := re.FindAllStringSubmatch(versionStr, -1)
-		if len(result) == 1 {
-			version = result[0][0]
+		goVersion := strings.TrimPrefix(version.Lang(runtime.Version()), "go")
+		if goVersion == "" {
+			goVersion = "1.24.0"
 		}
-		return fmt.Sprintf(content, projectName, version, goi.Version())
+		return fmt.Sprintf(content, config.ModulePath, goVersion, goi.Version())
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, projectName)
+	Path: func(config createConfig) string {
+		return config.RootDir
 	},
 }
 
 // 配置文件
 var settings = InitFile{
 	Name: "settings.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 import (
@@ -164,6 +176,7 @@ import (
 	"github.com/NeverStopDreamingWang/goi/v3/middleware/clickjacking"
 	"github.com/NeverStopDreamingWang/goi/v3/middleware/common"
 	"github.com/NeverStopDreamingWang/goi/v3/middleware/security"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Http 服务
@@ -179,7 +192,10 @@ func init() {
 	// fmt.Println("goi 版本", version)
 
 	// 项目路径
-	Server.Settings.BaseDir, _ = os.Getwd()
+	Server.Settings.BaseDir, err = os.Getwd()
+	if err != nil {
+		panic(err)
+	}
 	// Debug
 	Server.Settings.Debug = true
 	// 网络协议
@@ -218,25 +234,14 @@ func init() {
 
 	// 数据库配置
 	Server.Settings.Databases["default"] = &goi.Database{
-		Engine: "mysql",
+		Engine: "sqlite3",
 		Connect: func(Engine string) *sql.DB {
-			DataSourceName := "root:123@tcp(127.0.0.1:3306)/%s"
-			mysqlDB, err := sql.Open(Engine, DataSourceName)
-			if err != nil {
+			dataDir := filepath.Join(Server.Settings.BaseDir, "data")
+			if err := os.MkdirAll(dataDir, 0755); err != nil {
 				goi.Log.Error(err)
 				panic(err)
 			}
-			// 设置连接池参数
-			mysqlDB.SetMaxOpenConns(10)           // 设置最大打开连接数
-			mysqlDB.SetMaxIdleConns(5)            // 设置最大空闲连接数
-			mysqlDB.SetConnMaxLifetime(time.Hour) // 设置连接的最大存活时间
-			return mysqlDB
-		},
-	}
-	Server.Settings.Databases["sqlite"] = &goi.Database{
-		Engine: "sqlite3",
-		Connect: func(Engine string) *sql.DB {
-			DataSourceName := filepath.Join(Server.Settings.BaseDir, "data", "%s.db")
+			DataSourceName := filepath.Join(dataDir, "%s.db")
 			sqliteDB, err := sql.Open(Engine, DataSourceName)
 			if err != nil {
 				goi.Log.Error(err)
@@ -322,17 +327,29 @@ func (self *Task) OnStartup(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 `
-		return fmt.Sprintf(content, projectName, secretKey, privateKey, publicKey, projectName, projectName, projectName, projectName)
+		return fmt.Sprintf(content, config.ProjectName, config.SecretKey, config.PrivateKey, config.PublicKey,
+			config.ProjectName, config.ProjectName, config.ProjectName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, projectName, projectName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.ProjectPath))
+	},
+}
+
+// 项目路由文件，预留给用户集中配置路由。
+var projectURLs = InitFile{
+	Name: "urls.go",
+	Content: func(config createConfig) string {
+		return fmt.Sprintf("package %s\n", config.ProjectName)
+	},
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.ProjectPath))
 	},
 }
 
 // 路由转换器文件
 var converter = InitFile{
 	Name: "converter.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 import (
@@ -352,17 +369,17 @@ var phoneConverter = goi.Converter{
 }
 
 `
-		return fmt.Sprintf(content, projectName, "`(1[3456789]\\d{9})`")
+		return fmt.Sprintf(content, config.ProjectName, "`(1[3456789]\\d{9})`")
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, projectName, projectName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.ProjectPath))
 	},
 }
 
 // 验证器文件
 var validator = InitFile{
 	Name: "validator.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 import (
@@ -414,7 +431,7 @@ func (validationErr validationError) Response() goi.Response {
 
 type phoneValidator struct{}
 
-func (validator phoneValidator) Validator(value any) goi.ValidationError {
+func (validator phoneValidator) Validate(value any) goi.ValidationError {
 	switch typeValue := value.(type) {
 	case int:
 		valueStr := strconv.Itoa(typeValue)
@@ -452,17 +469,17 @@ func (validator phoneValidator) ToGo(value any) (any, goi.ValidationError) {
 }
 
 `
-		return fmt.Sprintf(content, projectName)
+		return fmt.Sprintf(content, config.ProjectName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, projectName, projectName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.ProjectPath))
 	},
 }
 
 // 日志文件
 var logger = InitFile{
 	Name: "logger.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 import (
@@ -483,7 +500,7 @@ func newDefaultLog() *goi.Logger {
 	var err error
 
 	LogDir := filepath.Join(Server.Settings.BaseDir, "logs") // 检查目录
-	err = os.MkdirAll(LogDir, 0644)
+	err = os.MkdirAll(LogDir, 0755)
 	if err != nil {
 		panic(fmt.Sprintf("创建日志目录错误: %%v", err))
 	}
@@ -546,17 +563,17 @@ func getFileFunc(filePath string) (*os.File, error) {
 }
 
 `
-		return fmt.Sprintf(content, projectName)
+		return fmt.Sprintf(content, config.ProjectName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, projectName, projectName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.ProjectPath))
 	},
 }
 
 // SSL 文件
 var ssl = InitFile{
 	Name: "ssl.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 import (
@@ -636,9 +653,9 @@ func generateCertificate(SSLPath string) {
 	}
 }
 `
-		return fmt.Sprintf(content, projectName, projectName)
+		return fmt.Sprintf(content, config.ProjectName, config.ProjectName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, projectName, projectName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.ProjectPath))
 	},
 }

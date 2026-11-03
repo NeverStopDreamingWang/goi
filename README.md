@@ -1,12 +1,14 @@
 # goi
 
-基于 `net/http` 开发的一个 Web 框架，语法与 `Django` 类似，简单易用，快速上手，详情请查看示例
+Goi 是基于 Go 标准库 `net/http` 构建的 Web 框架，借鉴 Django 的项目组织方式，提供路由、中间件、参数校验、国际化、可扩展 ORM 和项目脚手架，帮助开发者快速构建结构清晰的 Web 应用。
 
 [详细示例：goi_example](https://github.com/NeverStopDreamingWang/goi_example)
 
 自定义 ORM 的公共接口、引擎注册、连接生命周期及 MySQL 方言实现示例见 [自定义 ORM 开发指南](db/README.md)。
 
 ## goi 创建命令
+
+创建规则、分组应用目录和完整示例见 [Goi CLI 使用说明](cmd/goi/README.md)。
 
 ### 本地构建 goi 命令行工具
 
@@ -47,27 +49,80 @@ go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
 
 ### goi 命令使用
 
-```shell
+```text
 > goi
 
 Usage（用法）:                                         
         goi <command> [arguments]                      
 The commands are（命令如下）:                          
-        create-project  myproject   创建项目       
-        create-app      myapp       创建app
+        goi create-project [path]<project-name>   创建项目
+        goi create-app [path]<app-name>           创建app
 
 ```
+
+`[path]` 是可选的相对父路径前缀，可包含多级目录；由用户按系统路径格式填写并连接名称，所需分隔符包含在该前缀中。`<project-name>`、`<app-name>` 是必填名称。方括号和尖括号都是语法标记，不需要实际输入。
 
 示例
 
 ```shell
-# 创建项目
-> goi create-project example
+# 创建并进入外层项目根目录
+> mkdir project
+> cd project
+# 配置包生成到 path/myproject
+> goi create-project path/myproject
+# 两条 goi 命令之间不再 cd
+> goi create-app path/myapp
+> go mod tidy
 
-# 新建应用 app
-> cd example
-> goi create-app myapp
+```
 
+也可以不带父路径：在新建并进入项目根目录后，用下面两条命令替换上面的两条 `goi` 命令。两种方案二选一，不要依次重复执行：
+
+```sh
+goi create-project myproject
+goi create-app myapp
+```
+
+省略父路径时，配置包和应用直接创建在当前根目录的 `myproject/`、`myapp/` 下。后文目录和导入示例仍采用带 `path/` 的方案；省略时应同步去掉导入中的 `/path`。
+
+默认 module 使用执行 `create-project` 时当前项目根目录的末级目录名，此例为 `project`；也可通过 `--module example.com/team/myproject` 显式覆盖。示例中的 `path` 可替换、可多级，也可整体省略，末级 `myproject`、`myapp` 分别是项目配置包名和应用包名，不决定 module。`create-project` 在当前目录生成 `go.mod` 和简单的 `server/main.go`，参数只指定配置包的相对路径。`create-app` 同样接收相对路径，完整路径用于目录和导入，末级名称作为包名。
+
+配置包同时生成 `urls.go`，初始仅包含 `package` 声明。
+
+两种路径都支持 `/`，Windows 下也可使用 `\`；拒绝绝对路径、`..`、`.`、空路径段和非法末级包名。末级名称必须是 ASCII Go 包名，不能使用 `main`、`_` 或 Go 关键字。已有生成目标会被拒绝，不覆盖原代码、配置或密钥。
+
+`create-app` 只检查当前目录的 `go.mod`，缺少时会报错，不向上搜索，也不从子目录执行；可运行 `goi help create-app` 查看用法。配置包在当前模块内递归识别，要求 `settings.go` 声明 `Server`；隐藏目录、`vendor`、`node_modules` 和嵌套 Go 模块会被跳过，多个候选配置包会报错。完整目录树见 [CLI 使用说明](cmd/goi/README.md)。
+
+### 生成项目的数据库与应用初始化
+
+新项目默认使用 SQLite，连接名称为 `default`，并导入 `github.com/mattn/go-sqlite3` 物理驱动。数据库目录在首次连接时创建，日志目录也会按目录权限创建。该 SQLite 驱动需要 `CGO_ENABLED=1` 和可用的 C 编译器；上面的 `CGO_ENABLED=0` 脚本只用于构建 Goi CLI，不是生成应用的构建配置。
+
+新 app 的默认路由和表名使用末级名称，例如 `path/myapp` 默认使用 `myapp/` 和 `myapp_my_model`。不同分组使用相同末级名称时，需要自行修改默认路由、表名及导入别名，避免冲突。导入 app 只注册路由，不在 `init` 中自动执行数据库迁移；需要建表时，由应用在数据库配置完成后显式调用。手动修改 `server/main.go`，以下对应上面默认 module 为 `project` 的项目，直接使用配置包名 `myproject`：
+
+```go
+package main
+
+import (
+	"context"
+
+	"project/path/myapp"
+	"project/path/myproject"
+)
+
+func main() {
+	myapp.Migrate(context.Background()) // 按需执行，不负责修改已有表结构
+	myproject.Server.RunServer()
+}
+```
+
+完成导入后，在同一项目根目录使用 `go run ./server` 启动。
+
+生成的 `Validate`、`Create`、`Update`、`Delete` 方法均接收调用方的 `context.Context` 并传递给 ORM。处理 HTTP 请求时可使用 `request.Object.Context()`；不要用 `context.Background()` 替换请求上下文。`Update` 默认采用部分更新，省略的 nil 字段保留原值；需要清空可为 NULL 的字段时，应自行明确选择字段和写入规则。数据库错误会保留错误链，展示给用户的业务文案由调用方转换。
+
+创建流程的普通测试不需要物理数据库驱动。实际生成项目、编译和 SQLite 行为测试可在具备 Go、CGO/C 编译器及模块缓存或网络的环境下执行：
+
+```sh
+go test -tags=integration ./cmd/goi
 ```
 
 ## 快速开始

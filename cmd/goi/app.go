@@ -9,10 +9,15 @@ import (
 )
 
 var CreateApp = &cobra.Command{
-	Use:   "create-app",
+	Use:   "create-app [path]<app-name>",
 	Short: "创建应用",
-	Args:  cobra.ExactArgs(1),
-	RunE:  GoiCreateApp,
+	Long: "在项目根目录创建应用。当前目录必须存在 go.mod，不会向上查找。\n" +
+		"[path] 为可选的相对父路径前缀，包含当前系统的目录分隔符；<app-name> 为必填应用包名。\n" +
+		"方括号和尖括号仅用于说明，不需要输入。\n" +
+		"例如 myapp 或 path/myapp。",
+	Example: "  mkdir project\n  cd project\n  goi create-project path/myproject\n  goi create-app path/myapp",
+	Args:    cobra.ExactArgs(1),
+	RunE:    GoiCreateApp,
 }
 
 func init() {
@@ -30,38 +35,36 @@ var AppFileList = []InitFile{
 
 // 创建应用
 func GoiCreateApp(cmd *cobra.Command, args []string) error {
-	appName = args[0]
-
-	projectName = filepath.Base(baseDir)
-
-	for _, itemFile := range AppFileList {
-		itemPath := itemFile.Path()
-		_, err := os.Stat(itemPath)
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(itemPath, 0755)
-			if err != nil {
-				return err
-			}
-		}
-
-		// 创建文件
-		filePath := filepath.Join(itemPath, itemFile.Name)
-		file, err := os.Create(filePath)
-
-		Content := itemFile.Content()
-		_, err = file.WriteString(Content)
-		if err != nil {
-			return err
-		}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
 	}
-
-	return nil
+	root, modulePath, settingsImport, settingsPackage, err := readProject(cwd)
+	if err != nil {
+		return err
+	}
+	appPath, appName, err := parseCreationPath(args[0])
+	if err != nil {
+		return err
+	}
+	config := createConfig{
+		RootDir:        root,
+		ProjectName:    settingsPackage,
+		AppName:        appName,
+		AppPath:        appPath,
+		ModulePath:     modulePath,
+		SettingsImport: settingsImport,
+	}
+	if err := ensureNewDirectory(filepath.Join(root, filepath.FromSlash(config.AppPath))); err != nil {
+		return err
+	}
+	return generateFiles(config, AppFileList)
 }
 
 // model
 var models = InitFile{
 	Name: "models.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 import (
@@ -72,10 +75,10 @@ import (
 	"github.com/NeverStopDreamingWang/goi/v3/db/sqlite3"
 )
 
-func init() {
-	// sqlite 数据库
+// Migrate 在数据库配置完成后显式调用，创建当前应用的数据表。
+func Migrate(ctx context.Context) {
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
-	sqlite3DB.Migrate(context.Background(), MyModel{})
+	sqlite3DB.Migrate(ctx, MyModel{})
 }
 
 // 模型
@@ -94,7 +97,7 @@ func (self MyModel) ModelSet() *sqlite3.Settings {
 			AfterHandler:  nil, // 迁移之后处理函数
 		},
 
-		TableName: "user_tb", // 设置表名
+		TableName: "%s", // 设置表名
 
 		Settings: goi.Params{},
 	}
@@ -102,22 +105,23 @@ func (self MyModel) ModelSet() *sqlite3.Settings {
 	return modelSettings
 }
 `
-		return fmt.Sprintf(content, appName)
+		return fmt.Sprintf(content, config.AppName, config.AppName+"_my_model")
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, appName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.AppPath))
 	},
 }
 
 // 序列化器
 var serializer = InitFile{
 	Name: "serializer.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/NeverStopDreamingWang/goi/v3"
@@ -125,7 +129,7 @@ import (
 	"github.com/NeverStopDreamingWang/goi/v3/db/sqlite3"
 )
 
-func (self MyModel) Validate() error {
+func (self MyModel) Validate(ctx context.Context) error {
 	// 自定义验证
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
@@ -135,9 +139,9 @@ func (self MyModel) Validate() error {
 	}
 
 	if self.Name != nil {
-		flag, err := sqlite3DB.Where("` + "`" + `name` + "`" + ` = ?", self.Name).Count(context.Background())
+		flag, err := sqlite3DB.Where("` + "`" + `name` + "`" + ` = ?", self.Name).Count(ctx)
 		if err != nil {
-			return errors.New("查询数据库错误")
+			return fmt.Errorf("查询数据库失败: %%w", err)
 		}
 		if flag > 0 {
 			return errors.New("名称重复")
@@ -146,7 +150,10 @@ func (self MyModel) Validate() error {
 	return nil
 }
 
-func (self *MyModel) Create() error {
+func (self *MyModel) Create(ctx context.Context) error {
+	if self == nil {
+		return errors.New("待创建的模型不能为空")
+	}
 	if self.CreateTime == nil {
 		CreateTime := goi.GetTime().Format(time.DateTime)
 		self.CreateTime = &CreateTime
@@ -159,83 +166,100 @@ func (self *MyModel) Create() error {
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
 	// 显式选择插入列，省略自增主键；skipNil=true 让 nil 字段使用数据库默认处理。
-	result, err := sqlite3DB.Fields("Name", "CreateTime", "UpdateTime").Insert(context.Background(), self, true)
+	result, err := sqlite3DB.Fields("Name", "CreateTime", "UpdateTime").Insert(ctx, self, true)
 	if err != nil {
-		return errors.New("添加失败")
+		return fmt.Errorf("添加失败: %%w", err)
 	}
 	id, err := result.LastInsertId()
 	if err != nil {
-		return errors.New("添加失败")
+		return fmt.Errorf("获取新增记录 ID 失败: %%w", err)
 	}
 	self.Id = &id
 	return nil
 }
 
-func (self *MyModel) Update(validated_data *MyModel) error {
+func (self *MyModel) Update(ctx context.Context, validatedData *MyModel) error {
+	if self == nil {
+		return errors.New("待更新的模型不能为空")
+	}
+	if validatedData == nil {
+		return errors.New("更新数据不能为空")
+	}
+	if self.Id == nil {
+		return errors.New("待更新模型的 ID 不能为空")
+	}
 	UpdateTime := goi.GetTime().Format(time.DateTime)
-	validated_data.UpdateTime = &UpdateTime
+	validatedData.UpdateTime = &UpdateTime
 
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
-	// 只更新本次选中的列；skipNil=false 允许 Name 为 nil 时显式置 NULL。
-	_, err := sqlite3DB.Fields("Name", "UpdateTime").Where("` + "`" + `id` + "`" + ` = ?", self.Id).Update(context.Background(), validated_data, false)
+	// 部分更新：Name 为 nil 时保留原值，不覆盖 NOT NULL 列。
+	_, err := sqlite3DB.Fields("Name", "UpdateTime").Where("` + "`" + `id` + "`" + ` = ?", self.Id).Update(ctx, validatedData, true)
 	if err != nil {
-		return errors.New("修改失败")
+		return fmt.Errorf("修改失败: %%w", err)
 	}
 
 	// 更新 instance
 	return nil
 }
 
-func (self MyModel) Delete() error {
+func (self MyModel) Delete(ctx context.Context) error {
+	if self.Id == nil {
+		return errors.New("待删除模型的 ID 不能为空")
+	}
 	sqlite3DB := db.Connect[*sqlite3.Engine]("default")
 	sqlite3DB.SetModel(self)
-	_, err := sqlite3DB.Where("` + "`" + `id` + "`" + ` = ?", self.Id).Delete(context.Background())
+	_, err := sqlite3DB.Where("` + "`" + `id` + "`" + ` = ?", self.Id).Delete(ctx)
 	if err != nil {
-		return errors.New("删除失败")
+		return fmt.Errorf("删除失败: %%w", err)
 	}
 	return nil
 }
 
 `
-		return fmt.Sprintf(content, appName)
+		return fmt.Sprintf(content, config.AppName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, appName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.AppPath))
 	},
 }
 
 // 路由
 var urls = InitFile{
 	Name: "urls.go",
-	Content: func() string {
-		content := `package %s
+	Content: func(config createConfig) string {
+		frameworkName, frameworkAlias := "goi", ""
+		if config.ProjectName == frameworkName {
+			// 保留配置包的真实名称，仅在重名时为框架包设置别名。
+			frameworkName, frameworkAlias = "goiFramework", "goiFramework "
+		}
+		content := `package %[1]s
 
 import (
-	"%s/%s"
-	"github.com/NeverStopDreamingWang/goi/v3"
+	"%[2]s"
+	%[3]s"github.com/NeverStopDreamingWang/goi/v3"
 )
 
 func init() {
-	%sRouter := %s.Server.Router.Include("%s/", "父路由")
+	%[1]sRouter := %[4]s.Server.Router.Include("%[1]s/", "父路由")
 	{
-		%sRouter.Path("", "查询列表/新增", goi.ViewSet{GET: listView, POST: createView})
-		%sRouter.Path("<int:pk>", "详情/修改/删除", goi.ViewSet{GET: retrieveView, PUT: updateView, DELETE: deleteView})
+		%[1]sRouter.Path("", "查询列表/新增", %[5]s.ViewSet{GET: listView, POST: createView})
+		%[1]sRouter.Path("<int:pk>", "详情/修改/删除", %[5]s.ViewSet{GET: retrieveView, PUT: updateView, DELETE: deleteView})
 
 	}
 }
 `
-		return fmt.Sprintf(content, appName, projectName, projectName, appName, projectName, appName, appName, appName)
+		return fmt.Sprintf(content, config.AppName, config.SettingsImport, frameworkAlias, config.ProjectName, frameworkName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, appName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.AppPath))
 	},
 }
 
 // 序列化器
 var views = InitFile{
 	Name: "views.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 import (
@@ -353,23 +377,23 @@ func deleteView(request *goi.Request) any {
 }
 
 `
-		return fmt.Sprintf(content, appName)
+		return fmt.Sprintf(content, config.AppName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, appName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.AppPath))
 	},
 }
 
 // 工具
 var utils = InitFile{
 	Name: "utils.go",
-	Content: func() string {
+	Content: func(config createConfig) string {
 		content := `package %s
 
 `
-		return fmt.Sprintf(content, appName)
+		return fmt.Sprintf(content, config.AppName)
 	},
-	Path: func() string {
-		return filepath.Join(baseDir, appName)
+	Path: func(config createConfig) string {
+		return filepath.Join(config.RootDir, filepath.FromSlash(config.AppPath))
 	},
 }

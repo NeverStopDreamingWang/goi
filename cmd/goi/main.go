@@ -8,14 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var baseDir, _ = os.Getwd()
-var projectName string
-var appName string
-
+// InitFile 定义一个生成文件，内容和路径均由本次创建参数决定。
 type InitFile struct {
 	Name    string
-	Content func() string
-	Path    func() string
+	Content func(createConfig) string
+	Path    func(createConfig) string
 }
 
 var goiHelp = `goi version（版本）: %s
@@ -24,8 +21,20 @@ var goiHelp = `goi version（版本）: %s
 Usage（用法）:
 	goi <command> [arguments]
 The commands are（命令如下）:
-	create-project  myproject   创建项目
-	create-app      myapp       创建app
+	create-project  [path]<project-name>   创建项目配置包，同时在当前目录生成 go.mod 和 server/main.go
+	create-app      [path]<app-name>       创建 app，当前目录必须存在 go.mod
+
+语法说明：
+	[path] 为可选的相对父路径前缀，包含目录分隔符，按当前系统的路径格式填写。
+	<project-name>、<app-name> 为必填名称；方括号和尖括号仅用于说明，不需要输入。
+
+示例:
+	mkdir project
+	cd project
+	goi create-project path/myproject
+	goi create-app path/myapp
+
+详细使用说明：https://github.com/NeverStopDreamingWang/goi/blob/main/cmd/goi/README.md
 
 `
 
@@ -35,24 +44,43 @@ var GoiCmd = &cobra.Command{
 	Short: `goi 一款 web 框架`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		help_txt := fmt.Sprintf(goiHelp, goi.Version())
-		fmt.Print(help_txt)
+		cmd.Print(help_txt)
 		return nil
 	},
 }
 
 // help
 var HelpCmd = &cobra.Command{
-	Use:   "help",
+	Use:   "help [command]",
 	Short: "help 帮助",
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 0 {
+			target, _, err := GoiCmd.Find(args)
+			if err != nil {
+				return err
+			}
+			return target.Help()
+		}
 		help_txt := fmt.Sprintf(goiHelp, goi.Version())
-		fmt.Print(help_txt)
+		cmd.Print(help_txt)
 		return nil
 	},
 }
 
+func init() {
+	defaultHelp := GoiCmd.HelpFunc()
+	GoiCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if cmd == GoiCmd {
+			cmd.Print(fmt.Sprintf(goiHelp, goi.Version()))
+			return
+		}
+		defaultHelp(cmd, args)
+	})
+	GoiCmd.AddCommand(HelpCmd)
+}
+
 func main() {
-	GoiCmd.AddCommand(HelpCmd) // 帮助信息
 	if err := GoiCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
