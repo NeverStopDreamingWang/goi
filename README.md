@@ -1,16 +1,44 @@
-# goi
+<div align="center">
 
-Goi 是基于 Go 标准库 `net/http` 构建的 Web 框架，借鉴 Django 的项目组织方式，提供路由、中间件、参数校验、国际化、可扩展 ORM 和项目脚手架，帮助开发者快速构建结构清晰的 Web 应用。
+# Goi
 
-[详细示例：goi_example](https://github.com/NeverStopDreamingWang/goi_example)
+### 基于 Go 标准库的可扩展 Web 框架
 
-自定义 ORM 的公共接口、引擎注册、连接生命周期及 MySQL 方言实现示例见 [自定义 ORM 开发指南](db/README.md)。
+从项目创建、请求处理到数据库访问与优雅停机，让 Web 开发更专注于业务。
+
+基于 `net/http`，集成路由、中间件、参数校验、国际化和多数据库 ORM；支持自定义扩展，通过项目与应用脚手架减少重复工作。
+
+[![Version](https://img.shields.io/github/v/release/NeverStopDreamingWang/goi?label=version&color=blue)](https://github.com/NeverStopDreamingWang/goi/releases/latest)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/NeverStopDreamingWang/goi?label=Go&logo=go&logoColor=white)](go.mod)
+[![Go Reference](https://pkg.go.dev/badge/github.com/NeverStopDreamingWang/goi/v3.svg)](https://pkg.go.dev/github.com/NeverStopDreamingWang/goi/v3)
+[![Stars](https://img.shields.io/github/stars/NeverStopDreamingWang/goi?label=stars&color=blue)](https://github.com/NeverStopDreamingWang/goi/stargazers)
+[![License](https://img.shields.io/github/license/NeverStopDreamingWang/goi?label=license)](LICENSE)
+
+**简体中文** | [English](README.en.md)
+
+[快速开始](#快速开始) · [CLI 使用说明](cmd/goi/README.md) · [自定义 ORM](db/README.md) · [详细示例](https://github.com/NeverStopDreamingWang/goi_example) · [更新日志](https://github.com/NeverStopDreamingWang/goi/releases)
+
+</div>
 
 ## goi 创建命令
 
 创建规则、分组应用目录和完整示例见 [Goi CLI 使用说明](cmd/goi/README.md)。
 
+### 安装 goi 命令行工具
+
+推荐优先使用 `go install` 安装最新版本：
+
+```shell
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
+```
+
+命令会安装为 `goi`（Windows 下为 `goi.exe`）。安装目录优先使用 `GOBIN`；未设置 `GOBIN` 时使用 `GOPATH/bin`。请将该目录加入 `PATH` 后再直接运行 `goi`。
+
+`go install` 会根据发布标签中的源码在用户本机构建命令行工具，因此发布版本只需要提交源码并创建标签，无需提交预编译的 Windows 或 Linux 可执行文件。
+
 ### 本地构建 goi 命令行工具
+
+需要修改源码或自定义构建参数时，再使用本地构建方式。
 
 命令行源码入口位于 `cmd/goi/`，构建脚本位于 `cmd/`。Windows 和 Linux 分别提供对应环境的构建脚本；两个脚本都会交叉编译 Windows 与 Linux 两个系统的可执行文件。目标架构均为 `amd64`，并设置 `CGO_ENABLED=0`，因此不依赖目标系统的 C 工具链。构建命令使用 `-trimpath` 和 `-ldflags="-s -w"`，用于移除本地路径、符号表及调试信息，减小发布产物体积。
 
@@ -34,18 +62,6 @@ sh ./cmd/build.sh
 两个脚本都会自动切换到自身所在目录，因此也可以从其他工作目录通过脚本路径调用。
 
 `cmd/dist/` 仅用于本地验证或按需生成下载附件，构建产物不纳入 Git 版本控制。
-
-### 安装 goi 命令行工具
-
-使用 `go install` 安装最新版本：
-
-```shell
-go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
-```
-
-命令会安装为 `goi`（Windows 下为 `goi.exe`）。安装目录优先使用 `GOBIN`；未设置 `GOBIN` 时使用 `GOPATH/bin`。请将该目录加入 `PATH` 后再直接运行 `goi`。
-
-`go install` 会根据发布标签中的源码在用户本机构建命令行工具，因此发布版本只需要提交源码并创建标签，无需提交预编译的 Windows 或 Linux 可执行文件。
 
 ### goi 命令使用
 
@@ -150,8 +166,8 @@ go get github.com/NeverStopDreamingWang/goi/v3@latest
 v3 包含不兼容的 ORM API 调整。先将 Goi 及其子包的导入路径统一改为 `/v3`，再更新依赖；使用 CLI 时也需重新安装。不要修改第三方依赖自身的版本后缀。
 
 ```sh
-go get github.com/NeverStopDreamingWang/goi/v3@v3.0.0
-go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.0
+go get github.com/NeverStopDreamingWang/goi/v3@v3.0.1
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.1
 go mod tidy
 ```
 
