@@ -24,6 +24,9 @@ var (
 // 参数:
 //   - destValue reflect.Value: 目标值
 //   - source any: 源值
+//
+// 说明:
+//   - 数组目标接受切片或数组；调用方须保证长度一致，不额外检查长度或捕获越界 panic。
 func SetValue(destValue reflect.Value, source any) error {
 	sourceValue := reflect.ValueOf(source)
 	if !sourceValue.IsValid() {
@@ -231,6 +234,16 @@ func SetValue(destValue reflect.Value, source any) error {
 					return err
 				}
 				destValue.SetMapIndex(key, val)
+			}
+		}
+		return nil
+	case reflect.Array:
+		if sourceValue.Kind() != reflect.Slice && sourceValue.Kind() != reflect.Array {
+			return valueInvalidErr
+		}
+		for i := 0; i < destValue.Len(); i++ {
+			if err := SetValue(destValue.Index(i), sourceValue.Index(i).Interface()); err != nil {
+				return err
 			}
 		}
 		return nil

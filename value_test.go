@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"testing"
 
 	"github.com/NeverStopDreamingWang/goi/v3"
 )
@@ -104,4 +105,68 @@ func ExampleSetValue_manual() {
 	// Password: test123456 string
 	// Age: 18 int
 	// Custom: [true test1 test2] []string
+}
+
+func TestSetValueArray(t *testing.T) {
+	sliceSource := []any{1, "2"}
+	arraySource := [2]string{"1", "2"}
+	for _, test := range []struct {
+		name   string
+		source any
+	}{
+		{name: "slice", source: sliceSource},
+		{name: "array", source: arraySource},
+		{name: "same_type", source: [2]int{1, 2}},
+		{name: "slice_pointer", source: &sliceSource},
+		{name: "array_pointer", source: &arraySource},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var got [2]int
+			if err := goi.SetValue(reflect.ValueOf(&got), test.source); err != nil {
+				t.Fatal(err)
+			}
+			if want := [2]int{1, 2}; got != want {
+				t.Fatalf("SetValue result = %v; want %v", got, want)
+			}
+		})
+	}
+}
+
+func TestSetValueArrayPointerTarget(t *testing.T) {
+	var got *[2]int
+	if err := goi.SetValue(reflect.ValueOf(&got).Elem(), []any{1, "2"}); err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || *got != [2]int{1, 2} {
+		t.Fatalf("SetValue result = %v; want pointer to [1 2]", got)
+	}
+}
+
+func TestSetValueNestedArray(t *testing.T) {
+	var got [2][2]int
+	source := [][]any{{1, "2"}, {"3", 4}}
+	if err := goi.SetValue(reflect.ValueOf(&got), source); err != nil {
+		t.Fatal(err)
+	}
+	if want := [2][2]int{{1, 2}, {3, 4}}; got != want {
+		t.Fatalf("SetValue result = %v; want %v", got, want)
+	}
+}
+
+func TestSetValueArrayRejectsInvalidInput(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		source any
+	}{
+		{name: "invalid_element", source: []any{1, "invalid"}},
+		{name: "number", source: 12},
+		{name: "map", source: map[string]int{"value": 1}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var got [2]int
+			if err := goi.SetValue(reflect.ValueOf(&got), test.source); err == nil {
+				t.Fatalf("SetValue(%#v) must return an error", test.source)
+			}
+		})
+	}
 }
