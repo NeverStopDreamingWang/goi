@@ -1,17 +1,91 @@
-# Goi CLI 使用说明
+<div align="center">
 
-`goi` 用于创建项目和应用。安装与本地构建方式见[项目说明](../../README.md#goi-创建命令)。
+# Goi CLI
 
-## 创建项目和应用
+### Goi 项目与应用的脚手架工具
 
-命令语法：
+`goi` 用于创建项目配置包和应用脚手架。本指南说明安装、按需构建、创建、注册应用及运行流程。
+
+[![Version](https://img.shields.io/github/v/release/NeverStopDreamingWang/goi?label=version&color=blue)](https://github.com/NeverStopDreamingWang/goi/releases/latest)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/NeverStopDreamingWang/goi?label=Go&logo=go&logoColor=white)](../../go.mod)
+[![Go Reference](https://pkg.go.dev/badge/github.com/NeverStopDreamingWang/goi/v3.svg)](https://pkg.go.dev/github.com/NeverStopDreamingWang/goi/v3)
+[![Stars](https://img.shields.io/github/stars/NeverStopDreamingWang/goi?label=stars&color=blue)](https://github.com/NeverStopDreamingWang/goi/stargazers)
+[![License](https://img.shields.io/github/license/NeverStopDreamingWang/goi?label=license)](../../LICENSE)
+
+**简体中文** | [English](README.en.md)
+
+[安装 CLI](#安装-cli) · [命令概览](#命令概览) · [创建项目和应用](#创建项目和应用) · [帮助与常见错误](#帮助和常见错误) · [项目主页](../../README.md)
+
+</div>
+
+## 安装 CLI
+
+需要 Go 1.24 或更高版本。推荐优先使用 `go install` 安装最新版本：
+
+```sh
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
+```
+
+需要固定版本时，例如安装 v3.0.1：
+
+```sh
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.1
+```
+
+命令安装为 `goi`（Windows 下为 `goi.exe`）。安装目录优先使用 `GOBIN`；未设置时使用 `GOPATH/bin`。可通过以下命令查看配置，并将对应目录加入 `PATH`：
+
+```sh
+go env GOBIN GOPATH
+```
+
+打开能读取新 `PATH` 的终端，验证安装：
+
+```sh
+goi help
+```
+
+帮助会显示 Goi 版本和可用命令。若提示找不到 `goi`，先检查安装目录是否已加入 `PATH`。`go install` 从版本源码在本机构建命令，不需要另行下载预编译的可执行文件。
+
+## 按需本地构建
+
+只有需要修改 CLI 源码或自定义构建参数时，再使用本地构建。源码入口为 `cmd/goi/`，构建脚本位于 `cmd/`。在 Goi 框架仓库根目录运行对应脚本。
+
+Windows 环境：
+
+```bat
+cmd\build.bat
+```
+
+Linux 环境：
+
+```sh
+sh ./cmd/build.sh
+```
+
+两个脚本都会交叉编译 Windows 与 Linux 两个系统的 CLI，目标架构均为 `amd64`，生成：
+
+- `windows/amd64`：`cmd/dist/windows-amd64/goi.exe`
+- `linux/amd64`：`cmd/dist/linux-amd64/goi`
+
+脚本设置 `CGO_ENABLED=0`，不依赖目标系统的 C 工具链；使用 `-trimpath` 移除本地路径，并通过 `-ldflags="-s -w"` 移除符号表和调试信息以减小体积。脚本会自动切换到自身目录，也可从其它工作目录通过脚本路径调用。
+
+`cmd/dist/` 只保存本地构建产物，不纳入 Git 版本控制；不要将生成的二进制提交到源码仓库。这些脚本构建的是 Goi CLI，不是后续生成的 SQLite 应用。
+
+## 命令概览
+
+不带子命令运行 `goi`，或运行 `goi help`，均可查看版本和命令概览。命令语法如下：
 
 ```text
-goi create-project [path]<project-name>
+goi help [command]
+goi create-project [path]<project-name> [--module <module-path>]
 goi create-app [path]<app-name>
 ```
 
 `[path]` 表示可选的相对父路径前缀，可以包含多级目录；由用户按系统路径格式填写并连接名称，所需分隔符包含在该前缀中。`<project-name>` 和 `<app-name>` 表示必填名称。方括号、尖括号均不实际输入。
+
+`help` 的 `command` 可省略，也可指定 `create-project` 或 `create-app` 查看详细参数和示例。`--module <module-path>` 仅用于创建项目，显式指定写入 `go.mod` 的 module；省略时使用当前项目根目录名，不改变配置包或应用的名称。
+
+## 创建项目和应用
 
 先创建并进入外层项目目录，再连续执行两条创建命令：
 
@@ -104,6 +178,8 @@ func main() {
 	myproject.Server.RunServer()
 }
 ```
+
+脚手架不会自动修改 `server/main.go` 注册新应用。只需要注册路由、不执行迁移时，也可使用空白导入，例如 `_ "project/path/myapp"`。
 
 `--module example.com/team/myproject` 会显式覆盖默认 module；此时将上面的导入前缀 `project` 改为该完整路径，例如 `"example.com/team/myproject/path/myapp"`。生成的 `urls.go` 使用真实导入路径和识别到的配置包名，例如 `myproject.Server`，不固定使用 `project` 别名。应用被导入后注册路由，但不会在 `init` 中自动建表。需要建表时，在数据库配置完成、服务启动之前显式调用 `Migrate(ctx)`；迁移只创建不存在的表，不自动修改已有结构。
 

@@ -16,130 +16,33 @@
 
 **简体中文** | [English](README.en.md)
 
-[快速开始](#快速开始) · [CLI 使用说明](cmd/goi/README.md) · [自定义 ORM](db/README.md) · [详细示例](https://github.com/NeverStopDreamingWang/goi_example) · [更新日志](https://github.com/NeverStopDreamingWang/goi/releases)
+[快速开始](#快速开始) · [其它特性](#其它特性) · [CLI 使用说明](cmd/goi/README.md) · [自定义 ORM](db/README.md) · [详细示例](https://github.com/NeverStopDreamingWang/goi_example) · [更新日志](https://github.com/NeverStopDreamingWang/goi/releases)
 
 </div>
 
-## goi 创建命令
-
-创建规则、分组应用目录和完整示例见 [Goi CLI 使用说明](cmd/goi/README.md)。
+## goi 命令行工具
 
 ### 安装 goi 命令行工具
 
-推荐优先使用 `go install` 安装最新版本：
+推荐使用 `go install` 安装最新版本：
 
-```shell
+```sh
 go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
 ```
 
-命令会安装为 `goi`（Windows 下为 `goi.exe`）。安装目录优先使用 `GOBIN`；未设置 `GOBIN` 时使用 `GOPATH/bin`。请将该目录加入 `PATH` 后再直接运行 `goi`。
+命令会安装为 `goi`（Windows 下为 `goi.exe`）。安装目录优先使用 `GOBIN`，未设置时使用 `GOPATH/bin`；请将该目录加入 `PATH`。
 
-`go install` 会根据发布标签中的源码在用户本机构建命令行工具，因此发布版本只需要提交源码并创建标签，无需提交预编译的 Windows 或 Linux 可执行文件。
-
-### 本地构建 goi 命令行工具
-
-需要修改源码或自定义构建参数时，再使用本地构建方式。
-
-命令行源码入口位于 `cmd/goi/`，构建脚本位于 `cmd/`。Windows 和 Linux 分别提供对应环境的构建脚本；两个脚本都会交叉编译 Windows 与 Linux 两个系统的可执行文件。目标架构均为 `amd64`，并设置 `CGO_ENABLED=0`，因此不依赖目标系统的 C 工具链。构建命令使用 `-trimpath` 和 `-ldflags="-s -w"`，用于移除本地路径、符号表及调试信息，减小发布产物体积。
-
-Windows 环境执行：
-
-```bat
-cmd\build.bat
-```
-
-Linux 环境执行：
-
-```sh
-sh ./cmd/build.sh
-```
-
-无论使用哪个脚本，都会生成以下两个构建产物：
-
-- `windows/amd64`：`cmd/dist/windows-amd64/goi.exe`
-- `linux/amd64`：`cmd/dist/linux-amd64/goi`
-
-两个脚本都会自动切换到自身所在目录，因此也可以从其他工作目录通过脚本路径调用。
-
-`cmd/dist/` 仅用于本地验证或按需生成下载附件，构建产物不纳入 Git 版本控制。
-
-### goi 命令使用
+### 命令使用说明
 
 ```text
-> goi
-
-Usage（用法）:                                         
-        goi <command> [arguments]                      
-The commands are（命令如下）:                          
-        goi create-project [path]<project-name>   创建项目
-        goi create-app [path]<app-name>           创建app
-
+goi create-project [path]<project-name>   创建项目配置包
+goi create-app [path]<app-name>           创建应用
+goi help [command]                      查看帮助
 ```
 
-`[path]` 是可选的相对父路径前缀，可包含多级目录；由用户按系统路径格式填写并连接名称，所需分隔符包含在该前缀中。`<project-name>`、`<app-name>` 是必填名称。方括号和尖括号都是语法标记，不需要实际输入。
+`[path]` 是可选的相对父路径前缀，名称为必填参数；方括号和尖括号不需要实际输入。
 
-示例
-
-```shell
-# 创建并进入外层项目根目录
-> mkdir project
-> cd project
-# 配置包生成到 path/myproject
-> goi create-project path/myproject
-# 两条 goi 命令之间不再 cd
-> goi create-app path/myapp
-> go mod tidy
-
-```
-
-也可以不带父路径：在新建并进入项目根目录后，用下面两条命令替换上面的两条 `goi` 命令。两种方案二选一，不要依次重复执行：
-
-```sh
-goi create-project myproject
-goi create-app myapp
-```
-
-省略父路径时，配置包和应用直接创建在当前根目录的 `myproject/`、`myapp/` 下。后文目录和导入示例仍采用带 `path/` 的方案；省略时应同步去掉导入中的 `/path`。
-
-默认 module 使用执行 `create-project` 时当前项目根目录的末级目录名，此例为 `project`；也可通过 `--module example.com/team/myproject` 显式覆盖。示例中的 `path` 可替换、可多级，也可整体省略，末级 `myproject`、`myapp` 分别是项目配置包名和应用包名，不决定 module。`create-project` 在当前目录生成 `go.mod` 和简单的 `server/main.go`，参数只指定配置包的相对路径。`create-app` 同样接收相对路径，完整路径用于目录和导入，末级名称作为包名。
-
-配置包同时生成 `urls.go`，初始仅包含 `package` 声明。
-
-两种路径都支持 `/`，Windows 下也可使用 `\`；拒绝绝对路径、`..`、`.`、空路径段和非法末级包名。末级名称必须是 ASCII Go 包名，不能使用 `main`、`_` 或 Go 关键字。已有生成目标会被拒绝，不覆盖原代码、配置或密钥。
-
-`create-app` 只检查当前目录的 `go.mod`，缺少时会报错，不向上搜索，也不从子目录执行；可运行 `goi help create-app` 查看用法。配置包在当前模块内递归识别，要求 `settings.go` 声明 `Server`；隐藏目录、`vendor`、`node_modules` 和嵌套 Go 模块会被跳过，多个候选配置包会报错。完整目录树见 [CLI 使用说明](cmd/goi/README.md)。
-
-### 生成项目的数据库与应用初始化
-
-新项目默认使用 SQLite，连接名称为 `default`，并导入 `github.com/mattn/go-sqlite3` 物理驱动。数据库目录在首次连接时创建，日志目录也会按目录权限创建。该 SQLite 驱动需要 `CGO_ENABLED=1` 和可用的 C 编译器；上面的 `CGO_ENABLED=0` 脚本只用于构建 Goi CLI，不是生成应用的构建配置。
-
-新 app 的默认路由和表名使用末级名称，例如 `path/myapp` 默认使用 `myapp/` 和 `myapp_my_model`。不同分组使用相同末级名称时，需要自行修改默认路由、表名及导入别名，避免冲突。导入 app 只注册路由，不在 `init` 中自动执行数据库迁移；需要建表时，由应用在数据库配置完成后显式调用。手动修改 `server/main.go`，以下对应上面默认 module 为 `project` 的项目，直接使用配置包名 `myproject`：
-
-```go
-package main
-
-import (
-	"context"
-
-	"project/path/myapp"
-	"project/path/myproject"
-)
-
-func main() {
-	myapp.Migrate(context.Background()) // 按需执行，不负责修改已有表结构
-	myproject.Server.RunServer()
-}
-```
-
-完成导入后，在同一项目根目录使用 `go run ./server` 启动。
-
-生成的 `Validate`、`Create`、`Update`、`Delete` 方法均接收调用方的 `context.Context` 并传递给 ORM。处理 HTTP 请求时可使用 `request.Object.Context()`；不要用 `context.Background()` 替换请求上下文。`Update` 默认采用部分更新，省略的 nil 字段保留原值；需要清空可为 NULL 的字段时，应自行明确选择字段和写入规则。数据库错误会保留错误链，展示给用户的业务文案由调用方转换。
-
-创建流程的普通测试不需要物理数据库驱动。实际生成项目、编译和 SQLite 行为测试可在具备 Go、CGO/C 编译器及模块缓存或网络的环境下执行：
-
-```sh
-go test -tags=integration ./cmd/goi
-```
+详情查看 [Goi CLI 使用说明](cmd/goi/README.md)。
 
 ## 快速开始
 
@@ -161,30 +64,10 @@ import "github.com/NeverStopDreamingWang/goi/v3"
 go get github.com/NeverStopDreamingWang/goi/v3@latest
 ```
 
-### 从 v2 迁移到 v3
-
-v3 包含不兼容的 ORM API 调整。先将 Goi 及其子包的导入路径统一改为 `/v3`，再更新依赖；使用 CLI 时也需重新安装。不要修改第三方依赖自身的版本后缀。
-
-```sh
-go get github.com/NeverStopDreamingWang/goi/v3@v3.0.1
-go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.1
-go mod tidy
-```
-
-| 迁移项 | v3 用法 |
-| --- | --- |
-| 上下文 | 迁移、CRUD、计数、分页和事务方法直接接收 `context.Context`；例如 `Select(ctx, &list)`、`First(ctx, &item)`、`Delete(ctx)`。基础 `Execute`、`Query`、`QueryRow` 仍提供 `...Context` 入口。 |
-| 写入 nil | `Insert(ctx, model, skipNil)`、`Update(ctx, model, skipNil)` 必须指定 `skipNil`：`true` 跳过 nil，`false` 将选中的 nil 写为 SQL NULL；普通零值不会被跳过。用 `Fields` 控制写入范围。 |
-| 迁移命名空间 | 不再向 `Migrate` 传入 Schema，改在模型 `ModelSet()` 返回的 `Settings.Schema` 中设置，再调用 `Migrate(ctx, model)`。 |
-| Kingbase | 通过 `kingbase.Config.Mode` 选择方言，改用对应原生包的 Engine、Model、Settings 和 Validate；例如 MySQL 模式使用 `db.Connect[*mysql.Engine]`。原包级策略配置改放 `Config.EngineOptions`。 |
-| map 查询结果 | map 的键使用 Go 字段名，例如 `Name`，不是数据库列名 `name`；请同步调整读取代码。 |
-| SeaBoxSQL | 新增 `seaboxsql` 路由，支持 `postgres`、`mysql`、`oracle`，空 Mode 默认 PostgreSQL；只选择 ORM 方言，不切换服务端模式或物理驱动。 |
-
-`Update`、`Delete` 未设置 WHERE 时会操作整张表；升级后应检查筛选条件与 `Fields`。数据库模型、配置和完整示例见 [自定义 ORM 开发指南](db/README.md)。兼容模式路由不代表与对应原生数据库完全兼容，需针对目标实例验证。
 
 ### 运行 Goi
 
-一个基础示例：
+#### 一个基础示例
 
 ```go
 package main
@@ -232,13 +115,103 @@ go run main.go
 
 然后在浏览器中访问 `http://0.0.0.0:8080/ping` 查看响应！
 
-### 优雅停机
+#### 从 CLI 开始
 
-Goi 会监听 `SIGINT`（例如 `Ctrl+C`）和 `SIGTERM`，也可以由业务控制层手动调用 `Server.StopServer()`。服务进入本轮运行后，两种入口共用同一轮停机流程；即使并发或重复调用，也只会执行一次清理，并向所有调用方返回同一个停机结果。正常停机导致 HTTP `Serve` 返回时不会再次发起停机；`Serve` 异常返回时仍会进入统一停机流程。`RunServer()` 会等待全部清理完成后再返回。
+也可以使用 CLI 创建项目骨架，再按业务需要添加应用。先安装 CLI，并创建、进入项目根目录：
 
-停机顺序为：停止 HTTP 监听并等待在途请求完成、取消并等待后台任务、逆序执行停机回调、最后关闭数据库。HTTP `Shutdown`、`OnShutdown` 和数据库 `Close` 返回的错误都会立即写入日志，剩余清理仍会继续，最终由 `StopServer()` 合并返回。
+```sh
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
+mkdir project
+cd project
+goi create-project path/myproject
+goi create-app path/myapp
+go mod tidy
+```
 
-停机过程不设置超时，以确保请求或后台任务仍可能使用数据库时不会提前关闭依赖。因此，后台任务必须响应 `ctx.Done()` 并调用一次 `wg.Done()`。不要在当前 HTTP 请求处理程序、受管理的后台任务或 `OnShutdown` 回调中同步调用 `StopServer()`，否则会等待自身退出；应从独立协程或应用控制层发起。如果启动初始化、在途请求或后台任务永久阻塞，优雅停机也会一直等待，此时只能由操作系统强制终止进程。
+生成的主要目录结构如下：
 
-每个 `Engine` 以及全局启动/停机任务管理器只支持一轮生命周期，停止后不能重新运行。`RegisterOnStartup` 应在 `RunServer()` 前调用，后台任务开始启动后注册不会参与本轮生命周期；`RegisterOnShutdown` 可以在服务运行期间调用，停机开始后注册不会参与本轮生命周期。在 `RunServer()` 开始前调用 `StopServer()` 会返回 `ErrServerNotRunning`。
+```text
+project/
+├── go.mod                    # module project
+├── server/
+│   └── main.go               # 服务入口
+└── path/
+    ├── myproject/            # 项目配置包
+    │   ├── settings.go        # 服务与数据库等配置
+    │   ├── urls.go            # 项目路由文件，初始仅有 package 声明
+    │   └── ...                # 转换器、验证器、日志与 TLS 配置
+    └── myapp/                # 应用包
+        ├── models.go          # 模型与显式迁移入口
+        ├── serializer.go      # 数据校验与写入
+        ├── urls.go            # 应用路由注册
+        ├── views.go           # 请求处理
+        └── utils.go           # 应用帮助方法
+```
+
+`go.mod` 位于当前项目根目录，默认 module 为根目录名 `project`。`server/main.go` 是启动入口，`path/myproject` 保存项目配置，`path/myapp` 保存应用代码；`path` 是示例父路径，可按需要替换或省略。
+
+创建应用后，编辑 `server/main.go`，导入应用以注册路由；需要建表时，在服务启动前显式调用迁移：
+
+```go
+package main
+
+import (
+	"context"
+
+	"project/path/myapp"
+	"project/path/myproject"
+)
+
+func main() {
+	myapp.Migrate(context.Background()) // 按需创建数据表，不修改已有表结构
+	myproject.Server.RunServer()
+}
+```
+
+生成项目默认使用 SQLite，运行前需要启用 CGO 并安装可用的 C 编译器。在项目根目录启动：
+
+```sh
+go run ./server
+```
+
+推荐参考完整的 [goi_example 示例项目](https://github.com/NeverStopDreamingWang/goi_example)，了解项目组织、配置和应用开发方式。创建规则及完整流程见 [Goi CLI 使用说明](cmd/goi/README.md)。
+
+### 停止服务
+
+在终端按 `Ctrl+C`，或向进程发送 `SIGTERM`，即可停止服务。服务启动后，也可以从应用控制层或独立协程手动停止：
+
+```go
+if err := Server.StopServer(); err != nil {
+	goi.Log.Error(err)
+}
+```
+
+`StopServer()` 会等待清理完成并返回错误。不要在当前请求处理程序、受管理的后台任务或停机回调中同步调用它，以免等待自身退出。
+
+## 其它特性
+
+以下按用途列出框架的主要能力与扩展入口；可结合对应源码和 [goi_example 示例项目](https://github.com/NeverStopDreamingWang/goi_example) 查看完整用法。
+
+| 特性 | 说明与入口 |
+| --- | --- |
+| 启动任务 | 实现 `Startup`，在 `RunServer()` 前调用 `RegisterOnStartup` 注册后台任务；任务应响应 `ctx.Done()`，退出时调用一次 `wg.Done()`。见 [startup.go](startup.go)。 |
+| 停机回调 | 实现 `ShutdownCallback`，通过 `RegisterOnShutdown` 注册清理逻辑；回调按注册顺序逆序执行，此时后台任务已退出、数据库尚未关闭。停机开始前可继续注册。见 [shutdown.go](shutdown.go)。 |
+| 路由与分组 | 使用 `Router.Path`、`Include` 和 `ViewSet` 组织路由与 HTTP 方法，并通过 `Router.NoRoute`、`ViewSet.NoMethod` 自定义未匹配路由和不支持方法的处理。见 [router.go](router.go) 和 [view.go](view.go)。 |
+| 路径参数转换 | 内置 `int`、`string`、`slug`、`path`、`uuid` 转换器；通过 `RegisterConverter` 扩展 `<type:name>` 的匹配与值转换。见 [converter.go](converter.go)。 |
+| 中间件扩展 | 通过 `Router.Use` 配置全局、分组或单路由中间件；`Middleware` 提供请求、响应和异常处理入口。见 [middleware.go](middleware.go)。 |
+| 内置中间件 | 按需启用 CORS、安全响应头、HTTPS 重定向、防点击劫持及通用请求处理等中间件。见 [middleware/](middleware/)。 |
+| 静态资源 | 支持本地文件、目录及 `embed.FS` 内嵌资源，通过 `StaticFile`、`StaticDir` 和对应的 `FS` 方法注册。见 [router.go](router.go)。 |
+| 请求解析 | 读取查询参数、JSON、YAML、普通表单和 multipart 表单；通过 `parser.RegisterParser` 注册自定义请求体解析器。见 [context.go](context.go) 和 [parser/](parser/)。 |
+| 参数校验 | 使用 `Params.Get`、`ParseParams` 读取并校验参数；内置布尔、整数、字符串、时间、切片、map、slug 和 UUID 验证器，也可实现 `Validator` 并调用 `RegisterValidator` 扩展。见 [params.go](params.go) 和 [validator.go](validator.go)。 |
+| 验证错误定制 | 实现 `ValidationError`，通过 `Server.Validation.SetValidationError` 定制错误消息和响应格式。见 [validator.go](validator.go)。 |
+| 请求上下文 | 保留原始 `http.Request`，通过 `request.Object.Context()` 传递取消信号，也可使用 `Request.WithContext` 更新上下文。见 [context.go](context.go)。 |
+| 响应控制 | 提供 `response.Data`、`response.Result` 和 `goi.Response`；可自定义状态码、响应头及文件响应，通过 `RawHandler` 控制原始响应写入。见 [response/](response/) 和 [context.go](context.go)。 |
+| 数据库与 ORM | 提供多数据库方言、事务、上下文操作和兼容模式路由；支持自定义引擎注册，以及标识符、占位符、列解析策略扩展。见 [自定义 ORM 开发指南](db/README.md)。 |
+| 内存缓存 | 通过 `Server.Cache` 读写进程内缓存，支持 TTL、过期清理、容量及随机、LRU、LFU 等淘汰策略配置。见 [cache.go](cache.go)。 |
+| 日志 | 支持分级、格式化和访问日志、自定义输出及日志切割；切割任务可通过 `RegisterOnStartup` 注册，`Logger.Close()` 的调用时机由用户管理。见 [logger.go](logger.go)。 |
+| HTTPS 与证书 | 通过 `Server.Settings.SSL` 配置证书和私钥启用 HTTPS，并提供 RSA、ECC 自签名证书生成工具。见 [settings.go](settings.go) 和 [certificate.go](certificate.go)。 |
+| 国际化 | 使用 `Server.Settings.SetLanguage` 在框架内置的简体中文与英文消息间全局切换。见 [settings.go](settings.go)。 |
+| 时间与时区 | 通过 `SetTimeZone`、`UseTZ` 配置时间表示，使用 `GetTime`、`GetLocation` 和 `Localize` 处理时间。见 [time.go](time.go)。 |
+| 密码哈希 | `auth.MakePassword`、`auth.CheckPassword` 提供 PBKDF2-SHA256 加盐密码哈希与校验。见 [auth/](auth/)。 |
+| 密码学工具 | 提供 AES、RSA 加解密、RSA 密钥生成及密码学随机字符串和字节工具。见 [crypto/](crypto/)。 |
 
