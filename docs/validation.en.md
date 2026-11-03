@@ -1,6 +1,6 @@
 # Parameter Validation and Type Conversion
 
-[简体中文](validation.md) | **English** · [Project Home](../README.en.md)
+[简体中文](validation.md) | **English** · [Documentation](README.en.md) · [Project Home](../README.en.md)
 
 `Params.ParseParams` selects validators through struct tags, calls `Validator.Parse` once for each non-nil parameter, and assigns the result through `SetValue`. `Params.Get` only retrieves and assigns a value; it does not invoke registered validators.
 

@@ -1,6 +1,6 @@
 # 参数验证与类型转换
 
-**简体中文** | [English](validation.en.md) · [项目主页](../README.md)
+**简体中文** | [English](validation.en.md) · [文档目录](README.md) · [项目主页](../README.md)
 
 `Params.ParseParams` 按结构体标签选择验证器，每个非 nil 参数只调用一次 `Validator.Parse`，再通过 `SetValue` 写入字段。`Params.Get` 只按键读取并赋值，不调用注册的验证器。
 

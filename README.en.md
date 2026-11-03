@@ -16,7 +16,7 @@ Built on `net/http`, Goi integrates routing, middleware, parameter validation, i
 
 [简体中文](README.md) | **English**
 
-[Quick Start](#quick-start) · [Other Features](#other-features) · [Parameter Validation](docs/validation.en.md) · [CLI Guide](cmd/goi/README.en.md) · [Custom ORM (CN)](db/README.md) · [Example](https://github.com/NeverStopDreamingWang/goi_example) · [Changelog](https://github.com/NeverStopDreamingWang/goi/releases)
+[Quick Start](#quick-start) · [Other Features](#other-features) · [Developer Docs](docs/README.en.md) · [CLI Guide](cmd/goi/README.en.md) · [Custom ORM (CN)](db/README.md) · [Example](https://github.com/NeverStopDreamingWang/goi_example) · [Changelog](https://github.com/NeverStopDreamingWang/goi/releases)
 
 </div>
 
@@ -72,6 +72,7 @@ go get github.com/NeverStopDreamingWang/goi/v3@latest
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/NeverStopDreamingWang/goi/v3"
@@ -84,15 +85,23 @@ func Ping(request *goi.Request) any {
 	return response.Data{
 		Code:    http.StatusOK,
 		Message: "Hello World",
-		Data: nil,
+		Data:    nil,
 	}
 }
 
 func main() {
+	// NewHTTPServer does not create a default logger.
+	logger := goi.NewLogger("server.log")
+	goi.Log = logger
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
 	// Create a Goi server
 	Server := goi.NewHTTPServer()
 	// Network protocol
-	Server.Settings.Network = "tcp" // Default: "tcp"; common protocols: "tcp", "tcp4", "tcp6", "udp", "udp4", "udp6"
+	Server.Settings.Network = "tcp" // Default: "tcp"; common HTTP networks: "tcp", "tcp4", "tcp6"
 	// Bind address: 0.0.0.0
 	Server.Settings.BindAddress = "0.0.0.0" // Default: 127.0.0.1
 	// Listen on port 8080
@@ -112,7 +121,7 @@ Run the code with `go run`:
 go run main.go
 ```
 
-Then visit `http://0.0.0.0:8080/ping` in your browser to see the response.
+Then visit `http://127.0.0.1:8080/ping` in your browser to see the response.
 
 #### Start with CLI
 
@@ -189,27 +198,27 @@ if err := Server.StopServer(); err != nil {
 
 ## Other Features
 
-The following table groups the framework's main capabilities and extension points by purpose. Refer to the linked source files and the [goi_example project](https://github.com/NeverStopDreamingWang/goi_example) for complete usage examples.
+The following table groups the framework's main capabilities and extension points by purpose. See the [Developer Docs](docs/README.en.md) for detailed usage and the [goi_example project](https://github.com/NeverStopDreamingWang/goi_example) for a complete application.
 
 | Feature | Description and entry points |
 | --- | --- |
-| Startup tasks | Implement `Startup` and call `RegisterOnStartup` before `RunServer()` to register background tasks. Tasks should respond to `ctx.Done()` and call `wg.Done()` once when exiting. See [startup.go](startup.go). |
-| Shutdown callbacks | Implement `ShutdownCallback` and register cleanup logic with `RegisterOnShutdown`. Callbacks run in reverse registration order, after background tasks have exited and before databases are closed. Registration remains open until shutdown begins. See [shutdown.go](shutdown.go). |
-| Routing and groups | Organize routes and HTTP methods with `Router.Path`, `Include`, and `ViewSet`; customize unmatched-route and unsupported-method handling with `Router.NoRoute` and `ViewSet.NoMethod`. See [router.go](router.go) and [view.go](view.go). |
-| Path parameter conversion | Built-in converters include `int`, `string`, `slug`, `path`, and `uuid`. Extend `<type:name>` matching and value conversion with `RegisterConverter`. See [converter.go](converter.go). |
-| Middleware extensions | Configure global, group, or individual-route middleware with `Router.Use`. `Middleware` provides request, response, and exception handling hooks. See [middleware.go](middleware.go). |
-| Built-in middleware | Enable CORS, security response headers, HTTPS redirects, clickjacking protection, and common request handling as needed. See [middleware/](middleware/). |
-| Static resources | Serve local files, directories, and resources embedded with `embed.FS` using `StaticFile`, `StaticDir`, and their corresponding `FS` methods. See [router.go](router.go). |
-| Request parsing | Read query parameters, JSON, YAML, regular forms, and multipart forms. Register custom request body parsers with `parser.RegisterParser`. See [context.go](context.go) and [parser/](parser/). |
+| Startup tasks | Implement `Startup` and call `RegisterOnStartup` before `RunServer()` to register background tasks. Tasks should respond to `ctx.Done()` and call `wg.Done()` once when exiting. See [Startup tasks Guide](docs/lifecycle.en.md). |
+| Shutdown callbacks | Implement `ShutdownCallback` and register cleanup logic with `RegisterOnShutdown`. Callbacks run in reverse registration order, after background tasks have exited and before databases are closed. Registration remains open until shutdown begins. See [Shutdown callbacks Guide](docs/lifecycle.en.md). |
+| Routing and groups | Organize routes and HTTP methods with `Router.Path`, `Include`, and `ViewSet`; customize unmatched-route and unsupported-method handling with `Router.NoRoute` and `ViewSet.NoMethod`. See [Routing and groups Guide](docs/routing.en.md). |
+| Path parameter conversion | Built-in converters include `int`, `string`, `slug`, `path`, and `uuid`. Extend `<type:name>` matching and value conversion with `RegisterConverter`. See [Path parameter conversion Guide](docs/routing.en.md). |
+| Middleware extensions | Configure global, group, or individual-route middleware with `Router.Use`. `Middleware` provides request, response, and exception handling hooks. See [Middleware extensions Guide](docs/middleware.en.md). |
+| Built-in middleware | Enable CORS, security response headers, HTTPS redirects, clickjacking protection, and common request handling as needed. See [Built-in middleware Guide](docs/middleware.en.md). |
+| Static resources | Serve local files, directories, and resources embedded with `embed.FS` using `StaticFile`, `StaticDir`, and their corresponding `FS` methods. See [Static resources Guide](docs/routing.en.md). |
+| Request parsing | Read query parameters, JSON, YAML, regular forms, and multipart forms. Register custom request body parsers with `parser.RegisterParser`. See [Request parsing Guide](docs/http.en.md). |
 | Parameter validation | Read and assign values with `Params.Get`, or use `ParseParams` to validate, convert, and assign through registered validators. Built-in validators cover booleans, integers, strings, time, slices, maps, slugs, and UUIDs. Extend them with `Validator.Parse`. See [Parameter Validation and Type Conversion](docs/validation.en.md). |
-| Custom validation errors | Implement `ValidationError` and use `Server.Validation.SetValidationError` to customize error messages and response formats. See [validation.go](validation.go). |
-| Request context | Access the original `http.Request` and propagate cancellation through `request.Object.Context()`. Update the context with `Request.WithContext`. See [context.go](context.go). |
-| Response control | Use `response.Data`, `response.Result`, and `goi.Response` to customize status codes, headers, and file responses; use `RawHandler` to control raw response writes. See [response/](response/) and [context.go](context.go). |
+| Custom validation errors | Implement `ValidationError` and use `Server.Validation.SetValidationError` to customize error messages and response formats. See [Custom validation errors Guide](docs/validation.en.md). |
+| Request context | Access the original `http.Request` and propagate cancellation through `request.Object.Context()`. Update the context with `Request.WithContext`. See [Request context Guide](docs/http.en.md). |
+| Response control | Use `response.Data`, `response.Result`, and `goi.Response` to customize status codes, headers, and file responses; use `RawHandler` to control raw response writes. See [Response control Guide](docs/http.en.md). |
 | Databases and ORM | Use multiple database dialects, transactions, context-aware operations, and compatibility-mode routing. Register custom engines and extend identifier, placeholder, and column parsing strategies. See the [Custom ORM Guide (CN)](db/README.md). |
-| In-memory cache | Read and write process-local cache through `Server.Cache`, with TTL, expiration cleanup, capacity limits, and eviction policies such as random, LRU, and LFU. See [cache.go](cache.go). |
-| Logging | Support leveled, formatted, and access logs, custom output, and log rotation. Register rotation tasks with `RegisterOnStartup`; the user decides when to call `Logger.Close()`. See [logger.go](logger.go). |
-| HTTPS and certificates | Configure certificates and private keys with `Server.Settings.SSL` to enable HTTPS. Tools are also provided for generating RSA and ECC self-signed certificates. See [settings.go](settings.go) and [certificate.go](certificate.go). |
-| Internationalization | Use `Server.Settings.SetLanguage` to switch globally between the framework's built-in Simplified Chinese and English messages. See [settings.go](settings.go). |
-| Time and time zones | Configure time representation with `SetTimeZone` and `UseTZ`, and handle time with `GetTime`, `GetLocation`, and `Localize`. See [time.go](time.go). |
-| Password hashing | `auth.MakePassword` and `auth.CheckPassword` provide salted PBKDF2-SHA256 password hashing and verification. See [auth/](auth/). |
-| Cryptographic tools | Use AES and RSA encryption/decryption, RSA key generation, and cryptographically secure random string and byte tools. See [crypto/](crypto/). |
+| In-memory cache | Configure process-local cache, TTL, cleanup, capacity, and eviction behavior through `Server.Cache`. Check each mode's behavior and current limits in [In-memory Cache](docs/cache.en.md). |
+| Logging | Support leveled, formatted, and access logs, custom output, and log rotation. Register rotation tasks with `RegisterOnStartup`; the user decides when to call `Logger.Close()`. See [Logging Guide](docs/logging.en.md). |
+| HTTPS and certificates | Configure certificates and private keys with `Server.Settings.SSL` to enable HTTPS. Tools are also provided for generating RSA and ECC self-signed certificates. See [HTTPS and certificates Guide](docs/configuration.en.md). |
+| Internationalization | Use `Server.Settings.SetLanguage` to switch globally between the framework's built-in Simplified Chinese and English messages. See [Internationalization Guide](docs/configuration.en.md). |
+| Time and time zones | Configure time representation with `SetTimeZone` and `UseTZ`, and handle time with `GetTime`, `GetLocation`, and `Localize`. See [Time and time zones Guide](docs/configuration.en.md). |
+| Password hashing | `auth.MakePassword` and `auth.CheckPassword` provide salted PBKDF2-SHA256 password hashing and verification. See [Password hashing Guide](docs/security.en.md). |
+| Cryptographic tools | Use AES and RSA encryption/decryption, RSA key generation, and cryptographically secure random string and byte tools. See [Cryptographic tools Guide](docs/security.en.md). |

@@ -16,7 +16,7 @@
 
 **简体中文** | [English](README.en.md)
 
-[快速开始](#快速开始) · [其它特性](#其它特性) · [参数验证](docs/validation.md) · [CLI 使用说明](cmd/goi/README.md) · [自定义 ORM](db/README.md) · [详细示例](https://github.com/NeverStopDreamingWang/goi_example) · [更新日志](https://github.com/NeverStopDreamingWang/goi/releases)
+[快速开始](#快速开始) · [其它特性](#其它特性) · [开发文档](docs/README.md) · [CLI 使用说明](cmd/goi/README.md) · [自定义 ORM](db/README.md) · [详细示例](https://github.com/NeverStopDreamingWang/goi_example) · [更新日志](https://github.com/NeverStopDreamingWang/goi/releases)
 
 </div>
 
@@ -73,6 +73,7 @@ go get github.com/NeverStopDreamingWang/goi/v3@latest
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/NeverStopDreamingWang/goi/v3"
@@ -85,15 +86,23 @@ func Ping(request *goi.Request) any {
 	return response.Data{
 		Code:    http.StatusOK,
 		Message: "Hello World",
-		Data: nil,
+		Data:    nil,
 	}
 }
 
 func main() {
+	// 配置默认日志；NewHTTPServer 不会自动创建日志器。
+	logger := goi.NewLogger("server.log")
+	goi.Log = logger
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
 	// 创建 Goi 服务器
 	Server := goi.NewHTTPServer()
 	// 网络协议
-	Server.Settings.Network = "tcp" // 默认 "tcp" 常用网络协议 "tcp"、"tcp4"、"tcp6"、"udp"、"udp4"、"udp6"
+	Server.Settings.Network = "tcp" // 默认 "tcp"，HTTP 常用 "tcp"、"tcp4"、"tcp6"
 	// 监听地址 0.0.0.0
 	Server.Settings.BindAddress = "0.0.0.0" // 默认 127.0.0.1
 	// 监听端口 8080
@@ -113,7 +122,7 @@ func main() {
 go run main.go
 ```
 
-然后在浏览器中访问 `http://0.0.0.0:8080/ping` 查看响应！
+然后在浏览器中访问 `http://127.0.0.1:8080/ping` 查看响应！
 
 #### 从 CLI 开始
 
@@ -190,28 +199,28 @@ if err := Server.StopServer(); err != nil {
 
 ## 其它特性
 
-以下按用途列出框架的主要能力与扩展入口；可结合对应源码和 [goi_example 示例项目](https://github.com/NeverStopDreamingWang/goi_example) 查看完整用法。
+以下按用途列出框架的主要能力与扩展入口；详细用法见 [开发文档](docs/README.md)，完整应用可参考 [goi_example 示例项目](https://github.com/NeverStopDreamingWang/goi_example)。
 
 | 特性 | 说明与入口 |
 | --- | --- |
-| 启动任务 | 实现 `Startup`，在 `RunServer()` 前调用 `RegisterOnStartup` 注册后台任务；任务应响应 `ctx.Done()`，退出时调用一次 `wg.Done()`。见 [startup.go](startup.go)。 |
-| 停机回调 | 实现 `ShutdownCallback`，通过 `RegisterOnShutdown` 注册清理逻辑；回调按注册顺序逆序执行，此时后台任务已退出、数据库尚未关闭。停机开始前可继续注册。见 [shutdown.go](shutdown.go)。 |
-| 路由与分组 | 使用 `Router.Path`、`Include` 和 `ViewSet` 组织路由与 HTTP 方法，并通过 `Router.NoRoute`、`ViewSet.NoMethod` 自定义未匹配路由和不支持方法的处理。见 [router.go](router.go) 和 [view.go](view.go)。 |
-| 路径参数转换 | 内置 `int`、`string`、`slug`、`path`、`uuid` 转换器；通过 `RegisterConverter` 扩展 `<type:name>` 的匹配与值转换。见 [converter.go](converter.go)。 |
-| 中间件扩展 | 通过 `Router.Use` 配置全局、分组或单路由中间件；`Middleware` 提供请求、响应和异常处理入口。见 [middleware.go](middleware.go)。 |
-| 内置中间件 | 按需启用 CORS、安全响应头、HTTPS 重定向、防点击劫持及通用请求处理等中间件。见 [middleware/](middleware/)。 |
-| 静态资源 | 支持本地文件、目录及 `embed.FS` 内嵌资源，通过 `StaticFile`、`StaticDir` 和对应的 `FS` 方法注册。见 [router.go](router.go)。 |
-| 请求解析 | 读取查询参数、JSON、YAML、普通表单和 multipart 表单；通过 `parser.RegisterParser` 注册自定义请求体解析器。见 [context.go](context.go) 和 [parser/](parser/)。 |
+| 启动任务 | 实现 `Startup`，在 `RunServer()` 前调用 `RegisterOnStartup` 注册后台任务；任务应响应 `ctx.Done()`，退出时调用一次 `wg.Done()`。详见 [启动任务指南](docs/lifecycle.md)。 |
+| 停机回调 | 实现 `ShutdownCallback`，通过 `RegisterOnShutdown` 注册清理逻辑；回调按注册顺序逆序执行，此时后台任务已退出、数据库尚未关闭。停机开始前可继续注册。详见 [停机回调指南](docs/lifecycle.md)。 |
+| 路由与分组 | 使用 `Router.Path`、`Include` 和 `ViewSet` 组织路由与 HTTP 方法，并通过 `Router.NoRoute`、`ViewSet.NoMethod` 自定义未匹配路由和不支持方法的处理。详见 [路由与分组指南](docs/routing.md)。 |
+| 路径参数转换 | 内置 `int`、`string`、`slug`、`path`、`uuid` 转换器；通过 `RegisterConverter` 扩展 `<type:name>` 的匹配与值转换。详见 [路径参数转换指南](docs/routing.md)。 |
+| 中间件扩展 | 通过 `Router.Use` 配置全局、分组或单路由中间件；`Middleware` 提供请求、响应和异常处理入口。详见 [中间件扩展指南](docs/middleware.md)。 |
+| 内置中间件 | 按需启用 CORS、安全响应头、HTTPS 重定向、防点击劫持及通用请求处理等中间件。详见 [内置中间件指南](docs/middleware.md)。 |
+| 静态资源 | 支持本地文件、目录及 `embed.FS` 内嵌资源，通过 `StaticFile`、`StaticDir` 和对应的 `FS` 方法注册。详见 [静态资源指南](docs/routing.md)。 |
+| 请求解析 | 读取查询参数、JSON、YAML、普通表单和 multipart 表单；通过 `parser.RegisterParser` 注册自定义请求体解析器。详见 [请求解析指南](docs/http.md)。 |
 | 参数校验 | 使用 `Params.Get` 读取并赋值，或通过 `ParseParams` 调用验证器完成校验、转换和赋值；内置布尔、整数、字符串、时间、切片、map、slug 和 UUID 验证器，也可实现 `Validator.Parse` 扩展。见 [参数验证与类型转换](docs/validation.md)。 |
-| 验证错误定制 | 实现 `ValidationError`，通过 `Server.Validation.SetValidationError` 定制错误消息和响应格式。见 [validation.go](validation.go)。 |
-| 请求上下文 | 保留原始 `http.Request`，通过 `request.Object.Context()` 传递取消信号，也可使用 `Request.WithContext` 更新上下文。见 [context.go](context.go)。 |
-| 响应控制 | 提供 `response.Data`、`response.Result` 和 `goi.Response`；可自定义状态码、响应头及文件响应，通过 `RawHandler` 控制原始响应写入。见 [response/](response/) 和 [context.go](context.go)。 |
+| 验证错误定制 | 实现 `ValidationError`，通过 `Server.Validation.SetValidationError` 定制错误消息和响应格式。详见 [验证错误定制指南](docs/validation.md)。 |
+| 请求上下文 | 保留原始 `http.Request`，通过 `request.Object.Context()` 传递取消信号，也可使用 `Request.WithContext` 更新上下文。详见 [请求上下文指南](docs/http.md)。 |
+| 响应控制 | 提供 `response.Data`、`response.Result` 和 `goi.Response`；可自定义状态码、响应头及文件响应，通过 `RawHandler` 控制原始响应写入。详见 [响应控制指南](docs/http.md)。 |
 | 数据库与 ORM | 提供多数据库方言、事务、上下文操作和兼容模式路由；支持自定义引擎注册，以及标识符、占位符、列解析策略扩展。见 [自定义 ORM 开发指南](db/README.md)。 |
-| 内存缓存 | 通过 `Server.Cache` 读写进程内缓存，支持 TTL、过期清理、容量及随机、LRU、LFU 等淘汰策略配置。见 [cache.go](cache.go)。 |
-| 日志 | 支持分级、格式化和访问日志、自定义输出及日志切割；切割任务可通过 `RegisterOnStartup` 注册，`Logger.Close()` 的调用时机由用户管理。见 [logger.go](logger.go)。 |
-| HTTPS 与证书 | 通过 `Server.Settings.SSL` 配置证书和私钥启用 HTTPS，并提供 RSA、ECC 自签名证书生成工具。见 [settings.go](settings.go) 和 [certificate.go](certificate.go)。 |
-| 国际化 | 使用 `Server.Settings.SetLanguage` 在框架内置的简体中文与英文消息间全局切换。见 [settings.go](settings.go)。 |
-| 时间与时区 | 通过 `SetTimeZone`、`UseTZ` 配置时间表示，使用 `GetTime`、`GetLocation` 和 `Localize` 处理时间。见 [time.go](time.go)。 |
-| 密码哈希 | `auth.MakePassword`、`auth.CheckPassword` 提供 PBKDF2-SHA256 加盐密码哈希与校验。见 [auth/](auth/)。 |
-| 密码学工具 | 提供 AES、RSA 加解密、RSA 密钥生成及密码学随机字符串和字节工具。见 [crypto/](crypto/)。 |
+| 内存缓存 | 通过 `Server.Cache` 配置进程内缓存、TTL、清理、容量与淘汰行为；各模式的实际语义和现有限制详见 [内存缓存](docs/cache.md)。 |
+| 日志 | 支持分级、格式化和访问日志、自定义输出及日志切割；切割任务可通过 `RegisterOnStartup` 注册，`Logger.Close()` 的调用时机由用户管理。详见 [日志指南](docs/logging.md)。 |
+| HTTPS 与证书 | 通过 `Server.Settings.SSL` 配置证书和私钥启用 HTTPS，并提供 RSA、ECC 自签名证书生成工具。详见 [HTTPS 与证书指南](docs/configuration.md)。 |
+| 国际化 | 使用 `Server.Settings.SetLanguage` 在框架内置的简体中文与英文消息间全局切换。详见 [国际化指南](docs/configuration.md)。 |
+| 时间与时区 | 通过 `SetTimeZone`、`UseTZ` 配置时间表示，使用 `GetTime`、`GetLocation` 和 `Localize` 处理时间。详见 [时间与时区指南](docs/configuration.md)。 |
+| 密码哈希 | `auth.MakePassword`、`auth.CheckPassword` 提供 PBKDF2-SHA256 加盐密码哈希与校验。详见 [密码哈希指南](docs/security.md)。 |
+| 密码学工具 | 提供 AES、RSA 加解密、RSA 密钥生成及密码学随机字符串和字节工具。详见 [密码学工具指南](docs/security.md)。 |
 
