@@ -1,14 +1,18 @@
 package main
 
 import (
+	"context"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/NeverStopDreamingWang/goi/v3"
 )
@@ -208,6 +212,12 @@ func TestGeneratedValidatorImplementsCurrentMethodContract(t *testing.T) {
 		}
 	}
 	contract := reflect.TypeFor[goi.Validator]()
+	if contract.NumMethod() != 1 || contract.Method(0).Name != "Parse" {
+		t.Fatal("Validator must expose only Parse")
+	}
+	if len(methods) != contract.NumMethod() {
+		t.Fatalf("phoneValidator has %d methods, want %d", len(methods), contract.NumMethod())
+	}
 	for index := 0; index < contract.NumMethod(); index++ {
 		required := contract.Method(index)
 		method := methods[required.Name]
@@ -220,6 +230,9 @@ func TestGeneratedValidatorImplementsCurrentMethodContract(t *testing.T) {
 		if parameter, ok := method.Type.Params.List[0].Type.(*ast.Ident); !ok || parameter.Name != "any" {
 			t.Fatalf("phoneValidator.%s must accept any", required.Name)
 		}
+		if firstResult, ok := method.Type.Results.List[0].Type.(*ast.Ident); !ok || firstResult.Name != "any" {
+			t.Fatalf("phoneValidator.%s must return the converted value as any", required.Name)
+		}
 		lastResult := method.Type.Results.List[len(method.Type.Results.List)-1].Type
 		result, ok := lastResult.(*ast.SelectorExpr)
 		if !ok || result.Sel.Name != "ValidationError" {
@@ -228,6 +241,69 @@ func TestGeneratedValidatorImplementsCurrentMethodContract(t *testing.T) {
 		if qualifier, ok := result.X.(*ast.Ident); !ok || qualifier.Name != "goi" {
 			t.Fatalf("phoneValidator.%s has the wrong error type", required.Name)
 		}
+	}
+}
+
+func TestGeneratedValidatorParsesAndConverts(t *testing.T) {
+	goCommand, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("Go SDK is required to compile the generated validator")
+	}
+	directory := t.TempDir()
+	sourcePath := filepath.Join(directory, "validator.go")
+	testPath := filepath.Join(directory, "validator_test.go")
+	if err := os.WriteFile(sourcePath, []byte(validator.Content(testCreateConfig(t))), 0644); err != nil {
+		t.Fatal(err)
+	}
+	const testSource = `package demo
+
+import (
+	"net/http"
+	"strconv"
+	"testing"
+
+	"github.com/NeverStopDreamingWang/goi/v3"
+)
+
+var _ goi.Validator = phoneValidator{}
+
+func TestGeneratedPhoneValidator(t *testing.T) {
+	phone, err := strconv.Atoi("13800000000")
+	if err != nil {
+		t.Skip("phone example requires an int large enough for eleven digits")
+	}
+	registered, ok := goi.GetValidator("phone")
+	if !ok {
+		t.Fatal("template did not register phone validator")
+	}
+	for _, value := range []any{phone, "13800000000"} {
+		got, validationErr := registered.Parse(value)
+		if validationErr != nil || got != phone {
+			t.Fatalf("Parse(%#v) = %#v, %v; want integer %d", value, got, validationErr, phone)
+		}
+	}
+	for _, value := range []any{"invalid", "13800000000/extra", true} {
+		got, validationErr := registered.Parse(value)
+		if got != nil || validationErr == nil || validationErr.Response().Status != http.StatusBadRequest {
+			t.Fatalf("Parse(%#v) = %#v, %v; want nil and status 400", value, got, validationErr)
+		}
+	}
+}
+`
+	if err := os.WriteFile(testPath, []byte(testSource), 0644); err != nil {
+		t.Fatal(err)
+	}
+	repository, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, goCommand, "test", "-count=1", sourcePath, testPath)
+	command.Dir = repository
+	command.Env = append(os.Environ(), "GOWORK=off")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("generated validator test failed: %v\n%s", err, output)
 	}
 }
 

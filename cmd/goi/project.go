@@ -431,41 +431,26 @@ func (validationErr validationError) Response() goi.Response {
 
 type phoneValidator struct{}
 
-func (validator phoneValidator) Validate(value any) goi.ValidationError {
+// Parse 验证手机号，并将有效值转换为整数。
+func (validator phoneValidator) Parse(value any) (any, goi.ValidationError) {
+	var valueStr string
 	switch typeValue := value.(type) {
 	case int:
-		valueStr := strconv.Itoa(typeValue)
-		var reStr = ` + "`^(1[3456789]\\d{9})$`" + `
-		re := regexp.MustCompile(reStr)
-		if re.MatchString(valueStr) == false {
-			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%%v", value))
-		}
+		valueStr = strconv.Itoa(typeValue)
 	case string:
-		var reStr = ` + "`^(1[3456789]\\d{9})$`" + `
-		re := regexp.MustCompile(reStr)
-		if re.MatchString(typeValue) == false {
-			return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%%v", value))
-		}
+		valueStr = typeValue
 	default:
-		return goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%%v", value))
+		return nil, goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%%v", value))
 	}
-	return nil
-}
-
-func (validator phoneValidator) ToGo(value any) (any, goi.ValidationError) {
-	switch typeValue := value.(type) {
-	case int:
-		return typeValue, nil
-	case string:
-		intValue, err := strconv.Atoi(typeValue)
-		if err != nil {
-			return nil, goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%%v", value))
-		}
-		return intValue, nil
-	default:
-		// 尝试转换为字符串
-		return fmt.Sprintf("%%v", value), nil
+	re := regexp.MustCompile(` + "`^(1[3456789]\\d{9})$`" + `)
+	if !re.MatchString(valueStr) {
+		return nil, goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数错误：%%v", value))
 	}
+	intValue, err := strconv.Atoi(valueStr)
+	if err != nil {
+		return nil, goi.NewValidationError(http.StatusBadRequest, fmt.Sprintf("参数类型错误：%%v", value))
+	}
+	return intValue, nil
 }
 
 `

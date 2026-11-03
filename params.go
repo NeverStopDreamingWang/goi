@@ -26,7 +26,7 @@ func (values Params) Has(key string) bool {
 	return ok
 }
 
-// 根据键读取一个值到 dest
+// Get 按键读取参数并通过 SetValue 写入 dest，不调用注册的验证器。
 func (values Params) Get(key string, dest any) ValidationError {
 	var err error
 	value, ok := values[key]
@@ -53,7 +53,12 @@ func (values Params) Get(key string, dest any) ValidationError {
 	return nil
 }
 
-// 解析参数到指定结构体
+// ParseParams 按字段标签验证、转换参数，并写入结构体指针。
+//
+// 说明:
+//   - type 标签为空或为 "-" 时跳过字段；非 nil 参数只调用一次 Validator.Parse。
+//   - nil 参数按 required 和 allow_null 标签处理，允许时跳过赋值，不清空原字段。
+//   - 字段依次处理，发生错误时不回滚已经写入的字段。
 func (values Params) ParseParams(paramsDest any) ValidationError {
 	var validationErr ValidationError
 	// 使用反射获取参数结构体的值信息
@@ -149,13 +154,8 @@ func (values Params) ParseParams(paramsDest any) ValidationError {
 			return NewValidationError(http.StatusBadRequest, validatorNotExistsMsg)
 		}
 
-		// 执行验证
-		validationErr = validate.Validate(value)
-		if validationErr != nil {
-			return validationErr
-		}
-		// 转换为Go值
-		value, validationErr = validate.ToGo(value)
+		// 参数验证和类型转换。
+		value, validationErr = validate.Parse(value)
 		if validationErr != nil {
 			return validationErr
 		}

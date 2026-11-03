@@ -16,7 +16,7 @@ Built on `net/http`, Goi integrates routing, middleware, parameter validation, i
 
 [简体中文](README.md) | **English**
 
-[Quick Start](#quick-start) · [Other Features](#other-features) · [CLI Guide](cmd/goi/README.en.md) · [Custom ORM (CN)](db/README.md) · [Example](https://github.com/NeverStopDreamingWang/goi_example) · [Changelog](https://github.com/NeverStopDreamingWang/goi/releases)
+[Quick Start](#quick-start) · [Other Features](#other-features) · [Parameter Validation](docs/validation.en.md) · [CLI Guide](cmd/goi/README.en.md) · [Custom ORM (CN)](db/README.md) · [Example](https://github.com/NeverStopDreamingWang/goi_example) · [Changelog](https://github.com/NeverStopDreamingWang/goi/releases)
 
 </div>
 
@@ -201,8 +201,8 @@ The following table groups the framework's main capabilities and extension point
 | Built-in middleware | Enable CORS, security response headers, HTTPS redirects, clickjacking protection, and common request handling as needed. See [middleware/](middleware/). |
 | Static resources | Serve local files, directories, and resources embedded with `embed.FS` using `StaticFile`, `StaticDir`, and their corresponding `FS` methods. See [router.go](router.go). |
 | Request parsing | Read query parameters, JSON, YAML, regular forms, and multipart forms. Register custom request body parsers with `parser.RegisterParser`. See [context.go](context.go) and [parser/](parser/). |
-| Parameter validation | Read and validate parameters with `Params.Get` and `ParseParams`. Built-in validators cover booleans, integers, strings, time, slices, maps, slugs, and UUIDs. Implement `Validator` and call `RegisterValidator` to add more. See [params.go](params.go) and [validator.go](validator.go). |
-| Custom validation errors | Implement `ValidationError` and use `Server.Validation.SetValidationError` to customize error messages and response formats. See [validator.go](validator.go). |
+| Parameter validation | Read and assign values with `Params.Get`, or use `ParseParams` to validate, convert, and assign through registered validators. Built-in validators cover booleans, integers, strings, time, slices, maps, slugs, and UUIDs. Extend them with `Validator.Parse`. See [Parameter Validation and Type Conversion](docs/validation.en.md). |
+| Custom validation errors | Implement `ValidationError` and use `Server.Validation.SetValidationError` to customize error messages and response formats. See [validation.go](validation.go). |
 | Request context | Access the original `http.Request` and propagate cancellation through `request.Object.Context()`. Update the context with `Request.WithContext`. See [context.go](context.go). |
 | Response control | Use `response.Data`, `response.Result`, and `goi.Response` to customize status codes, headers, and file responses; use `RawHandler` to control raw response writes. See [response/](response/) and [context.go](context.go). |
 | Databases and ORM | Use multiple database dialects, transactions, context-aware operations, and compatibility-mode routing. Register custom engines and extend identifier, placeholder, and column parsing strategies. See the [Custom ORM Guide (CN)](db/README.md). |

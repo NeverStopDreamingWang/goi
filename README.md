@@ -16,7 +16,7 @@
 
 **简体中文** | [English](README.en.md)
 
-[快速开始](#快速开始) · [其它特性](#其它特性) · [CLI 使用说明](cmd/goi/README.md) · [自定义 ORM](db/README.md) · [详细示例](https://github.com/NeverStopDreamingWang/goi_example) · [更新日志](https://github.com/NeverStopDreamingWang/goi/releases)
+[快速开始](#快速开始) · [其它特性](#其它特性) · [参数验证](docs/validation.md) · [CLI 使用说明](cmd/goi/README.md) · [自定义 ORM](db/README.md) · [详细示例](https://github.com/NeverStopDreamingWang/goi_example) · [更新日志](https://github.com/NeverStopDreamingWang/goi/releases)
 
 </div>
 
@@ -202,8 +202,8 @@ if err := Server.StopServer(); err != nil {
 | 内置中间件 | 按需启用 CORS、安全响应头、HTTPS 重定向、防点击劫持及通用请求处理等中间件。见 [middleware/](middleware/)。 |
 | 静态资源 | 支持本地文件、目录及 `embed.FS` 内嵌资源，通过 `StaticFile`、`StaticDir` 和对应的 `FS` 方法注册。见 [router.go](router.go)。 |
 | 请求解析 | 读取查询参数、JSON、YAML、普通表单和 multipart 表单；通过 `parser.RegisterParser` 注册自定义请求体解析器。见 [context.go](context.go) 和 [parser/](parser/)。 |
-| 参数校验 | 使用 `Params.Get`、`ParseParams` 读取并校验参数；内置布尔、整数、字符串、时间、切片、map、slug 和 UUID 验证器，也可实现 `Validator` 并调用 `RegisterValidator` 扩展。见 [params.go](params.go) 和 [validator.go](validator.go)。 |
-| 验证错误定制 | 实现 `ValidationError`，通过 `Server.Validation.SetValidationError` 定制错误消息和响应格式。见 [validator.go](validator.go)。 |
+| 参数校验 | 使用 `Params.Get` 读取并赋值，或通过 `ParseParams` 调用验证器完成校验、转换和赋值；内置布尔、整数、字符串、时间、切片、map、slug 和 UUID 验证器，也可实现 `Validator.Parse` 扩展。见 [参数验证与类型转换](docs/validation.md)。 |
+| 验证错误定制 | 实现 `ValidationError`，通过 `Server.Validation.SetValidationError` 定制错误消息和响应格式。见 [validation.go](validation.go)。 |
 | 请求上下文 | 保留原始 `http.Request`，通过 `request.Object.Context()` 传递取消信号，也可使用 `Request.WithContext` 更新上下文。见 [context.go](context.go)。 |
 | 响应控制 | 提供 `response.Data`、`response.Result` 和 `goi.Response`；可自定义状态码、响应头及文件响应，通过 `RawHandler` 控制原始响应写入。见 [response/](response/) 和 [context.go](context.go)。 |
 | 数据库与 ORM | 提供多数据库方言、事务、上下文操作和兼容模式路由；支持自定义引擎注册，以及标识符、占位符、列解析策略扩展。见 [自定义 ORM 开发指南](db/README.md)。 |
