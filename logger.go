@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // NewLogger 创建新的日志器
@@ -269,7 +269,6 @@ func (self *Logger) CheckSplit() error {
 				"err":  err,
 			})
 			panic(splitLogStatErrorMsg)
-			return nil
 		}
 		fileSize := fileInfo.Size()
 		if self.SplitSize <= fileSize {

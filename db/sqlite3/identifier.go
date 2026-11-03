@@ -1,6 +1,6 @@
 package sqlite3
 
-import "github.com/NeverStopDreamingWang/goi/v2/db"
+import "github.com/NeverStopDreamingWang/goi/v3/db"
 
 // identifierQuoter 保存后续新建 SQLite3 Engine 使用的标识符引用器。
 var identifierQuoter db.IdentifierQuoter = db.NewIdentifierQuoter("\"", "\"")

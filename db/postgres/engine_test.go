@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/db/postgres"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/db/postgres"
 )
 
 // 注意: 要运行这些示例测试，需要本地已启动 PostgreSQL，且修改 DSN 与权限

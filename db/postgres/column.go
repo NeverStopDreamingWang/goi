@@ -1,6 +1,6 @@
 package postgres
 
-import "github.com/NeverStopDreamingWang/goi/v2/db"
+import "github.com/NeverStopDreamingWang/goi/v3/db"
 
 // columnParser 保存本包覆盖，nil 时使用 db 的默认规则。
 var columnParser db.ColumnParser

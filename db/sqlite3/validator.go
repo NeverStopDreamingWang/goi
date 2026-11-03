@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // Validate 根据模型字段定义校验数据。

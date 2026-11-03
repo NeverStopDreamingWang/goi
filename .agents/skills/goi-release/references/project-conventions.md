@@ -4,7 +4,7 @@ Use this reference when preparing a version, building binaries, drafting release
 
 ## Repository facts
 
-- Module: `github.com/NeverStopDreamingWang/goi/v2`
+- Module: `github.com/NeverStopDreamingWang/goi/v3`
 - Canonical version: `const version = "vX.Y.Z"` in `version.go`
 - Release commit title: `发布 vX.Y.Z 版本`
 - GitHub repository: `https://github.com/NeverStopDreamingWang/goi`
@@ -16,7 +16,7 @@ Use this reference when preparing a version, building binaries, drafting release
 The CLI source entry is `cmd/goi`, and released versions are installed from source:
 
 ```text
-go install github.com/NeverStopDreamingWang/goi/v2/cmd/goi@vX.Y.Z
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@vX.Y.Z
 ```
 
 Source release commits do not contain prebuilt executables. When downloadable assets are explicitly requested, the local outputs are:

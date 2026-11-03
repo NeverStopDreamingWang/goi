@@ -1,12 +1,12 @@
 package seaboxsql
 
 import (
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/db/mysql"
-	"github.com/NeverStopDreamingWang/goi/v2/db/oracle"
-	"github.com/NeverStopDreamingWang/goi/v2/db/postgres"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/db/mysql"
+	"github.com/NeverStopDreamingWang/goi/v3/db/oracle"
+	"github.com/NeverStopDreamingWang/goi/v3/db/postgres"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 const driverName = "seaboxsql"

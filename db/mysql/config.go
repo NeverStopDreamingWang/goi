@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // Config 定义 MySQL ORM 的连接级配置，可赋给 goi.Database.Config。

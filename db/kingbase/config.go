@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // CompatibilityMode 标识 Kingbase 的数据库兼容模式，不用于设置服务端参数。

@@ -1,7 +1,7 @@
 package sqlite3
 
 import (
-	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v3"
 )
 
 // MigrationsHandler 定义建表前后的回调。

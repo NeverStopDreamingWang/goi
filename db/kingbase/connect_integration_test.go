@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/db/kingbase"
-	"github.com/NeverStopDreamingWang/goi/v2/db/postgres"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/db/kingbase"
+	"github.com/NeverStopDreamingWang/goi/v3/db/postgres"
 )
 
 // 运行前需导入官方驱动 _ "kingbase.com/gokb"，启动 PostgreSQL 兼容模式的 Kingbase，并配置 DSN 与权限。

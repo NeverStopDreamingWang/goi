@@ -13,8 +13,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
 )
 
 type connectionConfigProvider struct {

@@ -9,9 +9,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // Engine 结构体用于管理 MySQL 数据库连接和操作

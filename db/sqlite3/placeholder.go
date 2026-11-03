@@ -1,6 +1,6 @@
 package sqlite3
 
-import "github.com/NeverStopDreamingWang/goi/v2/db"
+import "github.com/NeverStopDreamingWang/goi/v3/db"
 
 // placeholderParser 保存后续新建 SQLite3 Engine 使用的占位符解析器。
 var placeholderParser db.PlaceholderParser = db.NewPlaceholderParser("?")

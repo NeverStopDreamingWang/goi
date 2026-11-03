@@ -2,12 +2,12 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
+	"errors"
 	"reflect"
 	"sync"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // DBProvider 提供共享连接池，ORM 不负责关闭该连接池。
@@ -39,13 +39,13 @@ func Register(name string, connect ConnectFunc) {
 	defer engineMu.Unlock()
 	if connect == nil {
 		registerEngineConnectIsNotNilMsg := i18n.T("db.register_engine_is_not_nil")
-		panic(fmt.Errorf(registerEngineConnectIsNotNilMsg))
+		panic(errors.New(registerEngineConnectIsNotNilMsg))
 	}
 	if _, dup := engines[name]; dup {
 		registerEngineConnectTwiceMsg := i18n.T("db.register_engine_twice", map[string]any{
 			"name": name,
 		})
-		panic(fmt.Errorf(registerEngineConnectTwiceMsg))
+		panic(errors.New(registerEngineConnectTwiceMsg))
 	}
 	engines[name] = connect
 }
@@ -82,7 +82,7 @@ func Connect[T Engine](UseDatabases string) T {
 		databasesNotErrorMsg := i18n.T("db.databases_not_error", map[string]any{
 			"name": UseDatabases,
 		})
-		panic(fmt.Errorf(databasesNotErrorMsg))
+		panic(errors.New(databasesNotErrorMsg))
 	}
 	return ConnectDatabase[T](UseDatabases, database)
 }
@@ -105,7 +105,7 @@ func ConnectDatabase[T Engine](UseDatabases string, database *goi.Database) T {
 		engineNotRegisteredMsg := i18n.T("db.engine_not_registered", map[string]any{
 			"engine": database.Engine,
 		})
-		panic(fmt.Errorf(engineNotRegisteredMsg))
+		panic(errors.New(engineNotRegisteredMsg))
 	}
 
 	// 构造具体引擎实例
@@ -118,7 +118,7 @@ func ConnectDatabase[T Engine](UseDatabases string, database *goi.Database) T {
 			"want_type": reflect.TypeFor[T]().String(),
 			"got_type":  reflect.TypeOf(engine).String(),
 		})
-		panic(fmt.Errorf(engineTypeIsNotMatchMsg))
+		panic(errors.New(engineTypeIsNotMatchMsg))
 	}
 	return v
 }

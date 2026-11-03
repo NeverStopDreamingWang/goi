@@ -38,7 +38,7 @@ sh ./cmd/build.sh
 使用 `go install` 安装最新版本：
 
 ```shell
-go install github.com/NeverStopDreamingWang/goi/v2/cmd/goi@latest
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
 ```
 
 命令会安装为 `goi`（Windows 下为 `goi.exe`）。安装目录优先使用 `GOBIN`；未设置 `GOBIN` 时使用 `GOPATH/bin`。请将该目录加入 `PATH` 后再直接运行 `goi`。
@@ -81,14 +81,35 @@ Goi 需要 Go 1.24 或更高版本。
 通过 Go 的模块支持，当你在代码中添加导入时，`go [build|run|test]` 会自动获取必要的依赖：
 
 ```go
-import "github.com/NeverStopDreamingWang/goi/v2"
+import "github.com/NeverStopDreamingWang/goi/v3"
 ```
 
 或者，使用 `go get`：
 
 ```bash
-go get -u github.com/NeverStopDreamingWang/goi/v2
+go get github.com/NeverStopDreamingWang/goi/v3@latest
 ```
+
+### 从 v2 迁移到 v3
+
+v3 包含不兼容的 ORM API 调整。先将 Goi 及其子包的导入路径统一改为 `/v3`，再更新依赖；使用 CLI 时也需重新安装。不要修改第三方依赖自身的版本后缀。
+
+```sh
+go get github.com/NeverStopDreamingWang/goi/v3@v3.0.0
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.0
+go mod tidy
+```
+
+| 迁移项 | v3 用法 |
+| --- | --- |
+| 上下文 | 迁移、CRUD、计数、分页和事务方法直接接收 `context.Context`；例如 `Select(ctx, &list)`、`First(ctx, &item)`、`Delete(ctx)`。基础 `Execute`、`Query`、`QueryRow` 仍提供 `...Context` 入口。 |
+| 写入 nil | `Insert(ctx, model, skipNil)`、`Update(ctx, model, skipNil)` 必须指定 `skipNil`：`true` 跳过 nil，`false` 将选中的 nil 写为 SQL NULL；普通零值不会被跳过。用 `Fields` 控制写入范围。 |
+| 迁移命名空间 | 不再向 `Migrate` 传入 Schema，改在模型 `ModelSet()` 返回的 `Settings.Schema` 中设置，再调用 `Migrate(ctx, model)`。 |
+| Kingbase | 通过 `kingbase.Config.Mode` 选择方言，改用对应原生包的 Engine、Model、Settings 和 Validate；例如 MySQL 模式使用 `db.Connect[*mysql.Engine]`。原包级策略配置改放 `Config.EngineOptions`。 |
+| map 查询结果 | map 的键使用 Go 字段名，例如 `Name`，不是数据库列名 `name`；请同步调整读取代码。 |
+| SeaBoxSQL | 新增 `seaboxsql` 路由，支持 `postgres`、`mysql`、`oracle`，空 Mode 默认 PostgreSQL；只选择 ORM 方言，不切换服务端模式或物理驱动。 |
+
+`Update`、`Delete` 未设置 WHERE 时会操作整张表；升级后应检查筛选条件与 `Fields`。数据库模型、配置和完整示例见 [自定义 ORM 开发指南](db/README.md)。兼容模式路由不代表与对应原生数据库完全兼容，需针对目标实例验证。
 
 ### 运行 Goi
 
@@ -100,8 +121,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/response"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/response"
 )
 
 func Ping(request *goi.Request) any {

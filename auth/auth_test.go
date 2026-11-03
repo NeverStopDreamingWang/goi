@@ -3,7 +3,7 @@ package auth_test
 import (
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/v2/auth"
+	"github.com/NeverStopDreamingWang/goi/v3/auth"
 )
 
 func ExampleMakePassword() {

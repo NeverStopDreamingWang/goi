@@ -3,7 +3,7 @@ package rsa_test
 import (
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/v2/crypto/rsa"
+	"github.com/NeverStopDreamingWang/goi/v3/crypto/rsa"
 )
 
 func ExampleGenerateKey() {

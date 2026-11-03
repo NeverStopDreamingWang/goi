@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v3"
 	"github.com/spf13/cobra"
 )
 

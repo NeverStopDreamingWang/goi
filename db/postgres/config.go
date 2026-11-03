@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // Config 定义 PostgreSQL ORM 的连接级策略，可赋给 goi.Database.Config。

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 type genericTestEngine struct{}
@@ -80,4 +80,64 @@ func TestConnectDatabaseRejectsConstrainedInterfaceWithLocalizedError(t *testing
 	requireEngineTypeMismatch(t, engine, reflect.TypeFor[constrainedTestEngine](), func() {
 		ConnectDatabase[constrainedTestEngine]("test", database)
 	})
+}
+
+func TestConnectionErrorsPreserveLocalizedMessages(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		want func(string) string
+		run  func(string)
+	}{
+		{
+			name: "nil_factory",
+			want: func(string) string { return i18n.T("db.register_engine_is_not_nil") },
+			run:  func(name string) { Register(name, nil) },
+		},
+		{
+			name: "duplicate_factory",
+			want: func(name string) string {
+				return i18n.T("db.register_engine_twice", map[string]any{"name": name})
+			},
+			run: func(name string) {
+				factory := func(string, *goi.Database) Engine { return &genericTestEngine{} }
+				Register(name, factory)
+				Register(name, factory)
+			},
+		},
+		{
+			name: "missing_connection",
+			want: func(name string) string {
+				return i18n.T("db.databases_not_error", map[string]any{"name": name})
+			},
+			run: func(name string) { Connect[*genericTestEngine](name) },
+		},
+		{
+			name: "unregistered_engine",
+			want: func(name string) string {
+				return i18n.T("db.engine_not_registered", map[string]any{"engine": name})
+			},
+			run: func(name string) {
+				ConnectDatabase[*genericTestEngine](name, &goi.Database{Engine: name})
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			// 配置名称中的 % 应原样保留，不能再次作为格式化指令解析。
+			name := t.Name() + "_%s%"
+			t.Cleanup(func() {
+				engineMu.Lock()
+				defer engineMu.Unlock()
+				delete(engines, name)
+			})
+			defer func() {
+				recovered := recover()
+				err, ok := recovered.(error)
+				if !ok || err.Error() != test.want(name) {
+					t.Errorf("panic=%v, want error %q", recovered, test.want(name))
+				}
+			}()
+			test.run(name)
+			t.Fatal("expected an error panic")
+		})
+	}
 }

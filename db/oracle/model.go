@@ -1,6 +1,6 @@
 package oracle
 
-import "github.com/NeverStopDreamingWang/goi/v2"
+import "github.com/NeverStopDreamingWang/goi/v3"
 
 // MigrationsHandler 定义建表前后的回调
 type MigrationsHandler struct {

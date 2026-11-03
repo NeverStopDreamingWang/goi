@@ -4,7 +4,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // RowScanner 扫描一行查询结果，*sql.Row 和 *sql.Rows 均实现此接口。

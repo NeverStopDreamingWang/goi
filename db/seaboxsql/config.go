@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // CompatibilityMode 选择 SeaBoxSQL 使用的 ORM 方言，不设置服务端兼容模式。

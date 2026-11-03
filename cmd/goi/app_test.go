@@ -5,6 +5,8 @@ import (
 	"go/token"
 	"strings"
 	"testing"
+
+	"github.com/NeverStopDreamingWang/goi/v3"
 )
 
 func TestDatabaseTemplatesUseContextAPI(t *testing.T) {
@@ -40,5 +42,43 @@ func TestDatabaseTemplatesUseContextAPI(t *testing.T) {
 		if !strings.Contains(serializerSource, call) {
 			t.Fatalf("serializer template is missing %s", call)
 		}
+	}
+}
+
+func TestTemplatesUseCurrentModuleAndVersion(t *testing.T) {
+	oldProject, oldApp := projectName, appName
+	oldSecret, oldPrivate, oldPublic := secretKey, privateKey, publicKey
+	projectName, appName = "demo", "example"
+	secretKey, privateKey, publicKey = "test-secret", "test-private-key", "test-public-key"
+	t.Cleanup(func() {
+		projectName, appName = oldProject, oldApp
+		secretKey, privateKey, publicKey = oldSecret, oldPrivate, oldPublic
+	})
+
+	for _, group := range []struct {
+		name      string
+		templates []InitFile
+	}{
+		{"project", MainAppFileList},
+		{"app", AppFileList},
+	} {
+		for _, template := range group.templates {
+			t.Run(group.name+"/"+template.Name, func(t *testing.T) {
+				content := template.Content()
+				if strings.Contains(content, "github.com/NeverStopDreamingWang/goi/v2") {
+					t.Fatal("template still references the v2 module")
+				}
+				if strings.HasSuffix(template.Name, ".go") {
+					if _, err := parser.ParseFile(token.NewFileSet(), template.Name, content, parser.AllErrors); err != nil {
+						t.Fatalf("template is not valid Go: %v", err)
+					}
+				}
+			})
+		}
+	}
+
+	wantDependency := "github.com/NeverStopDreamingWang/goi/v3 " + goi.Version()
+	if !strings.Contains(goMod.Content(), wantDependency) {
+		t.Fatalf("go.mod template does not require %s", wantDependency)
 	}
 }

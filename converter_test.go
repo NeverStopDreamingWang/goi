@@ -1,7 +1,7 @@
 package goi_test
 
 import (
-	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v3"
 )
 
 // 手机号

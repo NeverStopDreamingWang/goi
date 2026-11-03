@@ -4,7 +4,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // ModelStructValue 验证模型并取得结构体值

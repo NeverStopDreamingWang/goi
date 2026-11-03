@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/NeverStopDreamingWang/goi/v2/internal/i18n"
+	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
 // Http 服务

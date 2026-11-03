@@ -5,14 +5,14 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v3"
 )
 
 type testStruct struct {
-	Username string   `name:"username"`
-	Password string   `name:"password"`
-	Age      int      `name:"age"`
-	Custom   []string `name:"custom" type:"custom" required:"true"`
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	Age      int      `json:"age"`
+	Custom   []string `json:"custom"`
 }
 
 func ExampleSetValue() {
@@ -20,14 +20,14 @@ func ExampleSetValue() {
 		"username": "test_user",
 		"password": "test123456",
 		"age":      18,
-		"custom":   []any{111, "test1", "test2"},
+		"custom":   []any{true, "test1", "test2"},
 	}
 	dest := &testStruct{}
 
 	destValue := reflect.ValueOf(dest)
 	err := goi.SetValue(destValue, source)
 	if err != nil {
-		return
+		panic(err)
 	}
 	fmt.Printf("Username: %+v %T\n", dest.Username, dest.Username)
 	fmt.Printf("Password: %+v %T\n", dest.Password, dest.Password)
@@ -38,7 +38,7 @@ func ExampleSetValue() {
 	// Username: test_user string
 	// Password: test123456 string
 	// Age: 18 int
-	// Custom: [111 test1 test2] []string
+	// Custom: [true test1 test2] []string
 }
 
 func ExampleSetValue_manual() {
@@ -46,13 +46,13 @@ func ExampleSetValue_manual() {
 		"username": "test_user",
 		"password": "test123456",
 		"age":      18,
-		"custom":   []any{111, "test1", "test2"},
+		"custom":   []any{true, "test1", "test2"},
 	}
 	dest := &testStruct{}
 
 	destValue := reflect.ValueOf(dest)
 	if destValue.Kind() != reflect.Ptr {
-		return
+		panic("dest must be a pointer")
 	}
 	destValue = destValue.Elem()
 	destType := destValue.Type()
@@ -71,19 +71,27 @@ func ExampleSetValue_manual() {
 			continue
 		}
 
-		fieldName = fieldType.Tag.Get("name")
-		if fieldName == "" || fieldName == "-" {
-			fieldName = strings.ToLower(fieldType.Name) // 字段名
+		fieldName = fieldType.Tag.Get("json")
+		fieldName, _, _ = strings.Cut(fieldName, ",")
+		if fieldName == "-" {
+			continue
 		}
 
-		value, ok := source[fieldName]
+		var value any
+		var ok bool
+		if fieldName != "" {
+			value, ok = source[fieldName]
+		}
+		if !ok {
+			value, ok = source[fieldType.Name]
+		}
 		if !ok {
 			continue
 		}
 
 		err = goi.SetValue(fieldValue, value)
 		if err != nil {
-			return
+			panic(err)
 		}
 	}
 	fmt.Printf("Username: %+v %T\n", dest.Username, dest.Username)
@@ -95,5 +103,5 @@ func ExampleSetValue_manual() {
 	// Username: test_user string
 	// Password: test123456 string
 	// Age: 18 int
-	// Custom: [111 test1 test2] []string
+	// Custom: [true test1 test2] []string
 }

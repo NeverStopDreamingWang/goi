@@ -1,6 +1,6 @@
 package postgres
 
-import "github.com/NeverStopDreamingWang/goi/v2"
+import "github.com/NeverStopDreamingWang/goi/v3"
 
 // MigrationsHandler 设置新建表前后的回调
 type MigrationsHandler struct {

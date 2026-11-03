@@ -51,7 +51,7 @@ Run checks proportionate to the change, normally including:
 
 Do not describe a failed test as pre-existing without evidence. If integration tests require unavailable database drivers or services, report the exact limitation and retain the focused test/build evidence; do not claim the full suite passed.
 
-For source releases, verify the installable command with a temporary `GOBIN` and `go install ./cmd/goi`, then execute the native result to confirm it reports the target Goi version. The public installation path is `github.com/NeverStopDreamingWang/goi/v2/cmd/goi@<version>`.
+For source releases, verify the installable command with a temporary `GOBIN` and `go install ./cmd/goi`, then execute the native result to confirm it reports the target Goi version. The public installation path is `github.com/NeverStopDreamingWang/goi/v3/cmd/goi@<version>`.
 
 Do not build or commit executable files merely to publish a source release. `cmd/dist/` is ignored. Build downloadable binaries only when the user explicitly requests release assets, using the checked-in host script:
 

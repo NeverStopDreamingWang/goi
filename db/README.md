@@ -182,8 +182,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
 )
 
 const EngineName = "custom_mysql"
@@ -396,8 +396,8 @@ import (
 	"time"
 
 	"example.com/dbdemo/custommysql"
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -810,10 +810,10 @@ Mode 的字符串值为 `postgres`、`mysql`、`oracle`、`sqlserver`，与对�
 import (
 	"database/sql"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/db/kingbase"
-	"github.com/NeverStopDreamingWang/goi/v2/db/mysql"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/db/kingbase"
+	"github.com/NeverStopDreamingWang/goi/v3/db/mysql"
 	_ "kingbase.com/gokb"
 )
 
@@ -868,10 +868,10 @@ Mode 只选择 ORM 方言，不修改服务端兼容模式，也不选择 SQL �
 import (
 	"database/sql"
 
-	"github.com/NeverStopDreamingWang/goi/v2"
-	"github.com/NeverStopDreamingWang/goi/v2/db"
-	"github.com/NeverStopDreamingWang/goi/v2/db/mysql"
-	"github.com/NeverStopDreamingWang/goi/v2/db/seaboxsql"
+	"github.com/NeverStopDreamingWang/goi/v3"
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+	"github.com/NeverStopDreamingWang/goi/v3/db/mysql"
+	"github.com/NeverStopDreamingWang/goi/v3/db/seaboxsql"
 )
 
 func connectSeaBoxSQL(connector func(string) *sql.DB) *mysql.Engine {
