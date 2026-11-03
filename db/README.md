@@ -119,7 +119,7 @@ orm := mysql.ConnectDatabase("report", database, options,
 
 原生方言包把 `GetConfig` 集中在 factory 中，每次创建 Engine 只读取一次。`Connect` 校验连接名称和 Engine 后复用 factory，不再增加配置读取辅助层。泛型入口会校验工厂返回值是否符合指定的 Engine 类型，不会根据泛型参数自动切换方言。
 
-Kingbase 是模式路由入口，不属于上表的五个原生方言包。它的 `ConnectDatabase(name, database)` 接收 `*goi.Database`、读取 `kingbase.Config`，再调用所选方言包的低层构造方法，详见文末 Kingbase 说明。
+Kingbase 和 SeaBoxSQL 是模式路由入口，不属于上表的五个原生方言包。它们的 `ConnectDatabase(name, database)` 接收 `*goi.Database`，读取各自的 Config，再调用所选方言包的低层构造方法，详见文末对应说明。
 
 ### 5. 内置方言包的连接级配置
 
@@ -761,19 +761,20 @@ Goi 服务的正常停机顺序为：停止 HTTP 监听并等待在途请求、�
 | 字段验证 | [mysql/validator.go](mysql/validator.go) | 根据列类型和业务规则校验模型；由 ORM 或调用方决定何时执行 |
 | 查询构建帮助方法 | [mysql/utils.go](mysql/utils.go) | 分离集合参数展开等内部工具，与数据库方言规则配合 |
 
-`mysql`、`postgres`、`sqlite3`、`oracle`、`sqlserver` 统一采用上述 `connect.go` / `engine.go` 拆分。`kingbase` 的 [connect.go](kingbase/connect.go) 只负责按 Mode 路由，不定义自己的 Engine；配置和 Gokb 占位符策略分别放在 `config.go`、`placeholder.go`。
+`mysql`、`postgres`、`sqlite3`、`oracle`、`sqlserver` 统一采用上述 `connect.go` / `engine.go` 拆分。`kingbase` 的 [connect.go](kingbase/connect.go) 和 `seaboxsql` 的 [connect.go](seaboxsql/connect.go) 只负责按 Mode 路由，不定义自己的 Engine、Model 或 Validate；配置与默认占位符策略分别放在各包的 `config.go`、`placeholder.go`。
 
 迁移、字段验证、主键处理、分页、是否限制全表操作、默认值与 NULL 处理等行为，应由自定义 ORM 明确定义。公共 `db` 工具负责可复用的基础工作，不会自动替引擎实现这些策略。
 
 ## 九、内置数据库方言参考
 
-各方言引擎在创建时保存标识符、占位符和列定义策略。基础 SQL 方法提供无上下文及 `...Context` 两组入口；迁移、CRUD、计数、分页和事务方法直接接收 `context.Context`。模型的 `Settings.Schema` 用于缓存完整表名，并与迁移的命名空间保持一致。`kingbase` 不再定义独立模型和引擎，而是按兼容模式创建下表中的对应方言引擎。
+各方言引擎在创建时保存标识符、占位符和列定义策略。基础 SQL 方法提供无上下文及 `...Context` 两组入口；迁移、CRUD、计数、分页和事务方法直接接收 `context.Context`。模型的 `Settings.Schema` 用于缓存完整表名，并与迁移的命名空间保持一致。`kingbase` 和 `seaboxsql` 不定义独立模型和引擎，而是按 Mode 创建下表中的对应方言引擎。
 
 | ORM 包 | 默认标识符 | ORM 占位符 → 驱动占位符 | Schema 为空时 | 分页 |
 | --- | --- | --- | --- | --- |
 | `mysql` | 反引号 | `?` → `?` | 连接当前数据库 | `LIMIT ... OFFSET ...` |
 | `postgres` | 双引号 | `?` → `$1, $2, ...` | `public` | `LIMIT ... OFFSET ...` |
 | `kingbase` | 继承 Mode 对应方言 | 默认 `?` → `$1, $2, ...`（Gokb） | 继承 Mode 对应方言 | 继承 Mode 对应方言 |
+| `seaboxsql` | 继承 Mode 对应方言 | 默认 `?` → `$1, $2, ...`（PostgreSQL 兼容驱动方案） | 继承 Mode 对应方言 | 继承 Mode 对应方言 |
 | `sqlite3` | 双引号 | `?` → `?` | 不限定数据库；也可指定 `main`、`temp` 或已附加的数据库 | `LIMIT ... OFFSET ...` |
 | `oracle` | 双引号 | `?` → `:1, :2, ...` | 当前 Schema | `OFFSET ... ROWS FETCH NEXT ... ROWS ONLY`，要求 Oracle 12c 及以上 |
 | `sqlserver` | 方括号 | `?` → `@p1, @p2, ...` | `dbo` | `OFFSET ... ROWS FETCH NEXT ... ROWS ONLY`，需先设置排序 |
@@ -846,3 +847,52 @@ func connectKingbase(dsn string) *mysql.Engine {
 旧的 `kingbase.Engine`、`kingbase.Model`、`kingbase.Settings`、`kingbase.Validate` 及三种策略的包级 Set/Get 入口已移除。调用点需迁移到所选方言包，原策略配置改放 `kingbase.Config.EngineOptions`。改变 Mode 时，泛型类型和模型配置也要同步，不是只改一个配置值就能保持所有旧调用不变。
 
 该路由复用方言实现，不代表四种模式与原生数据库完全等价。模拟驱动测试只验证分派、策略和 SQL 转交，实际 Gokb/Kingbase 版本仍需集成验证。特别是 Oracle 模式的 VARCHAR2 BYTE/CHAR 语义，应使模型声明、校验规则与目标实例配置保持一致。
+
+### SeaBoxSQL 按兼容模式选择方言
+
+SeaBoxSQL 的 `Connect` 和注册工厂均调用 `seaboxsql.ConnectDatabase(name, database)`，通过 `database.GetConfig(&config)` 读取一次配置，再创建所选方言的 Engine。该入口接收 `*goi.Database`，不直接接收 DBProvider 或实例选项。
+
+`seaboxsql.Config` 值和指针均实现 `goi.DatabaseConfig`；也可使用其它能向 `*seaboxsql.Config` 写入配置的实现。读取错误会在获取连接池前原样 panic；nil 配置、nil 配置指针和空 Mode 均默认选择 PostgreSQL 方言。
+
+Mode 只选择 ORM 方言，不修改服务端兼容模式，也不选择 SQL 驱动。应根据目标实例已启用的模式选择 `postgres`、`mysql` 或 `oracle`，不支持 `sqlserver`。
+
+| Mode | 返回类型 | 模型设置与字段校验 |
+| --- | --- | --- |
+| `ModePostgreSQL`（默认） | `*postgres.Engine` | `postgres.Model`、`postgres.Settings`、`postgres.Validate` |
+| `ModeMySQL` | `*mysql.Engine` | `mysql.Model`、`mysql.Settings`、`mysql.Validate` |
+| `ModeOracle` | `*oracle.Engine` | `oracle.Model`、`oracle.Settings`、`oracle.Validate` |
+
+例如，为已启用 MySQL 兼容模式的 SeaBoxSQL 配置 MySQL 方言，并复用应用提供的连接回调：
+
+```go
+import (
+	"database/sql"
+
+	"github.com/NeverStopDreamingWang/goi/v2"
+	"github.com/NeverStopDreamingWang/goi/v2/db"
+	"github.com/NeverStopDreamingWang/goi/v2/db/mysql"
+	"github.com/NeverStopDreamingWang/goi/v2/db/seaboxsql"
+)
+
+func connectSeaBoxSQL(connector func(string) *sql.DB) *mysql.Engine {
+	goi.Settings.Databases["seabox_mysql"] = &goi.Database{
+		Engine: "seaboxsql",
+		Config: seaboxsql.Config{
+			Mode: seaboxsql.ModeMySQL,
+			EngineOptions: db.EngineOptions{
+				ColumnParser: db.NewColumnParser("field_name", "field_type"),
+			},
+		},
+		Connect: connector,
+	}
+	return db.Connect[*mysql.Engine]("seabox_mysql")
+}
+```
+
+连接回调接收 ORM 注册名 `"seaboxsql"`，由调用方选择实际驱动、DSN 和连接池设置，不应直接把该参数当成 SQL 驱动名。导入 `seaboxsql` 只注册 ORM 工厂，不加载物理驱动；示例也不表示应改用 MySQL 驱动连接 SeaBoxSQL。
+
+`seaboxsql.Config.EngineOptions` 是显式字段，策略按“所选方言包有效默认值 → SeaBoxSQL 默认占位符策略 → Config 中的非 nil 选项”合并。默认在三种 Mode 下均用 `?` 构建 SQL、转换为 `$1, $2, ...` 执行，这是 PostgreSQL 兼容驱动方案，不是按 Mode 选择的原生占位符。实际驱动要求不同格式时，通过 `EngineOptions.PlaceholderParser` 覆盖；标识符继承所选方言，列解析器遵循前述三层优先级。已有 Engine 保存创建时的策略引用，后续默认配置替换不改变它。
+
+模型接口、Settings 和 Validate 使用 Mode 对应的原生包，泛型类型也必须匹配。`seaboxsql.Connect` 返回公共 `db.Engine`，需要 CRUD 等扩展方法时使用对应具体类型的泛型入口；不要调用 `mysql.Connect("seabox_mysql")` 读取 Engine 为 seaboxsql 的配置。该包不提供独立的 Engine、Model、Settings、Validate 或包级策略 Set/Get，实例策略统一放在 Config 中。
+
+路由成功不代表与对应原生数据库完整兼容。模拟驱动测试不能证明服务端接受生成的全部 SQL；驱动协议、迁移元数据、类型、Schema、分页等需按目标版本和模式做集成验证。
