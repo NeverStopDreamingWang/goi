@@ -26,10 +26,10 @@
 go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
 ```
 
-需要固定版本时，例如安装 v3.0.1：
+需要固定版本时，例如安装 v3.0.2：
 
 ```sh
-go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.1
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.2
 ```
 
 命令安装为 `goi`（Windows 下为 `goi.exe`）。安装目录优先使用 `GOBIN`；未设置时使用 `GOPATH/bin`。可通过以下命令查看配置，并将对应目录加入 `PATH`：
