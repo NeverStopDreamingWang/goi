@@ -153,6 +153,17 @@ type routeCase struct {
 	connect func(string) db.Engine
 }
 
+func routeDriverPlaceholder(mode CompatibilityMode, index int) string {
+	switch mode {
+	case ModeMySQL:
+		return "?"
+	case ModeOracle:
+		return fmt.Sprintf(":%d", index)
+	default:
+		return fmt.Sprintf("$%d", index)
+	}
+}
+
 func routeCases() []routeCase {
 	return []routeCase{
 		{ModePostgreSQL, reflect.TypeOf((*postgres.Engine)(nil)), `"`,
@@ -189,7 +200,7 @@ func TestCompatibilityRoutesKeepPhysicalDriverAndPool(t *testing.T) {
 				t.Fatal(err)
 			}
 			quote := func(value string) string { return test.quote + value + test.quote }
-			want := "UPDATE " + quote("app") + "." + quote("roles") + " SET " + quote("name") + " = $1 WHERE id = $2"
+			want := "UPDATE " + quote("app") + "." + quote("roles") + " SET " + quote("name") + " = " + routeDriverPlaceholder(test.mode, 1) + " WHERE id = " + routeDriverPlaceholder(test.mode, 2)
 			if recorder.query != want || len(recorder.args) != 2 ||
 				recorder.args[0].Value != "admin" || recorder.args[1].Value != int64(7) {
 				t.Fatalf("SQL=%q, args=%v", recorder.query, recorder.args)
@@ -198,10 +209,29 @@ func TestCompatibilityRoutesKeepPhysicalDriverAndPool(t *testing.T) {
 			if err := second.QueryRow("SELECT ?", int64(7)).Scan(&value); err != nil {
 				t.Fatal(err)
 			}
-			if recorder.query != "SELECT $1" || value != 7 {
+			if recorder.query != "SELECT "+routeDriverPlaceholder(test.mode, 1) || value != 7 {
 				t.Fatalf("query=%q, value=%d", recorder.query, value)
 			}
 		})
+	}
+}
+
+func TestMySQLCompatibilityExpandsWhereInParameters(t *testing.T) {
+	manager, recorder := newRouteManager(t, Config{Mode: ModeMySQL})
+	registerRouteManager(t, manager)
+	engine := db.Connect[*mysql.Engine](t.Name())
+	name := "admin"
+	_, err := engine.SetModel(mysqlRouteModel{}).Fields("Name").Where("id IN ?", []int64{7, 8}).
+		Update(context.Background(), mysqlRouteModel{Name: &name}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const wantSQL = "UPDATE `app`.`roles` SET `name` = ? WHERE id IN (?,?)"
+	wantArgs := []driver.NamedValue{
+		{Ordinal: 1, Value: "admin"}, {Ordinal: 2, Value: int64(7)}, {Ordinal: 3, Value: int64(8)},
+	}
+	if recorder.query != wantSQL || !reflect.DeepEqual(recorder.args, wantArgs) {
+		t.Fatalf("write SQL=%q, args=%#v, want SQL=%q args=%#v", recorder.query, recorder.args, wantSQL, wantArgs)
 	}
 }
 
@@ -222,11 +252,11 @@ func TestConfigFormsAndDefaultMode(t *testing.T) {
 type routePlaceholderParser struct{}
 
 func (routePlaceholderParser) Placeholder() string { return ":v" }
-func (routePlaceholderParser) Parse(query string, args ...any) string {
+func (routePlaceholderParser) Parse(query string, args ...any) (string, []any) {
 	for index := range args {
 		query = strings.Replace(query, ":v", fmt.Sprintf("@%d", index+1), 1)
 	}
-	return query
+	return query, args
 }
 
 func nativeRouteOptions() []db.EngineOptions {
@@ -258,7 +288,7 @@ func TestConfigStrategiesOverrideLocallyAndAreSnapshotted(t *testing.T) {
 			if err := writeRoute(ConnectDatabase("fresh", manager), "?"); err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(recorder.query, " = $1 WHERE id = $2") || strings.Contains(recorder.query, "display_name") ||
+			if !strings.Contains(recorder.query, " = "+routeDriverPlaceholder(test.mode, 1)+" WHERE id = "+routeDriverPlaceholder(test.mode, 2)) || strings.Contains(recorder.query, "display_name") ||
 				recorder.poolCalls != 1 || !reflect.DeepEqual(nativeRouteOptions(), defaults) {
 				t.Fatalf("defaults changed: SQL=%q, pool calls=%d", recorder.query, recorder.poolCalls)
 			}
@@ -266,26 +296,70 @@ func TestConfigStrategiesOverrideLocallyAndAreSnapshotted(t *testing.T) {
 	}
 }
 
-func TestDialectAndSharedOptionsAreInheritedWithoutChangingPhysicalPlaceholder(t *testing.T) {
-	old := nativeRouteOptions()[0]
+func setRouteDialectDefaults(mode CompatibilityMode, parser db.PlaceholderParser, quoter db.IdentifierQuoter) {
+	switch mode {
+	case ModePostgreSQL:
+		postgres.SetPlaceholderParser(parser)
+		postgres.SetIdentifierQuoter(quoter)
+	case ModeMySQL:
+		mysql.SetPlaceholderParser(parser)
+		mysql.SetIdentifierQuoter(quoter)
+	case ModeOracle:
+		oracle.SetPlaceholderParser(parser)
+		oracle.SetIdentifierQuoter(quoter)
+	}
+}
+
+func TestDialectAndSharedOptionsAreInheritedAndSnapshotted(t *testing.T) {
+	defaults := nativeRouteOptions()
+	byMode := map[CompatibilityMode]db.EngineOptions{
+		ModeMySQL: defaults[0], ModePostgreSQL: defaults[1], ModeOracle: defaults[2],
+	}
 	oldColumn := db.GetColumnParser()
 	t.Cleanup(func() {
-		mysql.SetPlaceholderParser(old.PlaceholderParser)
-		mysql.SetIdentifierQuoter(old.IdentifierQuoter)
+		for mode, options := range byMode {
+			setRouteDialectDefaults(mode, options.PlaceholderParser, options.IdentifierQuoter)
+		}
 		db.SetColumnParser(oldColumn)
 	})
-	mysql.SetPlaceholderParser(routePlaceholderParser{})
-	mysql.SetIdentifierQuoter(db.NewIdentifierQuoter("[", "]"))
-	db.SetColumnParser(db.NewColumnParser("column", "sql_type"))
-	manager, recorder := newRouteManager(t, Config{Mode: ModeMySQL})
-	engine := ConnectDatabase("inherited", manager)
-	mysql.SetIdentifierQuoter(old.IdentifierQuoter)
-	db.SetColumnParser(oldColumn)
-	if err := writeRoute(engine, "?"); err != nil {
-		t.Fatal(err)
-	}
-	if recorder.query != "UPDATE [app].[roles] SET [display_name] = $1 WHERE id = $2" {
-		t.Fatalf("inherited SQL=%q", recorder.query)
+	for _, test := range routeCases() {
+		t.Run(string(test.mode), func(t *testing.T) {
+			old := byMode[test.mode]
+			setRouteDialectDefaults(test.mode, routePlaceholderParser{}, db.NewIdentifierQuoter("[", "]"))
+			db.SetColumnParser(db.NewColumnParser("column", "sql_type"))
+			manager, recorder := newRouteManager(t, Config{Mode: test.mode})
+			engine := ConnectDatabase("inherited", manager)
+			manager.Config = Config{Mode: test.mode, EngineOptions: db.EngineOptions{
+				PlaceholderParser: db.NewPlaceholderParser("?"),
+			}}
+			overridden := ConnectDatabase("connection_override", manager)
+			setRouteDialectDefaults(test.mode, old.PlaceholderParser, old.IdentifierQuoter)
+			db.SetColumnParser(oldColumn)
+
+			if err := writeRoute(engine, ":v"); err != nil {
+				t.Fatal(err)
+			}
+			if recorder.query != "UPDATE [app].[roles] SET [display_name] = @1 WHERE id = @2" {
+				t.Fatalf("inherited SQL=%q", recorder.query)
+			}
+			if err := writeRoute(overridden, "?"); err != nil {
+				t.Fatal(err)
+			}
+			if recorder.query != "UPDATE [app].[roles] SET [display_name] = ? WHERE id = ?" {
+				t.Fatalf("connection parser did not override dialect parser: %q", recorder.query)
+			}
+			manager.Config = Config{Mode: test.mode}
+			if err := writeRoute(ConnectDatabase("fresh", manager), "?"); err != nil {
+				t.Fatal(err)
+			}
+			quote := func(value string) string { return test.quote + value + test.quote }
+			wantSQL := "UPDATE " + quote("app") + "." + quote("roles") +
+				" SET " + quote("name") + " = " + routeDriverPlaceholder(test.mode, 1) +
+				" WHERE id = " + routeDriverPlaceholder(test.mode, 2)
+			if recorder.query != wantSQL || !reflect.DeepEqual(nativeRouteOptions(), defaults) {
+				t.Fatalf("fresh SQL=%q, want %q; native package defaults changed", recorder.query, wantSQL)
+			}
+		})
 	}
 }
 
@@ -370,34 +444,5 @@ func TestConfigGetConfigValidatesTargetAndCopiesStrategyReferences(t *testing.T)
 		if source.Mode != ModeMySQL || source.EngineOptions.PlaceholderParser != parser {
 			t.Fatal("changing the target changed its source")
 		}
-	}
-}
-
-func TestDefaultPlaceholderParserBoundaries(t *testing.T) {
-	parser := defaultPlaceholderParser{}
-	if parser.Placeholder() != "?" {
-		t.Fatalf("ORM placeholder=%q", parser.Placeholder())
-	}
-	for _, test := range []struct {
-		name  string
-		query string
-		args  []any
-		want  string
-	}{
-		{"empty", "", []any{1}, ""},
-		{"no_args", "SELECT ?", nil, "SELECT ?"},
-		{"native", "SELECT $1", []any{1}, "SELECT $1"},
-		{"sequential", "SELECT ? WHERE id = ?", []any{"admin", 7}, "SELECT $1 WHERE id = $2"},
-		{"less_args", "SELECT ?, ?", []any{1}, "SELECT $1, ?"},
-		{"more_args", "SELECT ?", []any{1, 2}, "SELECT $1"},
-		{"adjacent", "??", []any{1, 2}, "$1$2"},
-		{"unicode", "SELECT '中文', ?", []any{1}, "SELECT '中文', $1"},
-		{"raw_text", "SELECT '?' -- ?\nWHERE id = ?", []any{1, 2, 3}, "SELECT '$1' -- $2\nWHERE id = $3"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if got := parser.Parse(test.query, test.args...); got != test.want {
-				t.Fatalf("Parse()=%q, want %q", got, test.want)
-			}
-		})
 	}
 }

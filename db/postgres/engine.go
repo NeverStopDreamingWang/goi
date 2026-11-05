@@ -81,7 +81,7 @@ func (engine *Engine) Execute(query string, args ...any) (sql.Result, error) {
 //   - 执行前通过当前实例的 PlaceholderParser 转换 SQL，并保存供 GetSQL 获取
 //   - 有事务时使用当前事务，否则使用连接池
 func (engine *Engine) ExecuteContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	query = engine.placeholderParser.Parse(query, args...)
+	query, args = engine.placeholderParser.Parse(query, args...)
 	engine.sql = query
 	if engine.tx != nil {
 		return engine.tx.ExecContext(ctx, query, args...)
@@ -118,7 +118,7 @@ func (engine *Engine) QueryRow(query string, args ...any) *sql.Row {
 //   - 执行前通过当前实例的 PlaceholderParser 转换 SQL，并保存供 GetSQL 获取
 //   - 有事务时使用当前事务，否则使用连接池
 func (engine *Engine) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	query = engine.placeholderParser.Parse(query, args...)
+	query, args = engine.placeholderParser.Parse(query, args...)
 	engine.sql = query
 	if engine.tx != nil {
 		return engine.tx.QueryRowContext(ctx, query, args...)
@@ -157,7 +157,7 @@ func (engine *Engine) Query(query string, args ...any) (*sql.Rows, error) {
 //   - 执行前通过当前实例的 PlaceholderParser 转换 SQL，并保存供 GetSQL 获取
 //   - 有事务时使用当前事务，否则使用连接池
 func (engine *Engine) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	query = engine.placeholderParser.Parse(query, args...)
+	query, args = engine.placeholderParser.Parse(query, args...)
 	engine.sql = query
 	if engine.tx != nil {
 		return engine.tx.QueryContext(ctx, query, args...)
@@ -445,17 +445,20 @@ func (engine *Engine) Insert(ctx context.Context, model Model, skipNil bool) (sq
 // Where 追加查询条件
 //
 // 参数:
-//   - query: string 条件语句，使用当前 PlaceholderParser 的占位符，默认 ?
-//   - args: ...any 与占位符一一对应的参数
+//   - query: string 条件语句，使用当前 PlaceholderParser 的 ORM 占位符，默认 ?
+//   - args: ...any 与占位符一一对应的 SQL 参数；IN 集合可传切片、数组及其非 nil 指针
 //
 // 返回:
 //   - *Engine: 条件独立的实例副本，支持链式调用
 //
 // 说明:
 //   - 多次调用以 AND 连接；占位符与参数数量不一致时 panic
-//   - IN ?、NOT IN ? 对应的切片或数组会展开，支持集合指针；[]byte 不展开
-//   - IN (?) 等带括号的写法须手动提供占位符和参数；空集合展开为 ()，由数据库处理
-//   - 仅按字符串匹配占位符，不解析 SQL 字符串或注释；不匹配 IN 规则的参数不展开
+//   - 默认 PlaceholderParser 支持 IN ?、NOT IN ? 的集合参数；Where 也会在构建条件时展开
+//   - 字节切片（如 []byte）和 nil 指针不展开；其它未匹配的参数交由 database/sql 和驱动处理
+//   - IN (?) 等带括号的写法不自动展开，需自行匹配占位符与参数
+//   - 空集合（含 nil 切片）展开为 ()，是否合法由数据库处理
+//   - 仅按字符串匹配占位符，不解析 SQL 字符串或注释
+//   - 执行阶段的 SQL 和参数转换由当前 PlaceholderParser.Parse 决定
 func (engine Engine) Where(query string, args ...any) *Engine {
 	// 值接收者只会复制切片头，whereSQL 与 args 仍可能和原 Engine 共享底层数组。
 	// 当切片容量大于长度时，append 会复用共享数组并覆盖其他查询分支追加的数据。
@@ -473,7 +476,7 @@ func (engine Engine) Where(query string, args ...any) *Engine {
 	queryBuilder := strings.Builder{}
 	queryBuilder.WriteString(queryParts[0])
 	for i, param := range args {
-		inPlaceholder, inArgs, ok := whereIn(queryParts[i], placeholder, param)
+		inPlaceholder, inArgs, ok := expandInParameter(queryParts[i], placeholder, param)
 		if ok {
 			queryBuilder.WriteString(inPlaceholder)
 			engine.args = append(engine.args, inArgs...)

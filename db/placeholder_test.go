@@ -1,6 +1,9 @@
 package db
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestDefaultPlaceholderParser(t *testing.T) {
 	parser := NewPlaceholderParser("?")
@@ -9,7 +12,12 @@ func TestDefaultPlaceholderParser(t *testing.T) {
 	}
 
 	query := "id = ? AND status = ?"
-	if got := parser.Parse(query, int64(1), "enabled"); got != query {
-		t.Fatalf("Parse() = %q, want %q", got, query)
+	args := []any{int64(1), "enabled"}
+	if got, gotArgs := parser.Parse(query, args...); got != query || !reflect.DeepEqual(gotArgs, args) {
+		t.Fatalf("Parse() = (%q, %#v), want (%q, %#v)", got, gotArgs, query, args)
+	}
+	query, args = "id IN ?", []any{[]int64{1, 2}}
+	if got, gotArgs := parser.Parse(query, args...); got != query || !reflect.DeepEqual(gotArgs, args) {
+		t.Fatalf("public default parser expanded a collection: (%q, %#v)", got, gotArgs)
 	}
 }

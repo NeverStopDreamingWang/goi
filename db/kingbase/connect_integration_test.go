@@ -118,5 +118,5 @@ func ExampleConnect_insert() {
 		return
 	}
 	fmt.Printf("插入成功")
-	// Output:
+	// Output: 插入成功
 }

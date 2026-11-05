@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// whereIn 展开单个 IN 或 NOT IN 条件中的集合参数。
+// expandInParameter 展开单个 IN 或 NOT IN 条件中的集合参数。
 //
 // 参数:
 //   - leftPart: string 当前占位符前的 SQL 片段
@@ -20,7 +20,7 @@ import (
 // 说明:
 //   - 左侧片段去除首尾空白后须以 IN 结尾，忽略大小写；不解析 SQL 语法
 //   - 支持切片、数组及其非 nil 指针，[]byte 不展开；空集合展开为 ()
-func whereIn(leftPart string, placeholder string, param any) (string, []any, bool) {
+func expandInParameter(leftPart string, placeholder string, param any) (string, []any, bool) {
 	leftPart = strings.TrimSpace(leftPart)
 	if len(leftPart) < 2 || !strings.EqualFold(leftPart[len(leftPart)-2:], "in") {
 		return "", nil, false

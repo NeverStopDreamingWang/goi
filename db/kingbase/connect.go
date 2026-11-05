@@ -34,23 +34,23 @@ func factory(name string, database *goi.Database) db.Engine {
 //   - 不校验 Engine 名称；底层连接仍由 database.DB() 提供，不切换驱动
 //   - 未指定模式时使用 PostgreSQL；配置读取失败或模式未知时 panic
 //   - Config 为 nil 或 nil 指针时使用默认配置，策略对象不做深拷贝
-//   - 默认将 ORM 占位符 ? 转为 Gokb 的 $1、$2 等，可通过 EngineOptions 覆盖
+//   - 默认继承所选方言包的占位符、标识符和列解析策略，连接级 EngineOptions 优先覆盖
+//   - 不推断驱动版本的绑定能力；驱动要求不同占位符时，通过连接级 PlaceholderParser 配置
 //   - 模型与校验应使用返回引擎所属数据库包的接口和方法
 func ConnectDatabase(name string, database *goi.Database) db.Engine {
 	var config Config
 	if err := database.GetConfig(&config); err != nil {
 		panic(err)
 	}
-	options := (db.EngineOptions{PlaceholderParser: gokbPlaceholderParser{}}).Merge(config.EngineOptions)
 	switch config.Mode {
 	case "", ModePostgreSQL:
-		return postgres.ConnectDatabase(name, database, options)
+		return postgres.ConnectDatabase(name, database, config.EngineOptions)
 	case ModeMySQL:
-		return mysql.ConnectDatabase(name, database, options)
+		return mysql.ConnectDatabase(name, database, config.EngineOptions)
 	case ModeOracle:
-		return oracle.ConnectDatabase(name, database, options)
+		return oracle.ConnectDatabase(name, database, config.EngineOptions)
 	case ModeSQLServer:
-		return sqlserver.ConnectDatabase(name, database, options)
+		return sqlserver.ConnectDatabase(name, database, config.EngineOptions)
 	default:
 		panic(i18n.T("db.compatibility_mode_is_not_supported", map[string]any{
 			"engine": driverName,

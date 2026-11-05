@@ -395,11 +395,11 @@ type namedPlaceholderParser struct{}
 
 func (namedPlaceholderParser) Placeholder() string { return ":v" }
 
-func (namedPlaceholderParser) Parse(query string, args ...any) string {
+func (namedPlaceholderParser) Parse(query string, args ...any) (string, []any) {
 	for index := range args {
 		query = strings.Replace(query, ":v", fmt.Sprintf("$%d", index+1), 1)
 	}
-	return query
+	return query, args
 }
 
 func TestCustomPlaceholderBuildsAndParsesEveryOperation(t *testing.T) {
@@ -505,8 +505,8 @@ func (engineTestPlaceholderParser) Placeholder() string {
 	return "?"
 }
 
-func (engineTestPlaceholderParser) Parse(query string, _ ...any) string {
-	return "parsed: " + query
+func (engineTestPlaceholderParser) Parse(query string, args ...any) (string, []any) {
+	return "parsed: " + query, args
 }
 
 type engineTestRecorder struct {
@@ -699,12 +699,59 @@ func TestDefaultDialectStrategies(t *testing.T) {
 		t.Fatalf("ORM placeholder = %q", parser.Placeholder())
 	}
 	const query = "SELECT ? FROM roles WHERE id = ?"
-	if got := parser.Parse(query, "admin", int64(1)); got != wantDriverSQL(query) {
+	if got, _ := parser.Parse(query, "admin", int64(1)); got != wantDriverSQL(query) {
 		t.Fatalf("driver SQL = %q, want %q", got, wantDriverSQL(query))
 	}
 	native := wantDriverSQL("SELECT ?")
-	if got := parser.Parse(native, int64(1)); got != native {
+	if got, _ := parser.Parse(native, int64(1)); got != native {
 		t.Fatalf("native SQL changed: %q", got)
+	}
+	expandedSQL, expandedArgs := parser.Parse("SELECT ? FROM roles WHERE id IN ? AND status = ?", "admin", []int64{7, 8}, "enabled")
+	wantSQL := wantDriverSQL("SELECT ? FROM roles WHERE id IN (?,?) AND status = ?")
+	if expandedSQL != wantSQL || !reflect.DeepEqual(expandedArgs, []any{"admin", int64(7), int64(8), "enabled"}) {
+		t.Fatalf("expanded SQL=%q args=%#v", expandedSQL, expandedArgs)
+	}
+}
+
+func TestDefaultPlaceholderParserWritesDriverPlaceholders(t *testing.T) {
+	parser := defaultPlaceholderParser{}
+	placeholder := parser.Placeholder()
+	tests := []struct {
+		name     string
+		query    string
+		args     []any
+		wantSQL  string
+		wantArgs []any
+	}{
+		{
+			name:     "scalar and multiple collections",
+			query:    "tenant_id = " + placeholder + " AND id IN " + placeholder + " AND status NOT IN " + placeholder + " AND name = " + placeholder,
+			args:     []any{7, []int64{1, 2}, [2]string{"disabled", "deleted"}, "admin"},
+			wantSQL:  "tenant_id = @p1 AND id IN (@p2,@p3) AND status NOT IN (@p4,@p5) AND name = @p6",
+			wantArgs: []any{7, int64(1), int64(2), "disabled", "deleted", "admin"},
+		},
+		{
+			name:    "empty collection does not consume a number",
+			query:   "tenant_id = " + placeholder + " AND id IN " + placeholder + " AND name = " + placeholder,
+			args:    []any{7, []int64{}, "admin"},
+			wantSQL: "tenant_id = @p1 AND id IN () AND name = @p2", wantArgs: []any{7, "admin"},
+		},
+		{
+			name: "manual parentheses", query: "id IN (" + placeholder + "," + placeholder + ")",
+			args: []any{1, 2}, wantSQL: "id IN (@p1,@p2)", wantArgs: []any{1, 2},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			originalArgs := append([]any(nil), test.args...)
+			query, args := parser.Parse(test.query, test.args...)
+			if query != test.wantSQL || !reflect.DeepEqual(args, test.wantArgs) {
+				t.Fatalf("Parse() = (%q, %#v), want (%q, %#v)", query, args, test.wantSQL, test.wantArgs)
+			}
+			if !reflect.DeepEqual(test.args, originalArgs) {
+				t.Fatalf("input arguments were modified: %#v", test.args)
+			}
+		})
 	}
 }
 
@@ -807,9 +854,9 @@ func TestConnectDatabaseMergesLocalStrategies(t *testing.T) {
 	third := db.EngineOptions{ColumnParser: db.NewColumnParser("column", "sql_type")}
 	engine := ConnectDatabase("local", provider, first, db.EngineOptions{}, second, db.EngineOptions{}, third)
 	engine.SetModel(alternateTagModel{})
-	if engine.tableName != "{test_schema}.{roles}" ||
+	if query, _ := engine.placeholderParser.Parse("SELECT ?", 1); engine.tableName != "{test_schema}.{roles}" ||
 		!reflect.DeepEqual(engine.fieldSQL, []string{"role_id", "display_name"}) ||
-		engine.placeholderParser.Parse("SELECT ?", 1) != "parsed: SELECT ?" {
+		query != "parsed: SELECT ?" {
 		t.Fatalf("local strategies not merged in order: table=%q, columns=%v", engine.tableName, engine.fieldSQL)
 	}
 	if !reflect.DeepEqual(GetIdentifierQuoter(), oldIdentifier) ||
@@ -826,9 +873,9 @@ func TestConnectDatabaseMergesLocalStrategies(t *testing.T) {
 	SetPlaceholderParser(namedPlaceholderParser{})
 	SetColumnParser(validationColumnParser{})
 	engine.SetModel(alternateTagModel{})
-	if engine.tableName != "{test_schema}.{roles}" ||
+	if query, _ := engine.placeholderParser.Parse("SELECT ?", 1); engine.tableName != "{test_schema}.{roles}" ||
 		!reflect.DeepEqual(engine.fieldSQL, []string{"role_id", "display_name"}) ||
-		engine.placeholderParser.Parse("SELECT ?", 1) != "parsed: SELECT ?" {
+		query != "parsed: SELECT ?" {
 		t.Fatal("created instance did not retain its strategy snapshot")
 	}
 	fresh := ConnectDatabase("fresh", provider)
@@ -903,8 +950,9 @@ func TestFactorySnapshotsStrategiesAndSharesPool(t *testing.T) {
 	if !reflect.DeepEqual(first.fieldSQL, []string{"id", "name"}) || !reflect.DeepEqual(second.fieldSQL, []string{"role_id", "display_name"}) {
 		t.Fatalf("column snapshots: %v, %v", first.fieldSQL, second.fieldSQL)
 	}
-	if first.placeholderParser.Parse("SELECT ?", 1) != wantDriverSQL("SELECT ?") ||
-		second.placeholderParser.Parse("SELECT ?", 1) != "parsed: SELECT ?" {
+	firstSQL, _ := first.placeholderParser.Parse("SELECT ?", 1)
+	secondSQL, _ := second.placeholderParser.Parse("SELECT ?", 1)
+	if firstSQL != wantDriverSQL("SELECT ?") || secondSQL != "parsed: SELECT ?" {
 		t.Fatal("placeholder parser snapshot changed")
 	}
 }
@@ -950,9 +998,9 @@ func TestWhereInReportsCollectionExpansion(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gotSQL, gotArgs, gotMatched := whereIn(test.leftPart, test.placeholder, test.param)
+			gotSQL, gotArgs, gotMatched := expandInParameter(test.leftPart, test.placeholder, test.param)
 			if gotSQL != test.wantSQL || !reflect.DeepEqual(gotArgs, test.wantArgs) || gotMatched != test.wantMatched {
-				t.Fatalf("whereIn() = (%q, %#v, %t), want (%q, %#v, %t)", gotSQL, gotArgs, gotMatched, test.wantSQL, test.wantArgs, test.wantMatched)
+				t.Fatalf("expandInParameter() = (%q, %#v, %t), want (%q, %#v, %t)", gotSQL, gotArgs, gotMatched, test.wantSQL, test.wantArgs, test.wantMatched)
 			}
 		})
 	}

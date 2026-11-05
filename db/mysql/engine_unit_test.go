@@ -471,8 +471,8 @@ func (engineTestPlaceholderParser) Placeholder() string {
 	return "?"
 }
 
-func (engineTestPlaceholderParser) Parse(query string, _ ...any) string {
-	return "parsed: " + query
+func (engineTestPlaceholderParser) Parse(query string, args ...any) (string, []any) {
+	return "parsed: " + query, args
 }
 
 type engineTestRecorder struct {
@@ -751,64 +751,32 @@ func TestInsertSkipsUnreadableModelField(t *testing.T) {
 	}
 }
 
-func TestWhereInReportsCollectionExpansion(t *testing.T) {
-	values := []int64{1, 2}
-	array := [2]string{"enabled", "disabled"}
-	valuesPointer := &values
-	var nilSlice []int64
-	var nilPointer *[]int64
-	bytes := []byte{1, 2}
-
-	tests := []struct {
-		name        string
-		leftPart    string
-		placeholder string
-		param       any
-		wantSQL     string
-		wantArgs    []any
-		wantMatched bool
-	}{
-		{name: "IN slice", leftPart: "id IN ", placeholder: "?", param: values, wantSQL: "(?,?)", wantArgs: []any{int64(1), int64(2)}, wantMatched: true},
-		{name: "NOT IN array", leftPart: "status NOT IN ", placeholder: "?", param: array, wantSQL: "(?,?)", wantArgs: []any{"enabled", "disabled"}, wantMatched: true},
-		{name: "case and whitespace", leftPart: " id in \t", placeholder: "?", param: values, wantSQL: "(?,?)", wantArgs: []any{int64(1), int64(2)}, wantMatched: true},
-		{name: "custom placeholder", leftPart: "id IN ", placeholder: ":v", param: values, wantSQL: "(:v,:v)", wantArgs: []any{int64(1), int64(2)}, wantMatched: true},
-		{name: "empty slice", leftPart: "id IN ", placeholder: "?", param: []int64{}, wantSQL: "()", wantArgs: []any{}, wantMatched: true},
-		{name: "empty array", leftPart: "id NOT IN ", placeholder: "?", param: [0]int64{}, wantSQL: "()", wantArgs: []any{}, wantMatched: true},
-		{name: "typed nil slice", leftPart: "id IN ", placeholder: "?", param: nilSlice, wantSQL: "()", wantArgs: []any{}, wantMatched: true},
-		{name: "slice pointer", leftPart: "id IN ", placeholder: "?", param: &values, wantSQL: "(?,?)", wantArgs: []any{int64(1), int64(2)}, wantMatched: true},
-		{name: "array pointer", leftPart: "status NOT IN ", placeholder: "?", param: &array, wantSQL: "(?,?)", wantArgs: []any{"enabled", "disabled"}, wantMatched: true},
-		{name: "nested slice pointer", leftPart: "id IN ", placeholder: "?", param: &valuesPointer, wantSQL: "(?,?)", wantArgs: []any{int64(1), int64(2)}, wantMatched: true},
-		{name: "nil slice pointer", leftPart: "id IN ", placeholder: "?", param: &nilSlice, wantSQL: "()", wantArgs: []any{}, wantMatched: true},
-		{name: "scalar", leftPart: "id IN ", placeholder: "?", param: int64(1)},
-		{name: "non IN slice", leftPart: "payload = ", placeholder: "?", param: values},
-		{name: "wrapped IN placeholder", leftPart: "id IN (", placeholder: "?", param: values},
-		{name: "bytes", leftPart: "payload IN ", placeholder: "?", param: bytes},
-		{name: "bytes pointer", leftPart: "payload IN ", placeholder: "?", param: &bytes},
-		{name: "typed nil bytes", leftPart: "payload IN ", placeholder: "?", param: []byte(nil)},
-		{name: "untyped nil", leftPart: "id IN ", placeholder: "?", param: nil},
-		{name: "typed nil pointer", leftPart: "id IN ", placeholder: "?", param: nilPointer},
-		{name: "short left part", leftPart: "i", placeholder: "?", param: values},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			gotSQL, gotArgs, gotMatched := whereIn(test.leftPart, test.placeholder, test.param)
-			if gotSQL != test.wantSQL || !reflect.DeepEqual(gotArgs, test.wantArgs) || gotMatched != test.wantMatched {
-				t.Fatalf("whereIn() = (%q, %#v, %t), want (%q, %#v, %t)", gotSQL, gotArgs, gotMatched, test.wantSQL, test.wantArgs, test.wantMatched)
-			}
-		})
-	}
-}
-
-func TestWhereExpandsInCollection(t *testing.T) {
-	engine, _ := newEngineTestEngine(t)
+func TestWhereKeepsInCollectionsUntilExecution(t *testing.T) {
+	engine, recorder := newEngineTestEngine(t)
 	statuses := []string{"enabled", "disabled"}
 
 	where := engine.Where("id = ? AND status IN ?", int64(1), statuses)
-	wantSQL := []string{"id = ? AND status IN (?,?)"}
-	wantArgs := []any{int64(1), "enabled", "disabled"}
+	wantSQL := []string{"id = ? AND status IN ?"}
+	wantArgs := []any{int64(1), statuses}
 	if !reflect.DeepEqual(where.whereSQL, wantSQL) || !reflect.DeepEqual(where.args, wantArgs) {
 		t.Fatalf("Where() generated SQL=%#v args=%#v", where.whereSQL, where.args)
+	}
+	// 集合直到执行前才展开，Where 不深拷贝参数对象。
+	statuses[1] = "pending"
+	for range 2 {
+		var roles []engineTestModel
+		if err := where.Select(context.Background(), &roles); err != nil {
+			t.Fatal(err)
+		}
+		if recorder.queryQuery != "SELECT `id`,`name`,`status` FROM `test_schema`.`roles` WHERE id = ? AND status IN (?,?)" ||
+			!reflect.DeepEqual(recorder.queryArgs, []driver.NamedValue{
+				{Ordinal: 1, Value: int64(1)}, {Ordinal: 2, Value: "enabled"}, {Ordinal: 3, Value: "pending"},
+			}) {
+			t.Fatalf("Select() generated SQL=%q args=%#v", recorder.queryQuery, recorder.queryArgs)
+		}
+	}
+	if !reflect.DeepEqual(where.whereSQL, wantSQL) || !reflect.DeepEqual(where.args, wantArgs) {
+		t.Fatalf("execution changed stored conditions: SQL=%#v args=%#v", where.whereSQL, where.args)
 	}
 
 	manual := engine.Where("status IN (?,?)", "enabled", "disabled")
@@ -819,15 +787,21 @@ func TestWhereExpandsInCollection(t *testing.T) {
 }
 
 func TestWhereHandlesEmptyCollectionAndBytes(t *testing.T) {
-	engine, _ := newEngineTestEngine(t)
+	engine, recorder := newEngineTestEngine(t)
 
-	empty := engine.Where("id IN ?", []int64{})
-	if !reflect.DeepEqual(empty.whereSQL, []string{"id IN ()"}) || len(empty.args) != 0 {
-		t.Fatalf("empty collection generated SQL=%#v args=%#v", empty.whereSQL, empty.args)
-	}
-	notIn := engine.Where("id NOT IN ?", []int64{})
-	if !reflect.DeepEqual(notIn.whereSQL, []string{"id NOT IN ()"}) || len(notIn.args) != 0 {
-		t.Fatalf("empty NOT IN generated SQL=%#v args=%#v", notIn.whereSQL, notIn.args)
+	for _, condition := range []string{"id IN ?", "id NOT IN ?"} {
+		empty := engine.Where(condition, []int64{})
+		if !reflect.DeepEqual(empty.whereSQL, []string{condition}) || !reflect.DeepEqual(empty.args, []any{[]int64{}}) {
+			t.Fatalf("Where() changed an empty collection: SQL=%#v args=%#v", empty.whereSQL, empty.args)
+		}
+		var roles []engineTestModel
+		if err := empty.Select(context.Background(), &roles); err != nil {
+			t.Fatal(err)
+		}
+		wantSQL := "SELECT `id`,`name`,`status` FROM `test_schema`.`roles` WHERE " + strings.Replace(condition, "?", "()", 1)
+		if recorder.queryQuery != wantSQL || len(recorder.queryArgs) != 0 {
+			t.Fatalf("empty collection generated SQL=%q args=%#v", recorder.queryQuery, recorder.queryArgs)
+		}
 	}
 
 	blob := []byte{1, 2, 3}

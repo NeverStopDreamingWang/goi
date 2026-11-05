@@ -157,6 +157,21 @@ func routeCases() []routeCase {
 	}
 }
 
+func defaultRoutePlaceholder(mode CompatibilityMode, index int) string {
+	switch mode {
+	case "", ModePostgreSQL:
+		return fmt.Sprintf("$%d", index)
+	case ModeMySQL:
+		return "?"
+	case ModeOracle:
+		return fmt.Sprintf(":%d", index)
+	case ModeSQLServer:
+		return fmt.Sprintf("@p%d", index)
+	default:
+		panic(fmt.Sprintf("unexpected compatibility mode %q", mode))
+	}
+}
+
 func routePool(engine db.Engine) *sql.DB {
 	switch value := engine.(type) {
 	case *mysql.Engine:
@@ -215,7 +230,8 @@ func TestCompatibilityRoutesReusePoolAndKeepKingbaseDriver(t *testing.T) {
 			}
 			quote := func(value string) string { return test.left + value + test.right }
 			wantSQL := "UPDATE " + quote("app") + "." + quote("roles") +
-				" SET " + quote("name") + " = $1 WHERE id = $2"
+				" SET " + quote("name") + " = " + defaultRoutePlaceholder(test.mode, 1) +
+				" WHERE id = " + defaultRoutePlaceholder(test.mode, 2)
 			if recorder.execQuery != wantSQL || len(recorder.execArgs) != 2 ||
 				recorder.execArgs[0].Value != "admin" || recorder.execArgs[1].Value != int64(7) {
 				t.Fatalf("write SQL=%q, args=%v", recorder.execQuery, recorder.execArgs)
@@ -224,10 +240,29 @@ func TestCompatibilityRoutesReusePoolAndKeepKingbaseDriver(t *testing.T) {
 			if err := second.QueryRow("SELECT ?", int64(7)).Scan(&value); err != nil {
 				t.Fatal(err)
 			}
-			if value != 7 || recorder.query != "SELECT $1" || len(recorder.queryArgs) != 1 {
+			if value != 7 || recorder.query != "SELECT "+defaultRoutePlaceholder(test.mode, 1) || len(recorder.queryArgs) != 1 {
 				t.Fatalf("query SQL=%q, args=%v, value=%d", recorder.query, recorder.queryArgs, value)
 			}
 		})
+	}
+}
+
+func TestMySQLCompatibilityExpandsWhereInParameters(t *testing.T) {
+	manager, recorder := newRouteManager(t, Config{Mode: ModeMySQL})
+	registerRouteManager(t, t.Name(), manager)
+	engine := db.Connect[*mysql.Engine](t.Name())
+	name := "admin"
+	_, err := engine.SetModel(mysqlRouteModel{}).Fields("Name").Where("id IN ?", []int64{7, 8}).
+		Update(context.Background(), mysqlRouteModel{Name: &name}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const wantSQL = "UPDATE `app`.`roles` SET `name` = ? WHERE id IN (?,?)"
+	wantArgs := []driver.NamedValue{
+		{Ordinal: 1, Value: "admin"}, {Ordinal: 2, Value: int64(7)}, {Ordinal: 3, Value: int64(8)},
+	}
+	if recorder.execQuery != wantSQL || !reflect.DeepEqual(recorder.execArgs, wantArgs) {
+		t.Fatalf("write SQL=%q, args=%#v, want SQL=%q args=%#v", recorder.execQuery, recorder.execArgs, wantSQL, wantArgs)
 	}
 }
 
@@ -275,11 +310,11 @@ func TestConfigFormsAndDefaultMode(t *testing.T) {
 type routePlaceholderParser struct{}
 
 func (routePlaceholderParser) Placeholder() string { return ":v" }
-func (routePlaceholderParser) Parse(query string, args ...any) string {
+func (routePlaceholderParser) Parse(query string, args ...any) (string, []any) {
 	for index := range args {
 		query = strings.Replace(query, ":v", fmt.Sprintf("@%d", index+1), 1)
 	}
-	return query
+	return query, args
 }
 
 func nativeRouteOptions() []db.EngineOptions {
@@ -316,7 +351,7 @@ func TestConfigStrategiesOverrideLocallyAndAreSnapshotted(t *testing.T) {
 			if err := writeRoute(fresh, "?"); err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(recorder.execQuery, " = $1 WHERE id = $2") ||
+			if !strings.Contains(recorder.execQuery, " = "+defaultRoutePlaceholder(test.mode, 1)+" WHERE id = "+defaultRoutePlaceholder(test.mode, 2)) ||
 				strings.Contains(recorder.execQuery, "<display_name>") || recorder.poolCalls != 1 {
 				t.Fatalf("fresh SQL=%q, pool calls=%d", recorder.execQuery, recorder.poolCalls)
 			}
@@ -342,7 +377,8 @@ func TestCompatibilityRoutesInheritSharedColumnParser(t *testing.T) {
 					t.Fatal(err)
 				}
 				want := "UPDATE " + quote("app") + "." + quote("roles") +
-					" SET " + quote(column) + " = $1 WHERE id = $2"
+					" SET " + quote(column) + " = " + defaultRoutePlaceholder(test.mode, 1) +
+					" WHERE id = " + defaultRoutePlaceholder(test.mode, 2)
 				if recorder.execQuery != want {
 					t.Fatalf("SQL=%q, want %q", recorder.execQuery, want)
 				}
@@ -520,31 +556,48 @@ func TestGenericConnectRejectsWrongReturnedType(t *testing.T) {
 	}
 }
 
-func TestGokbPlaceholderParserBoundaries(t *testing.T) {
-	parser := gokbPlaceholderParser{}
-	if parser.Placeholder() != "?" {
-		t.Fatalf("ORM placeholder=%q", parser.Placeholder())
-	}
-	tests := []struct {
-		name  string
-		query string
-		args  []any
-		want  string
-	}{
-		{"empty", "", []any{1}, ""},
-		{"no_args", "SELECT ?", nil, "SELECT ?"},
-		{"native", "SELECT $1", []any{1}, "SELECT $1"},
-		{"sequential", "SELECT ? WHERE id = ?", []any{"admin", 7}, "SELECT $1 WHERE id = $2"},
-		{"less_args", "SELECT ?, ?", []any{1}, "SELECT $1, ?"},
-		{"more_args", "SELECT ?", []any{1, 2}, "SELECT $1"},
-		{"adjacent", "??", []any{1, 2}, "$1$2"},
-		{"unicode", "SELECT '中文', ?", []any{1}, "SELECT '中文', $1"},
-		{"raw_text", "SELECT '?' -- ?\nWHERE id = ?", []any{1, 2, 3}, "SELECT '$1' -- $2\nWHERE id = $3"},
-	}
-	for _, test := range tests {
+func TestRoutesInheritDialectPlaceholderParserAndKeepSnapshots(t *testing.T) {
+	defaults := nativeRouteOptions()
+	for _, test := range routeCases() {
 		t.Run(test.name, func(t *testing.T) {
-			if got := parser.Parse(test.query, test.args...); got != test.want {
-				t.Fatalf("Parse()=%q, want %q", got, test.want)
+			var getParser func() db.PlaceholderParser
+			var setParser func(db.PlaceholderParser)
+			switch test.mode {
+			case ModePostgreSQL:
+				getParser, setParser = postgres.GetPlaceholderParser, postgres.SetPlaceholderParser
+			case ModeMySQL:
+				getParser, setParser = mysql.GetPlaceholderParser, mysql.SetPlaceholderParser
+			case ModeOracle:
+				getParser, setParser = oracle.GetPlaceholderParser, oracle.SetPlaceholderParser
+			case ModeSQLServer:
+				getParser, setParser = sqlserver.GetPlaceholderParser, sqlserver.SetPlaceholderParser
+			}
+			original := getParser()
+			t.Cleanup(func() { setParser(original) })
+			setParser(routePlaceholderParser{})
+			configuredDefaults := nativeRouteOptions()
+			manager, recorder := newRouteManager(t, Config{Mode: test.mode})
+			existing := ConnectDatabase("custom_default", manager)
+			if !reflect.DeepEqual(nativeRouteOptions(), configuredDefaults) {
+				t.Fatal("Kingbase construction changed native package defaults")
+			}
+			setParser(original)
+
+			if err := writeRoute(existing, ":v"); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(recorder.execQuery, " = @1 WHERE id = @2") {
+				t.Fatalf("existing Engine did not retain the selected dialect parser: %q", recorder.execQuery)
+			}
+			fresh := ConnectDatabase("restored_default", manager)
+			if err := writeRoute(fresh, "?"); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(recorder.execQuery, " = "+defaultRoutePlaceholder(test.mode, 1)+" WHERE id = "+defaultRoutePlaceholder(test.mode, 2)) {
+				t.Fatalf("fresh Engine did not use the current dialect parser: %q", recorder.execQuery)
+			}
+			if !reflect.DeepEqual(nativeRouteOptions(), defaults) {
+				t.Fatal("Kingbase construction changed native package defaults")
 			}
 		})
 	}

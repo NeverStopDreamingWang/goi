@@ -33,22 +33,21 @@ func factory(name string, database *goi.Database) db.Engine {
 //   - 不校验 Engine 名称；底层连接仍由 database.DB() 提供，不切换驱动
 //   - nil 配置、nil 配置指针或空 Mode 使用 PostgreSQL 方言，不修改服务端模式
 //   - 配置读取失败或模式未知时，在获取连接池前 panic
-//   - 标识符和列解析器继承所选方言，连接级非 nil 策略优先覆盖
-//   - 默认将 ? 转为 $1、$2 等，适用于 PostgreSQL 参数绑定；其它驱动可覆盖解析器
+//   - 占位符、标识符和列解析器均继承所选方言，连接级非 nil 策略优先覆盖
+//   - 兼容模式不保证驱动参数格式相同；实际驱动有差异时通过 EngineOptions 覆盖
 //   - 模型和校验使用所选方言包；具体 SeaBoxSQL 版本及驱动兼容性需自行验证
 func ConnectDatabase(name string, database *goi.Database) db.Engine {
 	var config Config
 	if err := database.GetConfig(&config); err != nil {
 		panic(err)
 	}
-	options := (db.EngineOptions{PlaceholderParser: defaultPlaceholderParser{}}).Merge(config.EngineOptions)
 	switch config.Mode {
 	case "", ModePostgreSQL:
-		return postgres.ConnectDatabase(name, database, options)
+		return postgres.ConnectDatabase(name, database, config.EngineOptions)
 	case ModeMySQL:
-		return mysql.ConnectDatabase(name, database, options)
+		return mysql.ConnectDatabase(name, database, config.EngineOptions)
 	case ModeOracle:
-		return oracle.ConnectDatabase(name, database, options)
+		return oracle.ConnectDatabase(name, database, config.EngineOptions)
 	default:
 		panic(i18n.T("db.compatibility_mode_is_not_supported", map[string]any{
 			"engine": driverName,

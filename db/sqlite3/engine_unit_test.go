@@ -18,6 +18,48 @@ import (
 	"github.com/NeverStopDreamingWang/goi/v3/internal/i18n"
 )
 
+func TestDefaultPlaceholderParserWritesDriverPlaceholders(t *testing.T) {
+	parser := defaultPlaceholderParser{}
+	placeholder := parser.Placeholder()
+	tests := []struct {
+		name     string
+		query    string
+		args     []any
+		wantSQL  string
+		wantArgs []any
+	}{
+		{
+			name: "multiple collections", query: "tenant_id = " + placeholder + " AND id IN " + placeholder + " AND status NOT IN " + placeholder,
+			args:    []any{7, []int64{1, 2}, [2]string{"disabled", "deleted"}},
+			wantSQL: "tenant_id = ? AND id IN (?,?) AND status NOT IN (?,?)", wantArgs: []any{7, int64(1), int64(2), "disabled", "deleted"},
+		},
+		{
+			name: "empty collection", query: "tenant_id = " + placeholder + " AND id IN " + placeholder + " AND name = " + placeholder,
+			args: []any{7, []int64{}, "admin"}, wantSQL: "tenant_id = ? AND id IN () AND name = ?", wantArgs: []any{7, "admin"},
+		},
+		{
+			name: "all empty collections", query: "id IN " + placeholder + " OR status NOT IN " + placeholder,
+			args: []any{[]int64{}, [0]string{}}, wantSQL: "id IN () OR status NOT IN ()", wantArgs: []any{},
+		},
+		{
+			name: "manual parentheses", query: "id IN (" + placeholder + "," + placeholder + ")",
+			args: []any{1, 2}, wantSQL: "id IN (?,?)", wantArgs: []any{1, 2},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			originalArgs := append([]any(nil), test.args...)
+			query, args := parser.Parse(test.query, test.args...)
+			if query != test.wantSQL || !reflect.DeepEqual(args, test.wantArgs) {
+				t.Fatalf("Parse() = (%q, %#v), want (%q, %#v)", query, args, test.wantSQL, test.wantArgs)
+			}
+			if !reflect.DeepEqual(test.args, originalArgs) {
+				t.Fatalf("input arguments were modified: %#v", test.args)
+			}
+		})
+	}
+}
+
 type engineTestDBProvider struct {
 	database *sql.DB
 	calls    int
@@ -568,11 +610,11 @@ type namedPlaceholderParser struct{}
 
 func (namedPlaceholderParser) Placeholder() string { return ":v" }
 
-func (namedPlaceholderParser) Parse(query string, args ...any) string {
+func (namedPlaceholderParser) Parse(query string, args ...any) (string, []any) {
 	for index := range args {
 		query = strings.Replace(query, ":v", fmt.Sprintf("$%d", index+1), 1)
 	}
-	return query
+	return query, args
 }
 
 func TestCustomPlaceholderBuildsAndParsesEveryOperation(t *testing.T) {
@@ -678,8 +720,8 @@ func (engineTestPlaceholderParser) Placeholder() string {
 	return "?"
 }
 
-func (engineTestPlaceholderParser) Parse(query string, _ ...any) string {
-	return "parsed: " + query
+func (engineTestPlaceholderParser) Parse(query string, args ...any) (string, []any) {
+	return "parsed: " + query, args
 }
 
 type engineTestRecorder struct {
@@ -872,12 +914,17 @@ func TestDefaultDialectStrategies(t *testing.T) {
 		t.Fatalf("ORM placeholder = %q", parser.Placeholder())
 	}
 	const query = "SELECT ? FROM roles WHERE id = ?"
-	if got := parser.Parse(query, "admin", int64(1)); got != wantDriverSQL(query) {
+	if got, _ := parser.Parse(query, "admin", int64(1)); got != wantDriverSQL(query) {
 		t.Fatalf("driver SQL = %q, want %q", got, wantDriverSQL(query))
 	}
 	native := wantDriverSQL("SELECT ?")
-	if got := parser.Parse(native, int64(1)); got != native {
+	if got, _ := parser.Parse(native, int64(1)); got != native {
 		t.Fatalf("native SQL changed: %q", got)
+	}
+	expandedSQL, expandedArgs := parser.Parse("SELECT ? FROM roles WHERE id IN ? AND status = ?", "admin", []int64{7, 8}, "enabled")
+	wantSQL := wantDriverSQL("SELECT ? FROM roles WHERE id IN (?,?) AND status = ?")
+	if expandedSQL != wantSQL || !reflect.DeepEqual(expandedArgs, []any{"admin", int64(7), int64(8), "enabled"}) {
+		t.Fatalf("expanded SQL=%q args=%#v", expandedSQL, expandedArgs)
 	}
 }
 
@@ -967,8 +1014,9 @@ func TestFactorySnapshotsStrategiesAndSharesPool(t *testing.T) {
 	if !reflect.DeepEqual(first.fieldSQL, []string{"id", "name"}) || !reflect.DeepEqual(second.fieldSQL, []string{"role_id", "display_name"}) {
 		t.Fatalf("column snapshots: %v, %v", first.fieldSQL, second.fieldSQL)
 	}
-	if first.placeholderParser.Parse("SELECT ?", 1) != wantDriverSQL("SELECT ?") ||
-		second.placeholderParser.Parse("SELECT ?", 1) != "parsed: SELECT ?" {
+	firstSQL, _ := first.placeholderParser.Parse("SELECT ?", 1)
+	secondSQL, _ := second.placeholderParser.Parse("SELECT ?", 1)
+	if firstSQL != wantDriverSQL("SELECT ?") || secondSQL != "parsed: SELECT ?" {
 		t.Fatal("placeholder parser snapshot changed")
 	}
 }
@@ -1014,9 +1062,9 @@ func TestWhereInReportsCollectionExpansion(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			gotSQL, gotArgs, gotMatched := whereIn(test.leftPart, test.placeholder, test.param)
+			gotSQL, gotArgs, gotMatched := expandInParameter(test.leftPart, test.placeholder, test.param)
 			if gotSQL != test.wantSQL || !reflect.DeepEqual(gotArgs, test.wantArgs) || gotMatched != test.wantMatched {
-				t.Fatalf("whereIn() = (%q, %#v, %t), want (%q, %#v, %t)", gotSQL, gotArgs, gotMatched, test.wantSQL, test.wantArgs, test.wantMatched)
+				t.Fatalf("expandInParameter() = (%q, %#v, %t), want (%q, %#v, %t)", gotSQL, gotArgs, gotMatched, test.wantSQL, test.wantArgs, test.wantMatched)
 			}
 		})
 	}

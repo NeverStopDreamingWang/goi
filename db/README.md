@@ -27,7 +27,7 @@
 | [column.go](column.go) | `ColumnParser`、`DefaultColumnParser`、`NewColumnParser`、`SetColumnParser`、`GetColumnParser` | 解析模型列定义，并提供公共默认解析器 |
 | [field.go](field.go) | `ModelFields`、`ModelFieldValue` | 提取有序字段列表，读取可交给 SQL 执行入口的模型字段值 |
 | [identifier.go](identifier.go) | `IdentifierQuoter`、`DefaultIdentifierQuoter`、`NewIdentifierQuoter` | 按数据库方言引用表名、Schema 名和列名 |
-| [placeholder.go](placeholder.go) | `PlaceholderParser`、`DefaultPlaceholderParser`、`NewPlaceholderParser` | 约定 ORM 占位符，并在执行前转换成驱动接受的 SQL |
+| [placeholder.go](placeholder.go) | `PlaceholderParser`、`DefaultPlaceholderParser`、`NewPlaceholderParser` | 约定 ORM 占位符，并在执行前转换 SQL 和参数 |
 | [scanner.go](scanner.go) | `RowScanner`、`ResultWriter`、`PrepareSliceResult`、`PrepareSingleResult` | 校验查询目标，创建逐行扫描与写入回调 |
 
 ## 二、引擎接口与注册约定
@@ -265,7 +265,7 @@ func (engine *Engine) Execute(query string, args ...any) (sql.Result, error) {
 }
 
 func (engine *Engine) ExecuteContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	query = engine.placeholderParser.Parse(query, args...)
+	query, args = engine.placeholderParser.Parse(query, args...)
 	return engine.DB.ExecContext(ctx, query, args...)
 }
 
@@ -274,7 +274,7 @@ func (engine *Engine) QueryRow(query string, args ...any) *sql.Row {
 }
 
 func (engine *Engine) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	query = engine.placeholderParser.Parse(query, args...)
+	query, args = engine.placeholderParser.Parse(query, args...)
 	return engine.DB.QueryRowContext(ctx, query, args...)
 }
 
@@ -283,12 +283,12 @@ func (engine *Engine) Query(query string, args ...any) (*sql.Rows, error) {
 }
 
 func (engine *Engine) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	query = engine.placeholderParser.Parse(query, args...)
+	query, args = engine.placeholderParser.Parse(query, args...)
 	return engine.DB.QueryContext(ctx, query, args...)
 }
 ```
 
-工厂不直接调用 `sql.Open`，连接创建统一交给 `goi.Database`；这样不同 ORM 实例可以复用同一个连接池。基础方法统一转入上下文方法，所有最终执行入口都经过 `PlaceholderParser.Parse`，避免某一类查询遗漏方言转换。
+工厂不直接调用 `sql.Open`，连接创建统一交给 `goi.Database`；这样不同 ORM 实例可以复用同一个连接池。基础方法统一转入上下文方法，所有最终执行入口都使用 `PlaceholderParser.Parse` 返回的 SQL 和参数，避免某一类查询遗漏方言转换。
 
 需要对外开放策略配置时，可以参考 [mysql/identifier.go](mysql/identifier.go)、[mysql/placeholder.go](mysql/placeholder.go)、[mysql/column.go](mysql/column.go) 提供 Set/Get 方法。配置应在创建引擎前完成，不应与连接或查询并发修改。
 
@@ -575,15 +575,25 @@ func operationValues(configuredModel any, operationModel any, fields []string) (
 
 ```go
 query := orm.Where("id IN ?", []int64{1, 2})
-// 条件展开为 id IN (?,?)，参数展开为 1、2
+// 执行时条件展开为 id IN (?,?)，参数展开为 1、2
 
 query = query.Where("status IN (?,?)", "enabled", "disabled")
 // 已写好括号和占位符时，逐个提供参数，不自动展开集合
 ```
 
-集合展开只处理占位符前匹配 IN 或 NOT IN 的切片、数组及其非 nil 指针，`[]byte` 不展开。空集合生成 `IN ()`，是否合法交由数据库判断；其它位置的集合参数原样交给驱动。
+集合展开只处理占位符前匹配 IN 或 NOT IN 的切片、数组及其非 nil 指针。字节切片（包括命名类型及其指针）不展开，字节数组仍按数组展开。空切片、nil 切片和空数组生成 `IN ()`，是否合法交由数据库判断；nil 指针及其它不匹配的参数原样交给驱动。
 
-`Where` 先按占位符字符串拆分并核对参数数量，不解析 SQL 字符串或注释，数量不一致时 panic。自定义 `Parse` 在执行前才运行，不能修复 Where 阶段已经发生的错误计数。复杂 SQL 可使用不冲突的 ORM 占位符，或通过基础 SQL 入口配合能正确识别 SQL 语法的解析器执行。
+MySQL 的 `Where` 只保存条件与参数，在执行时由默认占位符解析器的 `Parse` 展开集合；其它方言的 `Where` 仍在构建条件时展开集合。各原生方言包的默认解析器均自行实现集合展开，因此 `ExecuteContext`、`QueryContext`、`QueryRowContext` 及无 Context 的三个基础方法默认也支持集合参数。基础执行入口只调用当前解析器，并将返回的 SQL 和参数交给 `sql.DB` 或 `sql.Tx`。
+
+MySQL 传入的集合对象不深拷贝，执行前修改集合会影响实际参数；默认解析器不会改写已保存的条件与参数，可重复执行。注册自定义 `PlaceholderParser` 后，执行阶段的 SQL 和参数转换完全由自定义实现负责，不会自动继承原默认解析器的规则；但非 MySQL 方言在 `Where` 构建时已经完成的集合展开不受此替换影响。
+
+```go
+rows, err := orm.QueryContext(ctx, "SELECT id FROM roles WHERE id IN ?", []int64{1, 2})
+// 传给驱动的 SQL 为 SELECT id FROM roles WHERE id IN (?,?)，参数为 1、2
+// 使用完 rows 后应关闭，并检查 rows.Err()。
+```
+
+`Where` 按占位符字符串核对参数数量，数量不一致时 panic；各方言的基础 SQL 入口不新增数量校验，交由解析器或驱动处理。默认集合展开与 Where 数量检查都不解析 SQL 字符串或注释。自定义 `Parse` 可以处理复杂 SQL，但不能修复 Where 阶段已经发生的错误计数；复杂条件可使用不冲突的 ORM 占位符。
 
 ## 五、三个可替换的策略接口
 
@@ -640,13 +650,17 @@ orm := mysql.ConnectDatabase("report", database, db.EngineOptions{
 接口包含：
 
 - `Placeholder() string`：返回 ORM 构建 SQL 时使用的占位符。
-- `Parse(query string, args ...any) string`：返回最终传给 `sql.DB` 或 `sql.Tx` 的 SQL。
+- `Parse(query string, args ...any) (string, []any)`：返回最终传给 `sql.DB` 或 `sql.Tx` 的 SQL 和参数。
 
-`db.NewPlaceholderParser("?")` 只声明 ORM 使用 `?`，其 `Parse` 原样返回 SQL，不会自动转成编号占位符。
+`db.NewPlaceholderParser("?")` 只指定 ORM 占位符，其 `Parse` 原样返回 SQL 和参数，不展开集合，也不转换编号格式。各原生方言包注册自己的默认解析器，在各自的 `Parse` 中展开 `IN ?` / `NOT IN ?` 的集合参数，再按驱动要求转换占位符；Kingbase 等路由入口可复用已有方言解析器。
 
-需要输出 `$1, $2, ...`、`:1, :2, ...` 或 `@p1, @p2, ...` 时，应实现自己的解析器，并在全部最终执行入口调用。解析器应区分真实占位符与字符串、注释等内容，不能简单替换所有相同字符。
+上面的最小 `custommysql` 示例使用公共透传解析器，因此不自动支持集合展开。需要复用内置 MySQL 的解析规则时，可将其默认策略设为 `mysql.GetPlaceholderParser()`；其它方言也可复用对应包的解析器。
 
-当前 `Parse` 只返回 SQL，不能返回新参数或错误；`args` 供解析时参考，执行时仍传入原参数列表。因此解析规则应保持参数顺序和数量对应，不应把参数值插入 SQL。
+`Placeholder()` 约定的是 ORM 输入标记，不是驱动输出格式。内置方言解析器匹配该标记后，分别写入固定的 `?`、`$n`、`:n` 或 `@pn`，集合展开也沿用同一编号序列。需要其它规则时可以实现自己的解析器，并在全部最终执行入口调用；需要正确识别复杂 SQL 时，还应区分真实占位符与字符串、注释等内容。
+
+`Parse` 可以返回调整后的参数列表，例如展开集合、重排或替换参数；调用方必须同时使用返回的 SQL 和参数，保证占位符与参数对应，不应把参数值插入 SQL。不需要转换时返回 `query, args` 即可。此接口不返回 error。
+
+自定义解析器会整体替换执行阶段的默认实现，不会自动调用它；原生 SQL 入口所需的集合展开和占位符转换均由自定义实现负责。`Where` 的提前处理差异见上文。
 
 ### 4. 策略对象的生命周期
 
@@ -761,7 +775,7 @@ Goi 服务的正常停机顺序为：停止 HTTP 监听并等待在途请求、�
 | 字段验证 | [mysql/validator.go](mysql/validator.go) | 根据列类型和业务规则校验模型；由 ORM 或调用方决定何时执行 |
 | 查询构建帮助方法 | [mysql/utils.go](mysql/utils.go) | 分离集合参数展开等内部工具，与数据库方言规则配合 |
 
-`mysql`、`postgres`、`sqlite3`、`oracle`、`sqlserver` 统一采用上述 `connect.go` / `engine.go` 拆分。`kingbase` 的 [connect.go](kingbase/connect.go) 和 `seaboxsql` 的 [connect.go](seaboxsql/connect.go) 只负责按 Mode 路由，不定义自己的 Engine、Model 或 Validate；配置与默认占位符策略分别放在各包的 `config.go`、`placeholder.go`。
+`mysql`、`postgres`、`sqlite3`、`oracle`、`sqlserver` 统一采用上述 `connect.go` / `engine.go` 拆分。`kingbase` 的 [connect.go](kingbase/connect.go) 和 `seaboxsql` 的 [connect.go](seaboxsql/connect.go) 只负责按 Mode 路由，不定义自己的 Engine、Model 或 Validate，连接配置均放在各包的 `config.go`。两个路由包直接继承所选方言的默认策略，不单独实现占位符解析器。
 
 迁移、字段验证、主键处理、分页、是否限制全表操作、默认值与 NULL 处理等行为，应由自定义 ORM 明确定义。公共 `db` 工具负责可复用的基础工作，不会自动替引擎实现这些策略。
 
@@ -773,8 +787,8 @@ Goi 服务的正常停机顺序为：停止 HTTP 监听并等待在途请求、�
 | --- | --- | --- | --- | --- |
 | `mysql` | 反引号 | `?` → `?` | 连接当前数据库 | `LIMIT ... OFFSET ...` |
 | `postgres` | 双引号 | `?` → `$1, $2, ...` | `public` | `LIMIT ... OFFSET ...` |
-| `kingbase` | 继承 Mode 对应方言 | 默认 `?` → `$1, $2, ...`（Gokb） | 继承 Mode 对应方言 | 继承 Mode 对应方言 |
-| `seaboxsql` | 继承 Mode 对应方言 | 默认 `?` → `$1, $2, ...`（PostgreSQL 兼容驱动方案） | 继承 Mode 对应方言 | 继承 Mode 对应方言 |
+| `kingbase` | 继承 Mode 对应方言 | 继承 Mode 对应方言，可按实际驱动覆盖 | 继承 Mode 对应方言 | 继承 Mode 对应方言 |
+| `seaboxsql` | 继承 Mode 对应方言 | 继承 Mode 对应方言，可按实际驱动覆盖 | 继承 Mode 对应方言 | 继承 Mode 对应方言 |
 | `sqlite3` | 双引号 | `?` → `?` | 不限定数据库；也可指定 `main`、`temp` 或已附加的数据库 | `LIMIT ... OFFSET ...` |
 | `oracle` | 双引号 | `?` → `:1, :2, ...` | 当前 Schema | `OFFSET ... ROWS FETCH NEXT ... ROWS ONLY`，要求 Oracle 12c 及以上 |
 | `sqlserver` | 方括号 | `?` → `@p1, @p2, ...` | `dbo` | `OFFSET ... ROWS FETCH NEXT ... ROWS ONLY`，需先设置排序 |
@@ -840,7 +854,11 @@ func connectKingbase(dsn string) *mysql.Engine {
 
 `kingbase.Config.EngineOptions` 是显式字段，配置字面量通过 `EngineOptions: db.EngineOptions{...}` 填写。Kingbase 只读取一次自己的 Config，再把选项传给所选方言包的低层 `ConnectDatabase`，不会要求原生包重复解析 Kingbase 配置。
 
-策略按“所选方言包有效默认值 → Gokb 占位符策略 → Config 中的非 nil 选项”合并。因此默认在所有模式下使用 `?` 构建、`$1, $2, ...` 执行；标识符继承所选方言，列解析器遵循前述三层优先级。显式配置不改变其它包的默认值。自定义占位符策略须与实际 Gokb 版本和语句类型相符，不能仅按兼容模式假定驱动支持所有原生格式。
+各 Mode 直接把 `Config.EngineOptions` 传给对应方言的 `ConnectDatabase`，由方言包按“包级有效默认值 → 连接级非 nil 选项”合并。占位符、标识符和列解析器均继承所选方言，不预先设置跨方言覆盖；默认驱动占位符分别为 PostgreSQL 的 `$n`、MySQL 的 `?`、Oracle 的 `:n`、SQL Server 的 `@pn`。包级配置替换只影响后续创建的实例，已有实例保留创建时的策略。
+
+这是一套默认选择规则，不代表各 Gokb 版本都已验证支持全部格式。[MySQL 兼容版 V9R3C11 的 Gokb 指南](https://help.kingbase.com.cn/v9.3.11/PDF/KingbaseES%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%BC%96%E7%A8%8B%E6%8E%A5%E5%8F%A3%E6%8C%87%E5%8D%97-Gokb.pdf)列出 `$N`、`?`、`:NAME`；[SQLServer 兼容版 V9R4C12 指南](https://help.kingbase.com.cn/v9.4.12/development/application-develop-guide/application_development/client-interfaces/go/go-3.html)的常规绑定说明也不能直接证明普通 DML 支持 `@p1`，命名参数 `:NAME` 也不能等同于位置参数 `:1`。未确认的格式按所选方言默认值处理，调用方应针对实际驱动版本验证。
+
+实际驱动要求不同格式时，通过 `Config.EngineOptions.PlaceholderParser` 显式覆盖。例如已确认需要 `$n` 时，可设置 `PlaceholderParser: postgres.GetPlaceholderParser()`，无需更改 Model 所属的数据库方言；连接级配置始终优先。
 
 使用泛型入口时，类型必须与 Mode 对应；例如上述模式应取得 `*mysql.Engine`，模型的 `ModelSet` 返回 `*mysql.Settings`，字段校验调用 `mysql.Validate`。`kingbase.Connect` 返回公共 `db.Engine`，仅暴露基础 SQL 方法；不要通过 `mysql.Connect("kes_mysql")` 读取 Engine 为 kingbase 的配置。
 
@@ -891,7 +909,11 @@ func connectSeaBoxSQL(connector func(string) *sql.DB) *mysql.Engine {
 
 连接回调接收 ORM 注册名 `"seaboxsql"`，由调用方选择实际驱动、DSN 和连接池设置，不应直接把该参数当成 SQL 驱动名。导入 `seaboxsql` 只注册 ORM 工厂，不加载物理驱动；示例也不表示应改用 MySQL 驱动连接 SeaBoxSQL。
 
-`seaboxsql.Config.EngineOptions` 是显式字段，策略按“所选方言包有效默认值 → SeaBoxSQL 默认占位符策略 → Config 中的非 nil 选项”合并。默认在三种 Mode 下均用 `?` 构建 SQL、转换为 `$1, $2, ...` 执行，这是 PostgreSQL 兼容驱动方案，不是按 Mode 选择的原生占位符。实际驱动要求不同格式时，通过 `EngineOptions.PlaceholderParser` 覆盖；标识符继承所选方言，列解析器遵循前述三层优先级。已有 Engine 保存创建时的策略引用，后续默认配置替换不改变它。
+`seaboxsql.Config.EngineOptions` 是显式字段，各 Mode 直接把它传给对应方言，由方言包合并包级默认值和连接级非 nil 选项。占位符、标识符及列解析器默认均继承所选方言；SeaBoxSQL 不额外指定解析器，因此 PostgreSQL、MySQL、Oracle 模式的默认驱动占位符分别为 `$n`、`?`、`:n`。已有 Engine 保存创建时的策略引用，后续默认配置替换不改变它。
+
+[官方兼容模式说明](https://www.seaboxdata.com/seabox-handbook/source_files/overview/mpp/feature_intro/compatibility_mode/)列出的是 SQL 语义开关，不能据此确认 Go 驱动的参数绑定规则。[服务端 PREPARE](https://seaboxdata.com/seabox-handbook/source_files/ref_guide/sql_commands/PREPARE/) 使用 `$n`，而 [JDBC PreparedStatement](https://seaboxdata.com/seabox-handbook/source_files/server-programming/JDBC/query/) 使用 `?`；二者也不能代替 Go 驱动在各 Mode 下的验证。缺少完整映射依据时，框架采用所选方言默认值，不声明所有格式都已兼容。
+
+如果实际采用的驱动需要 PostgreSQL 风格的参数绑定，可在 `Config.EngineOptions` 中设置 `PlaceholderParser: postgres.GetPlaceholderParser()`；这只覆盖占位符规则，不改变所选 Model、标识符和其它方言行为。
 
 模型接口、Settings 和 Validate 使用 Mode 对应的原生包，泛型类型也必须匹配。`seaboxsql.Connect` 返回公共 `db.Engine`，需要 CRUD 等扩展方法时使用对应具体类型的泛型入口；不要调用 `mysql.Connect("seabox_mysql")` 读取 Engine 为 seaboxsql 的配置。该包不提供独立的 Engine、Model、Settings、Validate 或包级策略 Set/Get，实例策略统一放在 Config 中。
 

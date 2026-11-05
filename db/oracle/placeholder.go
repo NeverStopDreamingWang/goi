@@ -1,6 +1,11 @@
 package oracle
 
-import "github.com/NeverStopDreamingWang/goi/v3/db"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/NeverStopDreamingWang/goi/v3/db"
+)
 
 // placeholderParser 保存后续新建 Oracle Engine 使用的占位符解析器。
 var placeholderParser db.PlaceholderParser = defaultPlaceholderParser{}
@@ -41,7 +46,48 @@ func (defaultPlaceholderParser) Placeholder() string {
 	return "?"
 }
 
-// Parse 转换占位符，返回交给 sql.DB 或 sql.Tx 执行的 SQL；参数顺序不变
-func (defaultPlaceholderParser) Parse(query string, args ...any) string {
-	return convertPlaceholders(query, len(args))
+// Parse 展开集合参数并生成 :1、:2 等编号，返回交给 sql.DB 或 sql.Tx 的 SQL 和参数。
+//
+// 说明:
+//   - ORM 占位符由 Placeholder 指定，匹配后转换为驱动使用的编号格式
+//   - IN ?、NOT IN ? 支持切片、数组及其非 nil 指针，[]byte 除外
+//   - IN (?) 等带括号的写法不展开；空集合生成 ()，是否合法由数据库处理
+//   - 单次扫描 SQL，不解析 SQL 字符串或注释，也不校验参数数量
+//   - 不修改传入的参数切片，未匹配的 SQL 和多余参数保持原样
+func (parser defaultPlaceholderParser) Parse(query string, args ...any) (string, []any) {
+	placeholder := parser.Placeholder()
+	if len(args) == 0 || !strings.Contains(query, placeholder) {
+		return query, args
+	}
+
+	var builder strings.Builder
+	builder.Grow(len(query))
+	expandedArgs := make([]any, 0, len(args))
+	for i, param := range args {
+		pos := strings.Index(query, placeholder)
+		if pos < 0 {
+			expandedArgs = append(expandedArgs, args[i:]...)
+			break
+		}
+		leftPart := query[:pos]
+		builder.WriteString(leftPart)
+		inPlaceholder, inArgs, ok := expandInParameter(leftPart, placeholder, param)
+		if ok {
+			// 仅替换展开片段中的占位符，括号和分隔符沿用帮助方法的结果。
+			for _, inArg := range inArgs {
+				inPos := strings.Index(inPlaceholder, placeholder)
+				builder.WriteString(inPlaceholder[:inPos])
+				builder.WriteString(fmt.Sprintf(":%d", len(expandedArgs)+1))
+				inPlaceholder = inPlaceholder[inPos+len(placeholder):]
+				expandedArgs = append(expandedArgs, inArg)
+			}
+			builder.WriteString(inPlaceholder)
+		} else {
+			builder.WriteString(fmt.Sprintf(":%d", len(expandedArgs)+1))
+			expandedArgs = append(expandedArgs, param)
+		}
+		query = query[pos+len(placeholder):]
+	}
+	builder.WriteString(query)
+	return builder.String(), expandedArgs
 }

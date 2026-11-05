@@ -116,5 +116,5 @@ func ExampleEngine_Insert() {
 		return
 	}
 	fmt.Printf("插入成功")
-	// Output:
+	// Output: 插入成功
 }
