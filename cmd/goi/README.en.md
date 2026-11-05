@@ -26,10 +26,10 @@ Go 1.24 or later is required. The recommended approach is to install the latest 
 go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@latest
 ```
 
-To pin a version, for example v3.0.2:
+To pin a version, for example v3.0.3:
 
 ```sh
-go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.2
+go install github.com/NeverStopDreamingWang/goi/v3/cmd/goi@v3.0.3
 ```
 
 The executable is named `goi` (`goi.exe` on Windows). It is installed into `GOBIN`, or `GOPATH/bin` if `GOBIN` is unset. Inspect the configuration with the following command, then add the appropriate directory to `PATH`:
