@@ -311,9 +311,9 @@ func TestExpandInParameterReportsCollectionExpansion(t *testing.T) {
 		{name: "scalar", leftPart: "id IN ", placeholder: "?", param: int64(1)},
 		{name: "non IN slice", leftPart: "payload = ", placeholder: "?", param: values},
 		{name: "wrapped IN placeholder", leftPart: "id IN (", placeholder: "?", param: values},
-		{name: "bytes", leftPart: "payload IN ", placeholder: "?", param: bytes},
-		{name: "bytes pointer", leftPart: "payload IN ", placeholder: "?", param: &bytes},
-		{name: "typed nil bytes", leftPart: "payload IN ", placeholder: "?", param: []byte(nil)},
+		{name: "bytes", leftPart: "payload IN ", placeholder: "?", param: bytes, wantSQL: "(?,?)", wantArgs: []any{byte(1), byte(2)}, wantMatched: true},
+		{name: "bytes pointer", leftPart: "payload IN ", placeholder: "?", param: &bytes, wantSQL: "(?,?)", wantArgs: []any{byte(1), byte(2)}, wantMatched: true},
+		{name: "typed nil bytes", leftPart: "payload IN ", placeholder: "?", param: []byte(nil), wantSQL: "()", wantArgs: []any{}, wantMatched: true},
 		{name: "untyped nil", leftPart: "id IN ", placeholder: "?", param: nil},
 		{name: "typed nil pointer", leftPart: "id IN ", placeholder: "?", param: nilPointer},
 		{name: "short left part", leftPart: "i", placeholder: "?", param: values},
@@ -352,8 +352,8 @@ func TestDefaultPlaceholderParserParsesParameters(t *testing.T) {
 			args: []any{1, 2}, wantSQL: "id IN (?,?)", wantArgs: []any{1, 2},
 		},
 		{
-			name: "unmatched collection and bytes", query: "payload = ? AND data IN ?",
-			args: []any{[]string{"a", "b"}, bytes}, wantSQL: "payload = ? AND data IN ?", wantArgs: []any{[]string{"a", "b"}, bytes},
+			name: "unmatched collection and bytes in IN", query: "payload = ? AND data IN ?",
+			args: []any{[]string{"a", "b"}, bytes}, wantSQL: "payload = ? AND data IN (?,?)", wantArgs: []any{[]string{"a", "b"}, byte(1), byte(2)},
 		},
 		{
 			name: "native numbered placeholder", query: "id = $1",

@@ -451,7 +451,7 @@ func (engine *Engine) Insert(ctx context.Context, model Model, skipNil bool) (sq
 // 说明:
 //   - 多次调用以 AND 连接；占位符与参数数量不一致时 panic
 //   - 默认 PlaceholderParser 支持 IN ?、NOT IN ? 的集合参数；Where 也会在构建条件时展开
-//   - 字节切片（如 []byte）和 nil 指针不展开；其它未匹配的参数交由 database/sql 和驱动处理
+//   - 集合不限制元素类型；nil 指针及其他未匹配的参数原样交给 database/sql 和驱动
 //   - IN (?) 等带括号的写法不自动展开，需自行匹配占位符与参数
 //   - 空集合（含 nil 切片）展开为 ()，是否合法由数据库处理
 //   - 仅按字符串匹配占位符，不解析 SQL 字符串或注释

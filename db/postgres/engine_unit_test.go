@@ -696,6 +696,7 @@ func TestDefaultPlaceholderParserWritesDriverPlaceholders(t *testing.T) {
 }
 
 func TestDefaultPlaceholderParserExpansionBoundaries(t *testing.T) {
+	type workOrderStatus uint8
 	bytes := []byte{1, 2}
 	tests := []struct {
 		name     string
@@ -731,8 +732,12 @@ func TestDefaultPlaceholderParserExpansionBoundaries(t *testing.T) {
 			wantSQL: "id IN ($1)", wantArgs: []any{[]int64{7, 8}},
 		},
 		{
-			name: "bytes", query: "data IN ?", args: []any{bytes},
-			wantSQL: "data IN $1", wantArgs: []any{bytes},
+			name: "bytes only expand in IN", query: "payload = ? AND data IN ?", args: []any{bytes, bytes},
+			wantSQL: "payload = $1 AND data IN ($2,$3)", wantArgs: []any{bytes, byte(1), byte(2)},
+		},
+		{
+			name: "uint8 enum", query: "status IN ?", args: []any{[]workOrderStatus{0, 1}},
+			wantSQL: "status IN ($1,$2)", wantArgs: []any{workOrderStatus(0), workOrderStatus(1)},
 		},
 		{
 			name: "extra argument", query: "id IN ?", args: []any{[]int64{7, 8}, "extra"},
@@ -1017,9 +1022,9 @@ func TestExpandInParameterReportsCollectionExpansion(t *testing.T) {
 		{name: "scalar", leftPart: "id IN ", placeholder: "?", param: int64(1)},
 		{name: "non IN slice", leftPart: "payload = ", placeholder: "?", param: values},
 		{name: "wrapped IN placeholder", leftPart: "id IN (", placeholder: "?", param: values},
-		{name: "bytes", leftPart: "payload IN ", placeholder: "?", param: bytes},
-		{name: "bytes pointer", leftPart: "payload IN ", placeholder: "?", param: &bytes},
-		{name: "typed nil bytes", leftPart: "payload IN ", placeholder: "?", param: []byte(nil)},
+		{name: "bytes", leftPart: "payload IN ", placeholder: "?", param: bytes, wantSQL: "(?,?)", wantArgs: []any{byte(1), byte(2)}, wantMatched: true},
+		{name: "bytes pointer", leftPart: "payload IN ", placeholder: "?", param: &bytes, wantSQL: "(?,?)", wantArgs: []any{byte(1), byte(2)}, wantMatched: true},
+		{name: "typed nil bytes", leftPart: "payload IN ", placeholder: "?", param: []byte(nil), wantSQL: "()", wantArgs: []any{}, wantMatched: true},
 		{name: "untyped nil", leftPart: "id IN ", placeholder: "?", param: nil},
 		{name: "typed nil pointer", leftPart: "id IN ", placeholder: "?", param: nilPointer},
 		{name: "short left part", leftPart: "i", placeholder: "?", param: values},

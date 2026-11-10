@@ -19,7 +19,7 @@ import (
 //
 // 说明:
 //   - 仅处理 IN 占位符形式，已带括号的写法不展开
-//   - 支持切片、数组及其非 nil 指针；[]byte 和其他参数不展开
+//   - 支持切片、数组及其非 nil 指针，不限制元素类型
 //   - 空集合展开为 ()；不匹配时返回空字符串、nil、false
 func expandInParameter(leftPart string, placeholder string, param any) (string, []any, bool) {
 	leftPart = strings.TrimSpace(leftPart)
@@ -34,9 +34,7 @@ func expandInParameter(leftPart string, placeholder string, param any) (string, 
 		}
 		paramValue = paramValue.Elem()
 	}
-	if !paramValue.IsValid() ||
-		(paramValue.Kind() != reflect.Slice && paramValue.Kind() != reflect.Array) ||
-		paramValue.Kind() == reflect.Slice && paramValue.Type().Elem().Kind() == reflect.Uint8 {
+	if !paramValue.IsValid() || (paramValue.Kind() != reflect.Slice && paramValue.Kind() != reflect.Array) {
 		return "", nil, false
 	}
 

@@ -50,7 +50,7 @@ func (defaultPlaceholderParser) Placeholder() string {
 //
 // 说明:
 //   - ORM 占位符由 Placeholder 指定，匹配后转换为驱动使用的编号格式
-//   - IN ?、NOT IN ? 支持切片、数组及其非 nil 指针，[]byte 除外
+//   - IN ?、NOT IN ? 支持切片、数组及其非 nil 指针，不限制元素类型
 //   - IN (?) 等带括号的写法不展开；空集合生成 ()，是否合法由数据库处理
 //   - 单次扫描 SQL，不解析 SQL 字符串或注释，也不校验参数数量
 //   - 不修改传入的参数切片，未匹配的 SQL 和多余参数保持原样

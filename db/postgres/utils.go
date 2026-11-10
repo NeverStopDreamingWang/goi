@@ -18,7 +18,7 @@ import (
 //   - bool: 是否展开，空集合也为 true
 //
 // 说明:
-//   - 左侧去除空格后须以 IN 结尾，参数须为切片或数组（字节切片除外）
+//   - 左侧去除空格后须以 IN 结尾，参数须为切片或数组，不限制元素类型
 //   - 集合指针会解引用；空集合生成 ()，其他情况按单个参数处理
 func expandInParameter(leftPart string, placeholder string, param any) (string, []any, bool) {
 	leftPart = strings.TrimSpace(leftPart)
@@ -33,9 +33,7 @@ func expandInParameter(leftPart string, placeholder string, param any) (string, 
 		}
 		paramValue = paramValue.Elem()
 	}
-	if !paramValue.IsValid() ||
-		(paramValue.Kind() != reflect.Slice && paramValue.Kind() != reflect.Array) ||
-		paramValue.Kind() == reflect.Slice && paramValue.Type().Elem().Kind() == reflect.Uint8 {
+	if !paramValue.IsValid() || (paramValue.Kind() != reflect.Slice && paramValue.Kind() != reflect.Array) {
 		return "", nil, false
 	}
 

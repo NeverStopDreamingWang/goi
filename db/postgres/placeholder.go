@@ -47,7 +47,7 @@ func (defaultPlaceholderParser) Placeholder() string {
 // Parse 展开集合参数并生成 $1、$2 等编号，返回交给 sql.DB 或 sql.Tx 的 SQL 和参数。
 //
 // 说明:
-//   - IN ?、NOT IN ? 支持切片、数组及其非 nil 指针，[]byte 除外
+//   - IN ?、NOT IN ? 支持切片、数组及其非 nil 指针，不限制元素类型
 //   - IN (?) 等带括号的写法不展开；空集合生成 ()，是否合法由数据库处理
 //   - 单次扫描 SQL，不解析 SQL 字符串或注释，也不校验参数数量
 //   - 不修改传入的参数切片，未匹配的 SQL 和多余参数保持原样
